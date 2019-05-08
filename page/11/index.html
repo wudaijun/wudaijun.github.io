@@ -336,7 +336,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/01/skynet-luaservice/">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/01/lua-coroutine/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="wudaijun">
@@ -355,8 +355,8 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/2015/01/skynet-luaservice/" itemprop="url">
-                  skynet lua服务
+                <a class="post-title-link" href="/2015/01/lua-coroutine/" itemprop="url">
+                  lua 协程和状态
                 </a>
               
             
@@ -382,7 +382,7 @@
                 
               
 
-              <time title="创建时间：2015-01-11 00:00:00" itemprop="dateCreated datePublished" datetime="2015-01-11T00:00:00+08:00">2015-01-11</time>
+              <time title="创建时间：2015-01-14 00:00:00" itemprop="dateCreated datePublished" datetime="2015-01-14T00:00:00+08:00">2015-01-14</time>
             
 
             
@@ -400,7 +400,7 @@
                 <span class="post-meta-item-text">分类于</span>
               
               
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a></span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/lua/" itemprop="url" rel="index"><span itemprop="name">lua</span></a></span>
 
                 
                 
@@ -415,8 +415,8 @@
                 <span class="post-meta-item-icon">
                   <i class="fa fa-comment-o"></i>
                 </span>
-                <a href="/2015/01/skynet-luaservice/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2015/01/skynet-luaservice/" itemprop="commentCount"></span>
+                <a href="/2015/01/lua-coroutine/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2015/01/lua-coroutine/" itemprop="commentCount"></span>
                 </a>
               </span>
             
@@ -445,11 +445,10 @@
 
       
         
-          <h2 id="C模块的导出"><a href="#C模块的导出" class="headerlink" title="C模块的导出"></a>C模块的导出</h2><p>从skynet核心模块来看，它只认得C服务，每个服务被编译为动态库，在需要时由skynet加载。skynet提供发送消息和注册回调函数的接口，并保证消息的正确到达，并调用目标服务回调函数。其它东西，如消息调度，线程池等，对于用户来说都是透明的。</p>
-<p>skynet服务可以由lua编写，因此skynet将C模块核心接口通过skynet/lualib-src/lua-skynet.c导出为 skynet.so提供给lua使用。在lua层，通过skynet/lualib/skynet.lua加载C模块(<code>require &quot;skynet.core&quot;</code>)完成对C API的封装。主要涉及lua服务的加载和退出，消息的发送，回调函数的注册等。用户定义的lua服务通过<code>require &quot;skynet&quot;</code>的接口即可完成服务的注册，启动和退出等。关于skynet lua api可以参见<a href="https://github.com/cloudwu/skynet/wiki/LuaAPI" title="skynet wiki" target="_blank" rel="noopener">skynet wiki</a>。</p>
+          <p>协程(协同式多线程)是一种用户级的非抢占式线程。用户级是指它的切换和调度由用户控制，非抢占指一个协程只有在其挂起(yield)或者协程结束才会返回。协程和C线程一样，有自己的堆栈，自己的局部变量，自己的指令指针，并且和其它协程共享全局变量等信息。用户可以实现自己调度协程，这主要得益于yield函数可以自动保存协程当前上下文，这样当挂起的协程被唤醒(resume)时，会从yield处继续向下执行，看起来就像是一个”可以返回多次的函数”。协程还有一个强大的功能就是可通过resume/yield来交换数据，这样使得它可以用于异步回调：当执行异步代码时，切换协程，执行完成后，再切换回来(附带异步执行结果)。由于切换都是用户控制的，在同一时刻只有一个协同程序在运行(这也是和传统线程最大的区别之一)，因此无需考虑同步和加锁的问题。</p>
           <!--noindex-->
           <div class="post-button text-center">
-            <a class="btn" href="/2015/01/skynet-luaservice/" rel="contents">
+            <a class="btn" href="/2015/01/lua-coroutine/" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
@@ -618,6 +617,175 @@
           <!--noindex-->
           <div class="post-button text-center">
             <a class="btn" href="/2015/01/false-sharing/" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/01/skynet-luaservice/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2015/01/skynet-luaservice/" itemprop="url">
+                  skynet lua服务
+                </a>
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2015-01-11 00:00:00" itemprop="dateCreated datePublished" datetime="2015-01-11T00:00:00+08:00">2015-01-11</time>
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2015/01/skynet-luaservice/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2015/01/skynet-luaservice/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <h2 id="C模块的导出"><a href="#C模块的导出" class="headerlink" title="C模块的导出"></a>C模块的导出</h2><p>从skynet核心模块来看，它只认得C服务，每个服务被编译为动态库，在需要时由skynet加载。skynet提供发送消息和注册回调函数的接口，并保证消息的正确到达，并调用目标服务回调函数。其它东西，如消息调度，线程池等，对于用户来说都是透明的。</p>
+<p>skynet服务可以由lua编写，因此skynet将C模块核心接口通过skynet/lualib-src/lua-skynet.c导出为 skynet.so提供给lua使用。在lua层，通过skynet/lualib/skynet.lua加载C模块(<code>require &quot;skynet.core&quot;</code>)完成对C API的封装。主要涉及lua服务的加载和退出，消息的发送，回调函数的注册等。用户定义的lua服务通过<code>require &quot;skynet&quot;</code>的接口即可完成服务的注册，启动和退出等。关于skynet lua api可以参见<a href="https://github.com/cloudwu/skynet/wiki/LuaAPI" title="skynet wiki" target="_blank" rel="noopener">skynet wiki</a>。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/2015/01/skynet-luaservice/" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
@@ -1513,174 +1681,6 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/11/ngserver-message-encoder/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2014/11/ngserver-message-encoder/" itemprop="url">
-                  NGServer 消息的编解码
-                </a>
-              
-            
-          </h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
-
-              <time title="创建时间：2014-11-05 00:00:00" itemprop="dateCreated datePublished" datetime="2014-11-05T00:00:00+08:00">2014-11-05</time>
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a></span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-              <span class="post-comments-count">
-                <span class="post-meta-divider">|</span>
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-comment-o"></i>
-                </span>
-                <a href="/2014/11/ngserver-message-encoder/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2014/11/ngserver-message-encoder/" itemprop="commentCount"></span>
-                </a>
-              </span>
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>消息编解码(或序列化)主要是将消息体由一些标准库容器或自定义的类型，转化成二进制流，方便网络传输。为了减少网络IO，编解码中也可能在存在数据”压缩和解压”，但这种压缩是针对于特定的数据类型，并不是针对于二进制流的。在NGServer的消息编解码中，并不涉及数据压缩。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/2014/11/ngserver-message-encoder/" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/11/ngserver-message-callback/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1849,7 +1849,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/10/ngserver-player/">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/11/ngserver-message-encoder/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="wudaijun">
@@ -1868,8 +1868,8 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/2014/10/ngserver-player/" itemprop="url">
-                  NGServer Session -> Player
+                <a class="post-title-link" href="/2014/11/ngserver-message-encoder/" itemprop="url">
+                  NGServer 消息的编解码
                 </a>
               
             
@@ -1895,7 +1895,7 @@
                 
               
 
-              <time title="创建时间：2014-10-31 00:00:00" itemprop="dateCreated datePublished" datetime="2014-10-31T00:00:00+08:00">2014-10-31</time>
+              <time title="创建时间：2014-11-05 00:00:00" itemprop="dateCreated datePublished" datetime="2014-11-05T00:00:00+08:00">2014-11-05</time>
             
 
             
@@ -1928,8 +1928,8 @@
                 <span class="post-meta-item-icon">
                   <i class="fa fa-comment-o"></i>
                 </span>
-                <a href="/2014/10/ngserver-player/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2014/10/ngserver-player/" itemprop="commentCount"></span>
+                <a href="/2014/11/ngserver-message-encoder/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2014/11/ngserver-message-encoder/" itemprop="commentCount"></span>
                 </a>
               </span>
             
@@ -1958,10 +1958,10 @@
 
       
         
-          <p>在服务器中，一般都有一个代表客户端或玩家的类，用来处理一些相关逻辑并保存必要数据。也就是NGServer中的Player类，在网络模型中，一般一个Player对应一次会话(Session)，因此在很多服务器模型中，客户端类直接从Session类派生，这样客户端可以直接通过父类Session的接口发送数据，并且通过实现Sessoin的虚函数对数据进行处理。这种模型的好处在于简单，客户端类能够完全控制网络IO，并且对IO事件进行及时地处理。比如连接断开，那么客户端类可以通过实现Session的OnClose()函数完成一些业务逻辑上的处理，比如保存用户数据。而这种编程模型，将客户端和网络会话的耦合性提到了最高：Client is a Session。方便的同时，很大程度上限制了模块的可拓展性，比如客户端的断线重连，由于这种继承关系，导致Session在销毁的同时必然导致Client”逻辑上”的断线，这样玩家重连的时候，数据只能重新加载，建立新的Session和Client。这种情况还会发生在客户端异处登录时，原有客户端被挤下线的同时，逻辑上的数据也丢失了，而新的客户端将重新加载数据。除了断线重连之外，该模型还会造成不必要的编译依赖。因此我们需要将逻辑上的客户端和底层的网络Session解耦。</p>
+          <p>消息编解码(或序列化)主要是将消息体由一些标准库容器或自定义的类型，转化成二进制流，方便网络传输。为了减少网络IO，编解码中也可能在存在数据”压缩和解压”，但这种压缩是针对于特定的数据类型，并不是针对于二进制流的。在NGServer的消息编解码中，并不涉及数据压缩。</p>
           <!--noindex-->
           <div class="post-button text-center">
-            <a class="btn" href="/2014/10/ngserver-player/" rel="contents">
+            <a class="btn" href="/2014/11/ngserver-message-encoder/" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
@@ -2053,7 +2053,7 @@
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">113</span>
+                    <span class="site-state-item-count">114</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>
