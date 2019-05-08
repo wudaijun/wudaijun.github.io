@@ -122,7 +122,7 @@
 <meta property="og:image" content="http://wudaijun.com/assets/image/201904/cache-with-store-buffer.png">
 <meta property="og:image" content="http://wudaijun.com/assets/image/201904/cache-with-store-forwarding.png">
 <meta property="og:image" content="http://wudaijun.com/assets/image/201904/cache-with-invalid-queue.png">
-<meta property="og:updated_time" content="2019-05-08T15:00:47.000Z">
+<meta property="og:updated_time" content="2019-05-08T15:03:56.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Cache一致性和内存模型">
 <meta name="twitter:description" content="本文主要谈谈CPU Cache的设计，内存屏障的原理和用法，最后简单聊聊内存一致性。 我们都知道存储器是分层级的，从CPU寄存器到硬盘，越靠近CPU的存储器越小越快，离CPU越远的存储器越大但越慢，即所谓存储器层级(Memory Hierarchy)。以下是计算机内各种存储器的容量和访问速度的典型值。     存储器类型 容量 特性 速度     CPU寄存器 几十到几百Bytes 数据电路触发器">
@@ -511,7 +511,7 @@
 <p>那么同样的例子，换成全相联，则不会有这个问题，因为LRU算法会使得<code>y[0..3]</code>不会替换<code>x[0..3]</code>所在的Cache Line，也就不会造成Cache抖动。全相连的缺点是由于每一次读Cache都需要遍历所有的Cache Line进行地址匹配，出于效率考虑，它不适用于太大的Cache。</p>
 <p>So，现代OS的操作系统是取两者折中，即组相连结构: 将若干Cache Line分为S个组，组间直接映射，组内全相连，如下图:</p>
 <p><img src="/assets/image/201904/cache-geometry.png" alt=""></p>
-<p>通用的Cache映射策略，将目标地址分为t(标记位)，s(组索引)，b(块偏移)三个部分。</p>
+<p>通用的Cache映射策略，将目标地址分为t(标记位)，s(组索引)，b(块偏移)三个部分。我在<a href="http://wudaijun.com/2019/04/linux-perf/">Linux Perf 简单试用</a>中也有例子说明程序局部性对效率的影响。</p>
 <h3 id="Cache-Coherency"><a href="#Cache-Coherency" class="headerlink" title="Cache Coherency"></a>Cache Coherency</h3><p>前面我们谈的主要是Cache的映射策略，Cache设计的最大难点其实在于Cache一致性: 即所有CPU看到的指定地址的值是一致的。比如在CPU尝试修改某个地址值时，其它CPU可能已有该地址的缓存，甚至可能也在执行修改操作。因此该CPU需要先征求其它CPU的”同意”，才能执行操作。这需要给各个CPU的Cache Line加一些标记(状态)，辅以CPU之间的通信机制(事件)来完成， 这可以通过MESI协议来完成。MESI是以下四个状态的简称:</p>
 <p>M(modified): 该行刚被 CPU 改过，并且保证不会出现在其它CPU的Cache Line中。即CPU是该行的所有者。CPU持有该行的唯一正确参照。<br>E(exclusive): 和M类似，但是未被修改，即和内存是一致的，CPU可直接对该行执行修改(修改之后为modified状态)。<br>S(shared): 该行内容至少被一个其它CPU共享，因此该CPU不能直接修改该行。而需要先与其它CPU协商。<br>I(invalid): 该行为无效行，即为空行，前面提到Cache策略会优先填充Invalid行。</p>
 <p>除了状态之外，CPU还需要一些消息机制:</p>
