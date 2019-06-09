@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=6.3.0" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png?v=6.3.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico?v=6.3.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico?v=6.3.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.3.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '6.3.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="这段时间学习OOP对语言和编程范式有一些新的理解，之前系统整理过函数式编程，因此先从OOP谈起。我们先回顾下面向对象(OOP)的核心思想:  将数据及其相关操作(方法)封装起来，以对象的方式暴露出来，对象与对象之间通过方法调用(或者说是发消息)进行通信。 对象可以有自己的私有字段，只有对象的方法可以访问这些字段。 每个对象都是一个类(Class)的实例，类定义了对象的行为(内部数据和方法实现)。">
+<meta name="keywords" content="programing">
+<meta property="og:type" content="article">
+<meta property="og:title" content="编程范式游记">
+<meta property="og:url" content="http://wudaijun.com/2019/05/programing-paradigm/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="这段时间学习OOP对语言和编程范式有一些新的理解，之前系统整理过函数式编程，因此先从OOP谈起。我们先回顾下面向对象(OOP)的核心思想:  将数据及其相关操作(方法)封装起来，以对象的方式暴露出来，对象与对象之间通过方法调用(或者说是发消息)进行通信。 对象可以有自己的私有字段，只有对象的方法可以访问这些字段。 每个对象都是一个类(Class)的实例，类定义了对象的行为(内部数据和方法实现)。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201905/mutiple-inheritance.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201905/data-func-grid.png">
+<meta property="og:updated_time" content="2019-06-09T04:50:51.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="编程范式游记">
+<meta name="twitter:description" content="这段时间学习OOP对语言和编程范式有一些新的理解，之前系统整理过函数式编程，因此先从OOP谈起。我们先回顾下面向对象(OOP)的核心思想:  将数据及其相关操作(方法)封装起来，以对象的方式暴露出来，对象与对象之间通过方法调用(或者说是发消息)进行通信。 对象可以有自己的私有字段，只有对象的方法可以访问这些字段。 每个对象都是一个类(Class)的实例，类定义了对象的行为(内部数据和方法实现)。">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201905/mutiple-inheritance.png">
+
+
+
+
+
+
+  <link rel="canonical" href="http://wudaijun.com/2019/05/programing-paradigm/"/>
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>编程范式游记 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">wudaijun's blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Done is better than perfect</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+    <a href="/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />首页</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+    <a href="/about/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-user"></i> <br />关于</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+    <a href="/tags/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+    <a href="/categories/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-th"></i> <br />分类</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+    <a href="/archives/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />归档</a>
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />搜索</a>
+        </li>
+      
+    </ul>
+  
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2019/05/programing-paradigm/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">编程范式游记
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-05-26 00:00:00" itemprop="dateCreated datePublished" datetime="2019-05-26T00:00:00+08:00">2019-05-26</time>
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/programing/" itemprop="url" rel="index"><span itemprop="name">programing</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/05/programing-paradigm/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2019/05/programing-paradigm/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>这段时间学习OOP对语言和编程范式有一些新的理解，之前系统整理过<a href="https://wudaijun.com/2018/05/understand-functional-programing/">函数式编程</a>，因此先从OOP谈起。我们先回顾下面向对象(OOP)的核心思想:</p>
+<ol>
+<li>将数据及其相关操作(方法)封装起来，以对象的方式暴露出来，对象与对象之间通过方法调用(或者说是发消息)进行通信。</li>
+<li>对象可以有自己的私有字段，只有对象的方法可以访问这些字段。</li>
+<li>每个对象都是一个类(Class)的实例，类定义了对象的行为(内部数据和方法实现)。</li>
+</ol>
+<p>与函数式的”一切皆函数”一样，OOP也有一个宏大的目标”一切皆对象”。</p>
+<a id="more"></a>
+<h3 id="oop-with-dynamic-type"><a href="#oop-with-dynamic-type" class="headerlink" title="oop with dynamic type"></a>oop with dynamic type</h3><p>动态OOP语言，以Ruby为例，它是一种”纯度比较高”的OOP语言，它有一些比较有意思的特性:</p>
+<ol>
+<li>null,3,true等都是对象，对象的类也是对象，当然也有例外，如Blocks</li>
+<li>由于对象的类也是对象，因此你可以动态更改类的定义，如添加新方法，如何更改对象一样</li>
+<li>对象与对象之间只能通过方法通信，即对象不能直接访问其它对象的字段</li>
+</ol>
+<h4 id="subclass"><a href="#subclass" class="headerlink" title="subclass"></a>subclass</h4><p>除了基于对象的封装之外，另一个OOP需要考虑的问题就是复用，以Ruby为例，比如我们有个Point类:</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Point</span></span></span><br><span class="line">    <span class="keyword">attr_accessor</span> <span class="symbol">:x</span>, <span class="symbol">:y</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(x,y)</span></span></span><br><span class="line">        @x = x</span><br><span class="line">        @y = y</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">distFromOrigin</span></span></span><br><span class="line">        Math.sqrt(@x * @x + @y * @y)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">distFromOrigin2</span></span></span><br><span class="line">        Math.sqrt(x * x + y * y)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>现在我们要创建一个ColorPoint类，它除了多个Color字段外，其它属性和行为与Point一模一样，这个时候我们有如下三种做法:</p>
+<ol>
+<li>在ColorPoint类定义中，将Point相关的代码拷贝过来或重写，ColorPoint成为了与Point不相关的两个类</li>
+<li>在ColorPoint类中定义一个Point类的成员，然后将distFromOrigin和distFromOrigin2等方法都转调(forwarding)到该成员上</li>
+<li>通过将ColorPoint声明为Point的子类(subclass)，这样ColorPoint就继承Point的所有属性和方法，并且仍然可以自己扩展属性，覆盖或新增方法</li>
+</ol>
+<p>以上三种实现方式导致的ColorPoint和Point耦合度依次递增，在大多数场景下，该问题的最佳方案应该是方案3，因为它能够最大程度达成代码复用。ColorPoint可以在Point上添加Color字段并实现自己的构造函数。</p>
+<p>在OOP中，subclass通常是很容易被滥用的，比如我们现在要实现一个Point3D类，它多了个z属性，那么它的<code>distFromOrigin</code>和<code>distFromOrigin2</code>都需要override，它真正能够复用的只有<code>x</code>，<code>y</code>两个存取器，这个时候就会有一些争议(复用程度太低，是否应该使用subclass)，特别是如果Point还有个方法<code>distance(p)</code>，用于求出两点距离时，此时ColorPoint需要override该方法，并且参数为ColorPoint，此时将Point对象传给ColorPoint的distance将得到运行时错误。因此在用subclass时，需要谨慎评估类之间的关系，以及类扩展和重写带来的影响。</p>
+<h4 id="duck-typing"><a href="#duck-typing" class="headerlink" title="duck typing"></a>duck typing</h4><p>由于Ruby是动态语言，前面我们讨论的ColorPoint的三种实现方式都不影响ColorPoint和Point的使用，如我们有个函数:</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">mirror_update</span> <span class="title">pt</span></span></span><br><span class="line">    pt.x = pt.x * -<span class="number">1</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>三种方式实现的ColorPoint都可以作为<code>mirror_update</code>的参数，因为<code>mirror_update</code>对参数pt的要求是:</p>
+<ol>
+<li>pt实现了<code>x()</code>方法</li>
+<li><code>pt.x()</code>方法的返回值实现了<code>*</code>方法，可接受<code>-1</code>为参数</li>
+<li>pt实现了<code>x=</code>方法，可接受<code>pt.x*-1</code>的结果作为参数</li>
+</ol>
+<p>三种方式实现的Point和ColorPoint都满足以上要求，因此它们都可以使用<code>mirror_update</code>函数。这就是所谓的<a href="https://zh.wikipedia.org/wiki/%E9%B8%AD%E5%AD%90%E7%B1%BB%E5%9E%8B" target="_blank" rel="noopener">Duck Typing</a>。在Ruby这类动态类型OOP语言中，代码复用非常灵活。当然这也不是免费的，由于少了静态类型检查，如果调用<code>mirror_update(Point.new(1,&quot;haha&quot;))</code>会”正确”得到<code>-1</code>，而调用<code>mirror_update(Point.new(&quot;haha&quot;,-1))</code>则会得到<code>negative argument (ArgumentError)</code>运行时错误(string没有实现<code>*</code>方法)，两种调用报错的时机和报错的形式取决与业务代码。尽管它们从逻辑上来说都是错误的。</p>
+<h4 id="dynamic-dispatch"><a href="#dynamic-dispatch" class="headerlink" title="dynamic dispatch"></a>dynamic dispatch</h4><p>再举一个例子，如果我们要以subclass创建一个极坐标点类PolarPoint(包含一个半径属性和一个角度属性)，为了保证继承的语义，PolarPoint不得不重写来自于Point的<code>x</code>，<code>y</code>属性，我们不再讨论这里使用继承的合理性，而是想引出一个有意思的地方: PlarPoint的<code>distFromOrigin2</code>无需重写，已经可以正常工作！这得益于ruby的<strong>dynamic dispatch</strong>: 用subclass的对象调用superclass的方法时，将优先动态dispatch到subclass的方法上。dynamic dispatch在其它语言中也叫做虚函数(virtual function)或延迟绑定(late bingding)，核心思路是基于对象的方法调用，总是优先从对象实际所属类(动态)上动态查找，而不是方法所属类(静态)。</p>
+<p>dynamic dispatch让代码复用更上了一个层次，比如你可能有一些GUI相关的基类，它已经实现绘图，缩放等操作，你在子类中只需要实现必要的形状信息，就可以基类的方法绘制定制图形，而无需自己再重写绘图相关操作。</p>
+<h4 id="mutiple-inheritance"><a href="#mutiple-inheritance" class="headerlink" title="mutiple inheritance"></a>mutiple inheritance</h4><p>回到我们的ColorPoint，随着功能迭代，ColorPoint的颜色相关API越来越多，如加深/调色等，你可能希望将这部分代码单独抽象为一个Color类，以达成更好的代码复用。然后ColorPoint再从Color类和Point类继承，这就是多重继承。在OOP中，多重继承的名声不是太好，因为它有一些”哲学上的问题”无法达成统一: 当两个superclass有相同的字段和方法时，subclass应该如何继承？</p>
+<p><img src="/assets/image/201905/mutiple-inheritance.png" alt=""></p>
+<p>假如B和C有相同的属性和方法，那么有如下可能:</p>
+<ol>
+<li>D希望同时继承B和C的同名方法: 即D同时有B和C的能力，这是继承的本意，名字碰撞应该通过其它作用域来限制</li>
+<li>D希望只继承B或C的方法: 比如B为ColorPoint，C为Point3D，D为ColorPoint3D，那么显然，D应该继承C的distFromOrigin方法</li>
+<li>B,C相同的方法在A中也有，D想直接从A中继承…</li>
+</ol>
+<p>这就像在现实中，子女的长相可能随父亲，身高可能随母亲，脾气可能谁也不像。多重继承的这些问题很容易造成歧义和理解负担。Ruby选择不支持多重继承，但提供一个叫<strong>mixins</strong>的机制: 尝试通过include module的方式来消除对多重继承的需要。比如ColorPoint:</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">module</span> <span class="title">Color</span></span></span><br><span class="line">    <span class="keyword">attr_accessor</span> <span class="symbol">:color</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">darken</span></span></span><br><span class="line">        <span class="keyword">self</span>.color = <span class="string">"dark "</span> + <span class="keyword">self</span>.color</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ColorPoint</span> &lt; Point</span></span><br><span class="line">    <span class="keyword">include</span> Color</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>module和class的主要区别在于它不能实例化对象且不能派生子类，它可以有属性，但用得更多地场景是它只提供方法，然后引用一些它本身未定义的方法交给子类去实现(当然，这里又要用到dynamic dispatch)，比如Ruby的<strong>Enumerable</strong>模块:</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyRange</span></span></span><br><span class="line">    <span class="keyword">include</span> Enumerable</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(low,high)</span></span></span><br><span class="line">        @low = low</span><br><span class="line">        @high = high</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">each</span></span></span><br><span class="line">        i=@low</span><br><span class="line">        <span class="keyword">while</span> i &lt;= @high</span><br><span class="line">            <span class="keyword">yield</span> i</span><br><span class="line">            i=i+<span class="number">1</span></span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>包含Enumerable的class只需要实现each方法，即可调用<code>MyRange.new(4,8).inject {|x,y| x+y}</code>，<code>MyRange.new(5,12).count {|i| i.odd?}</code>等方法。mixins通过更像组合(i can)而不是继承(i am)的方式来处理需要多重继承的情形。在方法查找(lookup)规则中，mixins由于subclass，后包含的module由于先包含的。</p>
+<p>很多文章说mixins有多重继承的优点，同时也规避了多重继承的问题，我认为mixins的好处非常有限:</p>
+<ol>
+<li>module可以有属性，方法，除了不能实例对象，和普通superclass没有本质区别，也满足<code>is_a?</code>语义</li>
+<li>module之间，module与superclass仍然有命名冲突的问题，只不过Ruby将lookup规则定死了</li>
+<li>module可以include一个或多个module,这是换了种形式的多重继承</li>
+</ol>
+<p>总的来说，由于动态语言的duck typing特性，subclass主要是用在代码复用上，动态语言通常不关心某个对象是否是某个类(或其子类)的实例(<code>is_a?</code>)，它只关心某个对象有没有实现某个方法，对方法的查找是基于dynamic dispath的。</p>
+<h3 id="oop-with-static-type"><a href="#oop-with-static-type" class="headerlink" title="oop with static type"></a>oop with static type</h3><p>聊完动态OOP语言，再来看看静态OOP语言，我们先抛开OOP，静态语言中所有的数据结构，函数参数/返回值都有静态类型，为了阐述方便，我们用伪代码表示某种虚拟的静态语言，它的描述格式为:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">// distToOrigin的参数为两个字段x(类型为double)和y(类型为double)的record(或者叫struct)</span><br><span class="line">fun distToOrigin (p:&#123;x:double,y:double&#125;) double -&gt;</span><br><span class="line">    Math.sqrt(p.x*p.x + p.y*p.y)</span><br><span class="line"></span><br><span class="line">// 通过val声明变量pythag类型并赋值</span><br><span class="line">val pythag : &#123;x:double,y:double&#125; = &#123;x=3.0, y=4.0&#125;</span><br><span class="line">// 调用函数并接收返回值，由于pythag与distToOrigin的参数类型一致，因此静态类型检查通过，函数调用成功</span><br><span class="line">val five : double = distToOrigin(pythag)</span><br><span class="line">// 调用函数失败，静态类型检查(实参类型int，形参类型&#123;x:doule, y:double&#125;)，编译不通过</span><br><span class="line">val _ = distToOrigin(2)</span><br></pre></td></tr></table></figure>
+<p>注意，在我们用于举例的语言中，record不只是数据结构的概念，它也可以包含function类型的字段，它可以推广到OOP中的Class。</p>
+<h4 id="subtype"><a href="#subtype" class="headerlink" title="subtype"></a>subtype</h4><p>现在假设我们有个描述带颜色的点的record: <code>{x:double, y:double, color:string}</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">val cp : &#123;x:double,y:double,color:string&#125; = &#123;x=3.0, y=4.0, color=&quot;red&quot;&#125;</span><br><span class="line">// 静态类型检查失败, &#123;x:double,y:double,color:string&#125; 与 &#123;x:double,y:double&#125; 类型不匹配</span><br><span class="line">var five : double = distToOrigin(cp)</span><br></pre></td></tr></table></figure>
+<p>而事实上，我们是希望cp能够调用distToOrigin函数的，因为多color字段既不影响函数计算过程(函数需要的字段都有)，也不影响逻辑上的正确性。因此在这里，为了达成更好地代码复用，我们需要静态类型检查做一些扩展: 如果recordA去掉或交换某些字段后变为recordB，那么能用recordB的地方都应该能用recordA。在这种情况下，我们称recordA是recordB的子类型(subtype，注意和子类subclass区分)，记 B &lt;: A。有了这个规则后，由于<code>{x:double,y:double,color:string}</code>是<code>{x:double,y:double}</code>的子类型，子类型实参可以匹配父类型形参，因此cp可使用distToOrigin函数。</p>
+<h4 id="depth-subtype"><a href="#depth-subtype" class="headerlink" title="depth subtype"></a>depth subtype</h4><p>现在考虑如下情况，即recordA的某个字段是recordB的某个字段的子类型，那么有recordA&lt;:recordB 吗？听起来是可以的，因为如果一个函数以recordB为形参，那么传入recordA，该函数需要的所有字段都能正确访问到。然而还要考虑到字段可变性:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">fun setToOrigin (c:&#123;center:&#123;x:double,y:double&#125;, r:double&#125;) -&gt; </span><br><span class="line">    c.center = &#123;x=0.0, y=0.0&#125;</span><br><span class="line">val sphere:&#123;center:&#123;x:double,y:double,z:double&#125;, r:double&#125;) = &#123;center=&#123;x=3.0,y=4.0,z=0.0&#125;, r=1.0&#125;</span><br><span class="line">val _ = setToOrigin(sphere)</span><br><span class="line">val _ = shere.center.z</span><br></pre></td></tr></table></figure>
+<p>由于setToOrigin不会知道外部传入的supertype还有哪些额外字段，它对center的重置导致center.z字段丢失了，也就破坏了函数本来的语义。因此通常来说: type checker，field setter，depth subtype只能三选二。</p>
+<p>那么实际的编程语言对depth subtype的取舍如何？以Array为例，假如我们有ColorPoint &lt;: Point，那么是否有ColorPoint[] &lt;: Point[]呢？在C++/Go中，是不支持depth subtype的，比如在Go中你不能将[]int实参用于[]interface{}形参(在Go中，interface{}相当于没有任何字段的record，它是任意类型的supertype)，因为函数可能将[]interface{}某个元素改为string类型。而在Java/C#中，却是支持的，比如在Java中，以下代码却能静态检查通过正常编译:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Point</span> </span>&#123; ... &#125; <span class="comment">// has fields double x, y</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ColorPoint</span> <span class="keyword">extends</span> <span class="title">Point</span> </span>&#123; ... &#125; <span class="comment">// adds field String color</span></span><br><span class="line">...</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">m1</span><span class="params">(Point[] pt_arr)</span> </span>&#123;</span><br><span class="line">    pt_arr[<span class="number">0</span>] = <span class="keyword">new</span> Point(<span class="number">3</span>,<span class="number">4</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="function">String <span class="title">m2</span><span class="params">(<span class="keyword">int</span> x)</span> </span>&#123;</span><br><span class="line">    ColorPoint[] cpt_arr = <span class="keyword">new</span> ColorPoint[x];</span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>; i &lt; x; i++)</span><br><span class="line">        cpt_arr[i] = <span class="keyword">new</span> ColorPoint(<span class="number">0</span>,<span class="number">0</span>,<span class="string">"green"</span>);</span><br><span class="line">    m1(cpt_arr);</span><br><span class="line">    <span class="keyword">return</span> cpt_arr[<span class="number">0</span>].color;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>但是运行时执行m2函数，却会得到ArrayStoreException异常，因为Java/C#选择了可变性和depth subtype，放弃了type checker，放宽了类型检查的限制，它在运行时记录m1中<code>pt_arr</code>的真实类型(ColorPoint[])，并在执行类型不匹配的写入时，抛出异常。</p>
+<h4 id="function-subtype"><a href="#function-subtype" class="headerlink" title="function subtype"></a>function subtype</h4><p>这里讨论当函数参数/返回值也是函数，那么这些作为参数的函数的subtype规则。假如我们有如下函数:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">fun callWithOrigin(f: &#123;x:double,y:double&#125;-&gt;&#123;x:double,y:double&#125;) -&gt;</span><br><span class="line">    f(&#123;x:0.0,y:0.0&#125;)</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+<p>callWithOrigin的参数类型为<code>{x:double,y:double}-&gt;{x:double,y:double}</code>，现在我们来考虑哪些函数实参允许调用callWithOrigin:</p>
+<ul>
+<li><code>{x:double,y:double} -&gt; {x:double,y:double}</code>: ok, 类型完全匹配</li>
+<li><code>{x:double,y:double} -&gt; {x:double,y:double,color:string}</code>: ok, callWithOrigin传入f的函数参数匹配，只不过返回的参数多了个color，callWithOrigin可以正常调用和使用f，只不过它不关心返回的color字段</li>
+<li><code>{x:double,y:double} -&gt; {x:double}</code>: error, callWithOrigin可能用到f返回值中的y字段</li>
+<li><code>{x:double,y:double,z:double} -&gt; {x:double,y:double}</code>: error, callWithOrigin传给f的参数不包含z字段，那么f执行过程就会出错</li>
+<li><code>{x:double} -&gt; {x:double,y:double}</code>: ok, callWithOrigin传给f函数的参数包括x,y字段，只是f函数只用到了x，f函数可以正常执行</li>
+<li><code>{x:double} -&gt; {x:double,y:double,z:double}</code>: ok，由前面的分析可知，实参函数参数字段不能多，返回值字段不能少。</li>
+</ul>
+<p>因此，有如下结论，对于 t3 &lt;: t1 并且 t2 &lt;: t4, 有 t1-&gt;t2 &lt;: t3-&gt;t4。</p>
+<h4 id="subtype-for-OOP"><a href="#subtype-for-OOP" class="headerlink" title="subtype for OOP"></a>subtype for OOP</h4><p>我们在讨论Ruby时用的subclass(子类)，而在讨论静态OOP语言时用的是subtype(子类型)，因为它们本质上不是一个东西:</p>
+<ul>
+<li>subclass是通过继承来解决class之间关系和代码复用(class内部实现的复用)的问题。关注的是class实现</li>
+<li>subtype关注的是type checker。它本质是为了放宽静态语言type checker的标准，让静态语言更像动态语言，达成更好地复用性(class之外的复用)和灵活性。Ruby是动态语言，它有duck typing，因此不需要subtype(它没有type，type是一种对象)。</li>
+</ul>
+<p>subtype不一定要通过subclass来实现，理论上你可以有两个完全不相关的类A和B，但他们提供一致的方法，然后你可以声明A是B的subtype。然后任何用B的地方都可以用A。type checker不care这些方法是通过继承得来的还是完全不同的。</p>
+<p>但在大多数静态OOP语言，如Java/C#/C++中，type和class的边界很模糊，绝大多数时候，你可以认为它们是一个东西，这是因为这些语言主要依赖subclass来实现subtype，因此当你创建一个class时，相当于创建了一个type，它的名字和class名字一样，当你声明subclass关系时，也声明了subtype关系。</p>
+<p>另一点是我们在虚拟语言中以record作为对象的type，这个record可以包含字段，方法等，然后这个record的字段还可以修改，而实际上大多数静态OOP语言中，方法字段是不能修改的，比如你不能拿到一个对象，然后修改它的某个方法，因为方法实现是属于类而不是对象的。</p>
+<p>理解了以上两点，现在我们可以将前面讨论的模型放到实际OOP语言中:</p>
+<ol>
+<li>type和class大部分时候是一个东西，声明一个class也就声明了一个type</li>
+<li>subclass可以基于superclass之上添加字段/方法但是不能移除已有字段/方法</li>
+<li>subclass可以override superclass的方法</li>
+</ol>
+<p>为了阐述方便，以下不再严格区分静态OOP语言中的subclass/subtype。</p>
+<h4 id="dynamic-dispath"><a href="#dynamic-dispath" class="headerlink" title="dynamic dispath"></a>dynamic dispath</h4><p>这里我们进一步讨论静态OOP语言中的dynamic dispatch和this指针，以C++为例:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line">class Point &#123;</span><br><span class="line">public:</span><br><span class="line">    double x, y;</span><br><span class="line">public:</span><br><span class="line">    Point(double x, double y) &#123;</span><br><span class="line">        this-&gt;x = x;</span><br><span class="line">        this-&gt;y = y;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">class ColorPoint: public Point &#123;</span><br><span class="line">public:</span><br><span class="line">    string color;</span><br><span class="line">public:</span><br><span class="line">    ColorPoint(double x, double y, string color) : Point(x, y) &#123;</span><br><span class="line">        this-&gt;color = color;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">class B &#123;</span><br><span class="line">public:</span><br><span class="line">    virtual void showX(Point* cp) &#123;</span><br><span class="line">        cout &lt;&lt; &quot;B showX: &quot; &lt;&lt; cp-&gt;x &lt;&lt; endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">class D: public B &#123;</span><br><span class="line">public:</span><br><span class="line">    virtual void showX(Point* p) &#123;</span><br><span class="line">        cout &lt;&lt; &quot;D showX: &quot; &lt;&lt; p-&gt;x &lt;&lt; endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">int main(void)&#123;</span><br><span class="line">     Point* p = new Point(1.0,2.0);</span><br><span class="line">     ColorPoint* cp =  new ColorPoint(3.0,4.0,&quot;red&quot;);</span><br><span class="line">     B* b = new B();</span><br><span class="line">     D* d = new D();</span><br><span class="line">     b-&gt;showX(cp);  // B showX: 3 原生调用，不涉及subtype转换</span><br><span class="line">     d-&gt;showX(p);   // D showX: 1  原生调用，不涉及subtype转换</span><br><span class="line">     d-&gt;showX(cp);  // D showX: 3  ColorPoint作为Point的subtype，可以替换Point参数</span><br><span class="line">     B* b2 = d;     // 将subtype D对象显式转换为supertype B</span><br><span class="line">     b2-&gt;showX(cp); // D showX: 3, dynamic dispath，在通过subtype D调用supertype B的方法时，会动态查找并调用d-&gt;showX方法</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面定义了四个类，ColorPoint是Point的subtype，D是B的subtype。以下是一些你需要注意的点:</p>
+<ol>
+<li>如果D是B的subtype,那么D*也是B*的subtype</li>
+<li>C++中的dynamic dispatch不是默认开启的，而是通过为指定方法<code>virtual</code>关键字手动开启的</li>
+<li>对象d上调用showX(声明为virtual)方法，总能找到其对应类D的showX实现，而不管d是否被转换为supertype B*</li>
+</ol>
+<p>现在来考虑一个问题，如果D的showX函数声明为<code>virtual void showX(Point* p)</code>，实现不变，那么<code>b2-&gt;showX(cp)</code>会输出什么？答案是<code>B showX: 3</code>。熟悉C++的同学会知道这是因为C++支持重载，编译认识的函数符号是如<code>_showX_Point_</code>这种编码了参数类型的，修改函数参数类型后，将被编译器认为是另一个函数，而非override。但有一门不支持重载的静态OOP语言L，这个修改能够正常的dynamic dispatch吗？我的理解是可以的，传递给<code>B:showX</code>的ColorPoint总能被<code>D:showX</code>正确(非逻辑层面，而是type check层面)使用，这是因为静态OOP语言中的对象不能修改方法(方法属于类)，只能修改字段，也就是在前面说的depth subtype中，舍弃了field setter。而前面举例的array，是很难丢掉field setter的。</p>
+<p>最后来看看this指针，对C++有一定理解的同学通常将this指针看做类方法的一个隐藏参数，它由编译器自动传入。这种看法确实能更好地理解OOP，将类方法与普通函数统一起来。但有了subtype这个概念，再来看showX方法，B和D的showX方法类型分别为: <code>void showX(B* this, ColorPoint* cp)</code> 以及 <code>void showX(D* this, Point* p)</code>，这里就出现一个很奇怪的现象，D的showX不再是B的showX的subtype,我只传给了showX B的对象，但可能调用到D的showX(需要D对象，而D对象包含比B对象更多的字段，可能引发未定义错误)。这是因为this参数是特殊处理的，虽然传给showX的实参只是B对象的地址，但它同时也是D对象的地址，编译器会透明地完成这层转换，保证D的showX拿到的是正确的D对象。这也是为什么多态要在指针下才能生效的原因(值拷贝只会拷贝值的静态类型对应内容，不会拷贝后面多余的派生类数据)。</p>
+<h4 id="mutiple-inheritance-1"><a href="#mutiple-inheritance-1" class="headerlink" title="mutiple inheritance"></a>mutiple inheritance</h4><p>C++支持多重继承，为了解决多重继承的命名冲突和冗余数据的问题，它可以在subclass构造函数中指定要哪些字段用哪个superclass的。另外它提供一个叫虚继承(virtual interitance)的机制来解决菱形继承的数据冗余问题，即D继承自B,C，B,C有个共同父类A，那么C只会有一份继承自A的数据。</p>
+<p>Java/C#不支持多重继承，它们的类只能有一个直接父类，但是可以实现多个接口(Interface)，Interface是一堆方法的集合，它没有任何实现，当然也不能实例化。相比Ruby的mixins这种”实现继承”言，这种”声明继承”更安全，因为Interface没有任何的字段，即使方法声明有冲突，子类也只需要提供一份实现，并以此为准，没有歧义。</p>
+<p>C++还提供纯虚函数的概念，即方法本身只包含声明，没有实现，在Java中的抽象方法也提供类似的机制，包含抽象方法或纯虚函数的类就和Ruby中的mixins很像，它既可包含声明，也可包含实现，并且不能实例化对象。当类中的所有方法都为抽象方法并且不包含任何字段时，这个类也就变成了Interface。</p>
+<h4 id="generics-vs-subtyping"><a href="#generics-vs-subtyping" class="headerlink" title="generics vs subtyping"></a>generics vs subtyping</h4><p>前面我们所说的<strong>subtyping(子类化)</strong>，也叫做 <strong>subtype polymorphism(子类型多态)</strong> ，而另一种静态语言中常见的用于放宽type checker，提高灵活性和复用性的方案叫 <strong>parametric polymorphism(参数多态)</strong> ，也叫做<strong>generics(泛型)</strong> ，generics是很多静态语言都要考虑的一个特性，不只是OOP。比如ML就有强大的类型推导，可以实现很灵活的泛型编程。</p>
+<p>generics用在那些需要表述<strong>任何类型</strong>的地方，即不关心对象的实际类型，通常出现在容器结构中，比如你可能想要实现一个基于泛型的Stack，List，Pair等数据结构，它不关心内部元素的具体类型，它只关心和约束哪些元素类型是同一个。比如用Java通过generics实现一个Pair结构:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Pair</span>&lt;<span class="title">T1</span>,<span class="title">T2</span>&gt; </span>&#123;</span><br><span class="line">    T1 x;</span><br><span class="line">    T2 y;</span><br><span class="line">    Pair(T1 _x, T2 _y)&#123; x = _x; y = _y; &#125;</span><br><span class="line">    <span class="function">Pair&lt;T2,T1&gt; <span class="title">swap</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> Pair&lt;T2,T1&gt;(y,x);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function">T1 <span class="title">first</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> x;</span><br><span class="line">    &#125;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>基于Pair容器本身的swap，first等操作是可复用的，这些算法与具体的元素类型无关，是在其上的更抽象的行为模式。这样我们无需单独定义PairIntString, PairPointColorPoint等类。如果使用subtype来完成:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">LamePair</span> </span>&#123;</span><br><span class="line">    Object x;</span><br><span class="line">    Object y;</span><br><span class="line">    LamePair(Object _x, Object _y)&#123; x=_x; y=_y; &#125;</span><br><span class="line">    <span class="function">LamePair <span class="title">swap</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> <span class="keyword">new</span> LamePair(y,x); &#125;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line">String s = (String)(<span class="keyword">new</span> LamePair(<span class="string">"hi"</span>,<span class="number">4</span>).y); <span class="comment">// error caught only at run-time</span></span><br></pre></td></tr></table></figure>
+<p>由于在构建LamePair时，进行了向上转换(将传入的参数转换为共同的supertype Object)，因此这里实际会有类型信息丢失，当外部想要再次获取LamePair中的元素时，就不得不进行一次向下转换(downcast)，如<code>(String)e</code>，这类转换属于run-time check，即将一部分本应在静态类型检查时暴露的错误放到了运行时，这是有悖静态类型语言的初衷的。所有的对象都属于Object，将所有的方法，字段都声明为Object，这是动态类型语言的思路。</p>
+<p>因此subtyping在某些场景下不能替换generics，那反过来呢，如果我们用ML的generics来实现distToOrigin2:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">fun distToOrigin2(getx,gety,v) =</span><br><span class="line">    let</span><br><span class="line">        val x = getx v</span><br><span class="line">        val y = gety v</span><br><span class="line">    in</span><br><span class="line">        Math.sqrt (x*x + y*y)</span><br><span class="line">    end</span><br><span class="line">fun distToOriginPt (p : &#123;x:real,y:real&#125;) =</span><br><span class="line">    distToOrigin2(fn v =&gt; #x v,</span><br><span class="line">                fn v =&gt; #y v,</span><br><span class="line">                p)</span><br><span class="line">fun distToOriginColorPt (p : &#123;x:real,y:real,color:string&#125;) =</span><br><span class="line">    distToOrigin2(fn v =&gt; #x v,</span><br><span class="line">                fn v =&gt; #y v,</span><br><span class="line">                p)</span><br></pre></td></tr></table></figure>
+<p>可以看到，仍然是一种很蹩脚的写法，因为Point/ColorPoint本身的字段存取是可以复用的(它们调用distToOrigin2的getter/setter都是一样的)，但是generics本身对传入的类型一无所知，因此它需要一堆的getter/setter来辅助它认识这个类型。</p>
+<p>综上，subtype和generics各自有自己的适用情形，不存在绝对的优劣。subtype适用于类型之间关联性和耦合比较重，存在大量可复用的字段/方法的情况。而generics适用于类型之间没有什么关联，它对类型之外的一些操作模式(如Stack,List,Pair,Swap)等进行抽象和复用。</p>
+<p>Java/C#同时支持subtyping和泛型，因此它们支持一种将两种结合的polymorphism: <strong>bounded generic types</strong>，核心思想是通过subtype来限制generics可接受的类型，想要鱼和熊掌兼得。比如:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">static List&lt;Pt&gt; inCircle(List&lt;Pt&gt; pts, Pt center, double radius) &#123;</span><br><span class="line">    List&lt;Pt&gt; result = new ArrayList&lt;Pt&gt;();</span><br><span class="line">    for(Pt pt : pts)</span><br><span class="line">        if(pt.distance(center) &lt;= radius)</span><br><span class="line">            result.add(pt);</span><br><span class="line">        return result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这样，通过subtype让generics本身可以调用指定类的方法(无需外部传入)，通过generics让这些基于Point类之上的算法可复用，注意，这里的<code>List&lt;Pt&gt; Pts</code>和<code>Pt[] pts</code>是不一样的，前者会根据Pt实际类型不同而生成不同的List，如<code>ColorPt[] pts</code>，而后者始终只能是<code>Pt[] pts</code>，generics相当于为不同的类型生成了不同的代码(实际上，C++就是这样做的)，因此这和depth subtype不一样。</p>
+<h4 id="oop-in-golang"><a href="#oop-in-golang" class="headerlink" title="oop in golang"></a>oop in golang</h4><p>我将Go单独放到一节，因为它与我们熟知的C++/Java/C#/Ruby等OOP语言很不一样，它有一些创新的地方，用来解决那些困扰了OOP几十年的难题。</p>
+<p>如果按照我们前面给出来的OOP定义，Go是OOP语言，或者说它可以实现OOP编程范式。但是Go没有继承(<code>is-a</code>)的概念，即没有subclass的概念，如果一门OOP语言没有subclass，那么我们会考虑两个问题: 1. Go如何实现代码复用？2. Go如何实现subtype? 下面分别讨论这两个问题。</p>
+<p>Go没有<code>is-a</code>的概念，它推崇<a href="https://en.wikipedia.org/wiki/Composition_over_inheritance" target="_blank" rel="noopener">composition over inheritance principle</a>原则，即组合胜于继承，用<code>has-a</code>替代<code>is-a</code>:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> A <span class="keyword">struct</span> &#123;</span><br><span class="line">	Name <span class="keyword">string</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(a *A)</span> <span class="title">Print</span><span class="params">()</span></span> &#123;</span><br><span class="line">	fmt.Println(<span class="string">"Print A Name: "</span>, a.Name)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> B <span class="keyword">struct</span> &#123;</span><br><span class="line">	A</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(b *B)</span> <span class="title">Print</span><span class="params">()</span></span> &#123;</span><br><span class="line">	fmt.Println(<span class="string">"Print B Name: "</span>, b.Name)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">	a1 := A&#123;Name: <span class="string">"Name A1"</span>&#125;</span><br><span class="line">	b := &amp;B&#123;A: a1&#125;</span><br><span class="line">	a2 := A&#123;Name: <span class="string">"Name A2"</span>&#125;</span><br><span class="line">	b.A = a2</span><br><span class="line">	b.Print()   <span class="comment">// Print B Name:  Name A2</span></span><br><span class="line">	b.A.Print() <span class="comment">// Print A Name:  Name A2</span></span><br><span class="line">	<span class="comment">// a := (*A)(b) // cannot convert expression of type *B to type *A</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以上代码展示了Go如何通过组合而非继承来实现代码复用，当B需要复用A的代码时，它将A声明为类的一个匿名字段，之后就可以通过B来访问A中的方法和字段，当然这里也需要一套名字查找规则: 1. 先查找B中有没有对应的方法和字段 2. 再从后往前查找B中的匿名字段有无该方法和字段。因此可以通过B调用A的方法实际上是编译器的语法糖，并不是dynamic dispatch，因为Go只能通过子类对象调用子类方法，而不能通过父类对象调用子类方法。事实上，Go的子类对象无法转换为父类对象，从实现上来说，它们就是组合关系，你可以动态将B中的A字段赋为其它A对象。当然，这里的”父类””子类”叫法是不严谨的，因为Go没有subclass。</p>
+<p>解决了面向对象的代码复用问题，我们再来看Go如何实现subtype，Go的subtype不是通过subclass来实现的，而是通过Interface来实现的:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">type Printer interface &#123;</span><br><span class="line">	Print()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">func test(p Printer) &#123;</span><br><span class="line">	p.Print()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">func test2(a *A) &#123;</span><br><span class="line">    a.Print()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">test(&amp;a1)</span><br><span class="line">test(b)</span><br><span class="line">test2(b) // error: cannot use b (type *B) as type *A in argument to test2</span><br></pre></td></tr></table></figure>
+<p>在Java/C#/Go中，都有Interface的概念，但Java/C#的接口实现是需要显式声明的(即类在定义时就知道自己实现了哪些接口)，但是Go的接口不需要显式声明implement，可以在运行时动态判断(实现细节参考<a href="https://wudaijun.com/2018/01/go-interface-implement/">这里</a>)，这个特性为程序提供了极大的灵活性。A,B并不知道自己实现了Printer接口，它在定义的时候甚至还没有出现Printer接口，或者只有个类似Ouputter之类的接口包含相同的方法，Interface将类如何定义和类如何被使用分离开，比如你只要实现了<code>Read(p []byte) (n int, err error)</code>方法，就实现了<code>io.Reader</code>接口，就可以使用<code>ioutil.Read/ReadAll</code>等lib API。</p>
+<p>总结一下，Go通过组合加编译器的一些静态查找规则来实现代码复用，通过Interface来实现subtype，而如C++/Java/C#等语言用subclass来同时提供两种功能，因此导致类关系错综复杂，甚至一度被戏称COP(Class-oriented programing)而非OOP。虽然Interface实现的subtype不如subclass实现的subtype一样强大(Interface只是方法集合，而superclass还包含字段)，但Interface的灵活性远胜于需要显式指定的superclass，并且避免了OOP继承长久以来的痛点。</p>
+<h3 id="dynamic-type-vs-static-type"><a href="#dynamic-type-vs-static-type" class="headerlink" title="dynamic type vs static type"></a>dynamic type vs static type</h3><p>简单来说，静态语言的设计宗旨是尽可能在静态检查中多做事情，通过静态检查来过滤大部分的类型错误，优点是程序运行更稳定，Debug也更容易，缺点是会一定程度限制代码设计的灵活性，因此通常需要subtype来在通过规则放宽type check的限制。</p>
+<p>而动态语言的设计宗旨是优先支持更灵活的代码设计(如duck typing)，将type check放到了run-time，优点是程序更灵活，开发效率通常更高，但程序运行的稳定性会差一些，遇到问题的调试也要更复杂。毕竟没有静态类型检查，允许了更灵活的设计，也放行了很多类型错误。</p>
+<h3 id="oop-vs-fp"><a href="#oop-vs-fp" class="headerlink" title="oop vs fp"></a>oop vs fp</h3><p>计算机业界有句古老的名言: “程序=数据结构+算法”。</p>
+<p>OOP(Object-oriented programming)偏向数据结构，函数只是数据结构的行为(对象的方法)，通过class来封装对象，通过subclass来复用对象。OOP的终极奥义是: 一切皆对象，甚至对象的类也是对象。</p>
+<p>FP(Functional programming)偏向算法(函数)，即函数为第一类值，数据只是函数的参数或者执行环境(闭包)。用闭包，柯里化，高阶函数等去完成函数的封装和复用。FP的终极奥义是: 一切皆函数，连数据也可以是函数。</p>
+<p>举个例子，我们可以将数据结构和算法分为两个维度，做成一个表格:</p>
+<p><img src="/assets/image/201905/data-func-grid.png" alt=""></p>
+<p>表的行表示各种数据类型，列为对应的操作。每个编程语言必须要做的就是定义每种数据类型执行每种操作时的行为。</p>
+<p>OOP的做法是按照各个行划分，定义各个数据结构的类，然后在类上面实现该类型所支持的各个方法。而FP的做法是按照各个列划分，定义各个函数，如toString，然后在函数中去区分各个数据类型并实现。</p>
+<p>从这个角度来说，FP和OOP只是以不同的方式来组织你的代码，OOP按照数据来聚合，FP按照函数来聚合，如果使用OOP，那么添加数据类型很方便，你只需要在新定义的类中去实现它支持的操作，无需影响其它已有类。同理如果使用FP，则新添加一个函数很方便。</p>
+<p>另一个比较有意思的点是，FP的二元操作要比OOP更直观，比如我们的add操作:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">fun add (v1,v2) =</span><br><span class="line">    case (v1,v2) of</span><br><span class="line">      (Int i, Int j) =&gt; Int (i+j)</span><br><span class="line">    | (Int i, Point(x,y)) =&gt; Point(x+i, y+i)</span><br><span class="line">    | (Point(x,y), Int i) =&gt; add(v2, v1) // 代码复用</span><br><span class="line">    | (Point(x1,y1), Point(x2,y2)) =&gt; Point(x1+x2, y1+y2)</span><br></pre></td></tr></table></figure>
+<p>在FP中，二元操作很直观，<code>add(Point, Int)</code>和<code>add(Int, Point)</code>可以复用，而在OOP中:</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Int</span></span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">add</span> <span class="title">v</span></span></span><br><span class="line">        <span class="keyword">if</span> v.is_a? Int</span><br><span class="line">            addInt(v)</span><br><span class="line">        <span class="keyword">elsif</span> v.is_a? Point</span><br><span class="line">            addPoint(v)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">addInt</span><span class="params">(v)</span></span></span><br><span class="line">        ...</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>上面的代码虽然也算直观，但有两个问题，一是代码复用不好，<code>Int.addPoint</code>和<code>Point.addInt</code>的实现其实是一样的，即使想要复用代码，只用一份实现，那这份实现应该放在Int类还是Point类呢？第二个问题是这里其实是将FP和OOP混着用，在OOP中，应该尽量避免通过运行时判断对象属于哪个类，纯正的OOP应该通过函数调用+dynamic dispatch来避免类型判断:</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Int</span></span></span><br><span class="line">    <span class="keyword">attr_reader</span> <span class="symbol">:i</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">add</span><span class="params">(v)</span></span> <span class="comment"># first dispatch</span></span><br><span class="line">        v.addInt(<span class="keyword">self</span>)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">addInt</span><span class="params">(v)</span></span> <span class="comment"># second dispatch: v is Int</span></span><br><span class="line">        Int.new(v.i + i)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">addPoint</span><span class="params">(v)</span></span> <span class="comment"># second dispatch: v is Point</span></span><br><span class="line">        Point.new(v.x+i, v.y+i)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Point</span></span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">add</span><span class="params">(v)</span></span> <span class="comment"># first dispatch</span></span><br><span class="line">        v.addPoint(<span class="keyword">self</span>)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">addInt</span><span class="params">(v)</span></span> ... <span class="keyword">end</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">addPoint</span><span class="params">(v)</span></span> ... <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>现在虽然是纯正的OOP了，但实际上维护这些代码却很麻烦，假设我们增加一个String类型，它也可以参与add运算，那么除了定义String类型本身以外，我们还需要去已有所有类型中添加addString方法，在这种情况下，OOP增加一个数据类型也不那么方便了。</p>
+<ol>
+<li>静态OOP语言如C++/Java/C#可能会提供一种重载的机制，允许同一个方法名不同的类型参数，编译器会自动选择匹配的函数调用。这能够避免运行时的类型检查，也不用二次分发，但复用性和扩展性仍然不好。</li>
+<li>在Java/C#中，可以通过Interface来声明所有的addInt/Point方法，让Int,Point实现这个接口，这样在添加String类型时，在Interface中添加addString方法，静态类型检查能够保证所有的子类都实现了addString</li>
+</ol>
+<p>PS: 这里只是从程序结构的角度对比FP和OOP，事实上FP的一些理念还来自于lamda演算和数学领域，因此大部分的FP语言还有不可变语义，纯函数等特性。</p>
+<p>FP或OOP或其它的编程范式，本质上是以不同的方式对现实问题进行建模，不管是”一切皆函数”还是”一切皆对象”，都是理想化的解决方案。现实中可能没有编程语言完美实现了某一编程范式，更多地是借鉴和吸收，同时支持多种编程范式，毕竟语言是用来解决问题的。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/programing/" rel="tag"># programing</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/04/cpu-cache-and-memory-model/" rel="next" title="Cache一致性和内存模型">
+                <i class="fa fa-chevron-left"></i> Cache一致性和内存模型
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/assets/theme/avatar.png"
+                alt="wudaijun" />
+            
+              <p class="site-author-name" itemprop="name">wudaijun</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">115</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">18</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">31</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#oop-with-dynamic-type"><span class="nav-text">oop with dynamic type</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#subclass"><span class="nav-text">subclass</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#duck-typing"><span class="nav-text">duck typing</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#dynamic-dispatch"><span class="nav-text">dynamic dispatch</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#mutiple-inheritance"><span class="nav-text">mutiple inheritance</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#oop-with-static-type"><span class="nav-text">oop with static type</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#subtype"><span class="nav-text">subtype</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#depth-subtype"><span class="nav-text">depth subtype</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#function-subtype"><span class="nav-text">function subtype</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#subtype-for-OOP"><span class="nav-text">subtype for OOP</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#dynamic-dispath"><span class="nav-text">dynamic dispath</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#mutiple-inheritance-1"><span class="nav-text">mutiple inheritance</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#generics-vs-subtyping"><span class="nav-text">generics vs subtyping</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#oop-in-golang"><span class="nav-text">oop in golang</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dynamic-type-vs-static-type"><span class="nav-text">dynamic type vs static type</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#oop-vs-fp"><span class="nav-text">oop vs fp</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+
+  
+
+  
+</div>
+
+
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v3.7.1</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://theme-next.org">NexT.Gemini</a> v6.3.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.3.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.3.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.3.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.3.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.3.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.3.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.3.0"></script>
+
+
+
+  
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  
+  
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(function (item) {
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'kL7con6xeU88chDAVyUSDSHI-gzGzoHsz',
+        appKey: '9XLxirxDW8NUhHJdu460Uiba',
+        placeholder: 'Just go go',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
