@@ -336,7 +336,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/11/ngserver-message-callback/">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/11/ngserver-message-encoder/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="wudaijun">
@@ -355,8 +355,8 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/2014/11/ngserver-message-callback/" itemprop="url">
-                  NGServer 消息的注册与回调
+                <a class="post-title-link" href="/2014/11/ngserver-message-encoder/" itemprop="url">
+                  NGServer 消息的编解码
                 </a>
               
             
@@ -415,8 +415,8 @@
                 <span class="post-meta-item-icon">
                   <i class="fa fa-comment-o"></i>
                 </span>
-                <a href="/2014/11/ngserver-message-callback/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2014/11/ngserver-message-callback/" itemprop="commentCount"></span>
+                <a href="/2014/11/ngserver-message-encoder/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2014/11/ngserver-message-encoder/" itemprop="commentCount"></span>
                 </a>
               </span>
             
@@ -445,10 +445,10 @@
 
       
         
-          <p>在前面Service框架的介绍中，提到在GameService的<code>ProcessMsg(UserMessage*)</code>和<code>ProcessMsg(InsideMessage*)</code>中，都完成了消息的回调处理。消息响应函数的注册是在服务初始化(Init())中完成的。需要注册和回调的消息有InsideMessage和UserMessage，对于InsideMessage，响应函数只有一种形式：即为响应服务的成员函数。而对于UserMessage，由于UserMessage有Player指针，响应函数则会有多种形式：</p>
+          <p>消息编解码(或序列化)主要是将消息体由一些标准库容器或自定义的类型，转化成二进制流，方便网络传输。为了减少网络IO，编解码中也可能在存在数据”压缩和解压”，但这种压缩是针对于特定的数据类型，并不是针对于二进制流的。在NGServer的消息编解码中，并不涉及数据压缩。</p>
           <!--noindex-->
           <div class="post-button text-center">
-            <a class="btn" href="/2014/11/ngserver-message-callback/" rel="contents">
+            <a class="btn" href="/2014/11/ngserver-message-encoder/" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>

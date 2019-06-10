@@ -111,14 +111,14 @@
   <meta name="description" content="go module 是 go1.11 引入的新概念，为 go  当前饱受诟病的 GOPATH 和依赖管理提供了更好的解决方案。在理解 go module 之前，先回顾下当前 Go 的项目结构和依赖管理都有什么问题: 1.GOPATH GOPATH一定程度上简化了项目构建，但是给了开发者过多的限制，你的项目必须位于 GOPATH 下，否则编译器找到它，想要使用你自己的项目组织结构，要么你需要为每个项">
 <meta name="keywords" content="go">
 <meta property="og:type" content="article">
-<meta property="og:title" content="go module 来了">
+<meta property="og:title" content="go mod 依赖管理">
 <meta property="og:url" content="http://wudaijun.com/2018/10/go-mod-intro/index.html">
 <meta property="og:site_name" content="wudaijun&#39;s blog">
 <meta property="og:description" content="go module 是 go1.11 引入的新概念，为 go  当前饱受诟病的 GOPATH 和依赖管理提供了更好的解决方案。在理解 go module 之前，先回顾下当前 Go 的项目结构和依赖管理都有什么问题: 1.GOPATH GOPATH一定程度上简化了项目构建，但是给了开发者过多的限制，你的项目必须位于 GOPATH 下，否则编译器找到它，想要使用你自己的项目组织结构，要么你需要为每个项">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2018-10-26T02:39:37.000Z">
+<meta property="og:updated_time" content="2019-06-10T10:52:31.000Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="go module 来了">
+<meta name="twitter:title" content="go mod 依赖管理">
 <meta name="twitter:description" content="go module 是 go1.11 引入的新概念，为 go  当前饱受诟病的 GOPATH 和依赖管理提供了更好的解决方案。在理解 go module 之前，先回顾下当前 Go 的项目结构和依赖管理都有什么问题: 1.GOPATH GOPATH一定程度上简化了项目构建，但是给了开发者过多的限制，你的项目必须位于 GOPATH 下，否则编译器找到它，想要使用你自己的项目组织结构，要么你需要为每个项">
 
 
@@ -136,7 +136,7 @@
   };
 </script>
 
-  <title>go module 来了 | wudaijun's blog</title>
+  <title>go mod 依赖管理 | wudaijun's blog</title>
   
 
 
@@ -357,7 +357,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">go module 来了
+          <h1 class="post-title" itemprop="name headline">go mod 依赖管理
               
             
           </h1>
