@@ -336,7 +336,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/09/go-notes-2-procedural-programming/">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/09/go-notes-1-datastructures/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="wudaijun">
@@ -355,8 +355,8 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/2016/09/go-notes-2-procedural-programming/" itemprop="url">
-                  Go 笔记(2) 顺序编程
+                <a class="post-title-link" href="/2016/09/go-notes-1-datastructures/" itemprop="url">
+                  Go 笔记(1) 常用数据结构及实现
                 </a>
               
             
@@ -415,8 +415,8 @@
                 <span class="post-meta-item-icon">
                   <i class="fa fa-comment-o"></i>
                 </span>
-                <a href="/2016/09/go-notes-2-procedural-programming/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2016/09/go-notes-2-procedural-programming/" itemprop="commentCount"></span>
+                <a href="/2016/09/go-notes-1-datastructures/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2016/09/go-notes-1-datastructures/" itemprop="commentCount"></span>
                 </a>
               </span>
             
@@ -446,14 +446,12 @@
       
         
           
-          不定参数&amp;多返回值不定参数只能是最后一个参数，它实际上是数组切片参数的语法糖：
-// 语法糖 相当于 func myfunc(args []interface{})
-func myfunc(args ...interface{}){
-    for _, arg := range args 
+          学习一下go中常用的几种数据结构，结合源码了解其实现原理。
+一. 类型系统1. array123456789func f(x [2]int)&#123;	x[1] = 9&#125;func main()&#123;	a := [3]int&#123;1,2,3&#125;	b := [2]int&
           ...
           <!--noindex-->
           <div class="post-button text-center">
-            <a class="btn" href="/2016/09/go-notes-2-procedural-programming/" rel="contents">
+            <a class="btn" href="/2016/09/go-notes-1-datastructures/" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
