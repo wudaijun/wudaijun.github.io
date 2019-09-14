@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=6.3.0" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png?v=6.3.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico?v=6.3.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico?v=6.3.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.3.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '6.3.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。 一. 不要过早优化老生常谈，说说我的理解:  first make it work, then measure, then optimize 二八原则，80%的效率都耗在20%的逻辑上，在程序中可能更甚 需求变更快 对性能的主观直觉不靠谱">
+<meta name="keywords" content="go">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go 性能优化">
+<meta property="og:url" content="http://wudaijun.com/2019/09/go-performance-optimization/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。 一. 不要过早优化老生常谈，说说我的理解:  first make it work, then measure, then optimize 二八原则，80%的效率都耗在20%的逻辑上，在程序中可能更甚 需求变更快 对性能的主观直觉不靠谱">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-09-14T16:26:00.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Go 性能优化">
+<meta name="twitter:description" content="这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。 一. 不要过早优化老生常谈，说说我的理解:  first make it work, then measure, then optimize 二八原则，80%的效率都耗在20%的逻辑上，在程序中可能更甚 需求变更快 对性能的主观直觉不靠谱">
+
+
+
+
+
+
+  <link rel="canonical" href="http://wudaijun.com/2019/09/go-performance-optimization/"/>
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Go 性能优化 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">wudaijun's blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Done is better than perfect</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+    <a href="/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />首页</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+    <a href="/about/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-user"></i> <br />关于</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+    <a href="/tags/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+    <a href="/categories/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-th"></i> <br />分类</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+    <a href="/archives/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />归档</a>
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />搜索</a>
+        </li>
+      
+    </ul>
+  
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2019/09/go-performance-optimization/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Go 性能优化
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-09-14 00:00:00" itemprop="dateCreated datePublished" datetime="2019-09-14T00:00:00+08:00">2019-09-14</time>
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/go/" itemprop="url" rel="index"><span itemprop="name">go</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/09/go-performance-optimization/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2019/09/go-performance-optimization/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。</p>
+<h3 id="一-不要过早优化"><a href="#一-不要过早优化" class="headerlink" title="一. 不要过早优化"></a>一. 不要过早优化</h3><p>老生常谈，说说我的理解:</p>
+<ol>
+<li>first make it work, then measure, then optimize</li>
+<li>二八原则，80%的效率都耗在20%的逻辑上，在程序中可能更甚</li>
+<li>需求变更快</li>
+<li>对性能的主观直觉不靠谱</li>
+</ol>
+<a id="more"></a>
+<h3 id="二-方法"><a href="#二-方法" class="headerlink" title="二. 方法"></a>二. 方法</h3><h4 id="1-压测用例"><a href="#1-压测用例" class="headerlink" title="1. 压测用例"></a>1. 压测用例</h4><p>压测用例可以从这几个方面来考虑:</p>
+<ol>
+<li>服务器比较耗时的API: 如寻路，战斗等</li>
+<li>玩家越多越耗时的逻辑: 如视野同步，联盟广播等</li>
+<li>玩家日常操作频繁的行为: 如城建升级，联盟加入退出，以尽可能覆盖如任务，BUFF，排行榜等支撑系统</li>
+</ol>
+<p>压测机器人最好做成异步的，像客户端一样缓存状态，发起请求，同步响应数据，并且对错误响应进行记录。</p>
+<h4 id="2-压测统计"><a href="#2-压测统计" class="headerlink" title="2. 压测统计"></a>2. 压测统计</h4><p>在做压测中，我们会从如下几个方面来获取性能指标:</p>
+<ol>
+<li>函数级分析: go prof简单易用，参考<a href="https://wudaijun.com/2018/04/go-pprof/">go pprof性能分析</a></li>
+<li>请求级统计: 统计每个逻辑Actor(如地图，玩家)对单次请求的处理时间 (最大，平均，次数)</li>
+<li>服务器消息延迟统计: 统计每条客户端消息从网关层收到请求到网关层发出响应的时间差 (最大，平均，次数)</li>
+<li>客户端消息延迟统计: 统计从请求发出到收到响应的处理时间 (最大，平均，次数)</li>
+</ol>
+<p>前面是我们做压测的一些方法，本文主要专注于函数级分析优化这一块，也就是Go程序CPU和内存方面的一些底层机制和优化技巧。</p>
+<h3 id="三-内存优化"><a href="#三-内存优化" class="headerlink" title="三. 内存优化"></a>三. 内存优化</h3><p>Golang运行时的内存分配算法主要源自 Google 为 C 语言开发的TCMalloc算法，全称Thread-Caching Malloc。核心思路是层级管理，以降低锁竞争开销。Golang内存管理大概分为三层，每个线程(GPM中的P)都会自行维护一个独立的内存池(mcache)，进行内存分配时优先从mcache中分配(无锁)，当mcache内存不足时才会向全局内存池(mcentral)申请(有锁)，当mcentral内存不足时再向全局堆空间管理(mheap)中申请(有锁+按照固定大小切割)，最后mheap如果不足，则向OS申请(SysCall)。mcache -&gt; mcentral -&gt; mheap -&gt; OS 代价逐层递增，Golang运行时的很多地方都有这种层级管理的思路，比如GPM调度模型中对G的分配，这种层级在并发运行时下，通常有比较好的性能表现。</p>
+<h4 id="1-内存复用"><a href="#1-内存复用" class="headerlink" title="1. 内存复用"></a>1. 内存复用</h4><p>关于内存复用最常见的手段就是内存池了，它缓存已分配但不再使用的对象，在下次分配时进行复用，以避免频繁的对象分配。Go的<code>sync.Pool</code>包就可以用来做这个事情，在使用sync.Pool时，需要注意:</p>
+<ol>
+<li>sync.Pool是goroutine safe的，也就是会用mutex</li>
+<li>sync.Pool无法设置大小，所以理论上只受限于系统内存大小</li>
+<li>sync.Pool中的对象不支持自定义过期时间及策略</li>
+<li>sync.Pool中的对象会在GC开始前全部清除，这样可以让Pool大小随应用峰值而自动收缩扩张，更有效地利用内存。在go1.13中有优化，会留一部分Object，相当于延缓了收缩扩张的速度</li>
+</ol>
+<p>sync.Pool适用于跨goroutine且需要动态伸缩的场景，典型的如网络层，每个连接(goroutine)都需要Pool，并且连接数是不稳定的。有时为了达成更轻量，更可控的复用，我们可能会根据应用场景自己造轮子，比如实现一个不带锁，固定大小，不会被GC的内存池，亦或实现一个简单的slice重置复用。比如shadowsocks-go的<a href="https://github.com/shadowsocks/shadowsocks-go/blob/master/shadowsocks/leakybuf.go" target="_blank" rel="noopener">LeakyBuf</a>就用channel巧妙实现了一个固定大小的Pool不会被GC的Pool。</p>
+<p>在实践中，我们主要将内存池用在分配非常频繁的地方，比如网络IO，日志模块等。另外，复用的粒度不仅限于简单struct或slice，也可以是逻辑实体。比如我们游戏中每次生成地图NPC时，会根据配置初始化大量的属性和BUFF，涉及到很多小对象的分配，这里我们选择将整个NPC作为复用粒度，在NPC倒计时结束或被击败消失时，将NPC整理缓存在池子中，并重置其战斗状态和刷新时间。这种逻辑实体的复用不通用但往往有用，必要的时候可以派上用场。</p>
+<p>除了内存池外，另一种常用的内存复用思路是就地复用，它主要用于切片这类容易重置的数据结构，比如下面是一个过滤切片中所有奇数的操作:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">s := []int&#123;1,2,3,4,5&#125;</span><br><span class="line">ret := s[:0]</span><br><span class="line">for i:=0; i&lt;len(s); i++ &#123;</span><br><span class="line">    if s[i] &amp; 1 == 1&#123;</span><br><span class="line">        ret = append(ret, s[i])</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>切片的这类技巧经常用在网络层和算法层，有时候也能起到不错的效果。</p>
+<h4 id="2-预分配"><a href="#2-预分配" class="headerlink" title="2. 预分配"></a>2. 预分配</h4><p>预分配主要针对map, slice这类数据结构，当你知道它要分配多大内存时，就提前分配，一是为了避免多次内存分配，二是为了减少space grow带来的数据迁移(map evacuate or slice copy)开销。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">var v[10] int</span><br><span class="line">var v2 []int</span><br><span class="line">// 预分配，比前者快5倍!</span><br><span class="line">// v2 := make([]int, 0, 10)</span><br><span class="line">for i:=0; i&lt;len(v); i++&#123;</span><br><span class="line">    v2 = append(v2, v[i])</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>平时编码中养成预分配的习惯是有利而无害的，Go的一些代码分析工具如<a href="https://github.com/alexkohler/prealloc" target="_blank" rel="noopener">prealloc</a>可以帮助你检查可做的预分配优化。</p>
+<p>有时候预分配的大小不一定是精确的，也可能模糊的，比如要将一个数组中所有的偶数选出来，那么可以预分配1/2的容量，在不是特别好估算大小的情况下，尽可能保守分配。</p>
+<p>预分配的另一个思路就是对于一些频繁生成的大对象，比如我们逻辑中打包地图实体，这是个很大的pb协议，pb默认生成的内嵌消息字段全是指针，给指针赋值的过程中为了保证深拷贝语义需要频繁地分配这些各级字段的内存，为了优化分配内存次数，我们使用<a href="https://github.com/gogo/protobuf" target="_blank" rel="noopener">gogoproto</a>的nullable生成器选项来对这类消息生成嵌套的值字段而非指针字段，这样可以减少内存分配次数(但分配的数量是一样的)。</p>
+<h4 id="3-避免不必要的分配"><a href="#3-避免不必要的分配" class="headerlink" title="3. 避免不必要的分配"></a>3. 避免不必要的分配</h4><p>Go的逃逸分析+GC会让Gopher对指针很青睐，receiver，struct field, arguments, return value等，却容易忽略背后的开销(当然，大部分时候开发者确实不需要操心)。在遇到性能问题时，可以将使用频繁并且简单的结构体比如地图坐标，使用值而不是指针，这样可以减少变量逃逸带来的GC开销。</p>
+<p>为了避免引用必要的时候也可以化切片为数组:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// 创建并返回了一个切片，切片是引用语义，导致ret逃逸</span><br><span class="line">func GetNineGrid1() []int &#123;</span><br><span class="line">	ret := make([]int, 9)</span><br><span class="line">	return ret</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 创建了一个数组但返回了它的切片(相当于它的引用)，导致数组逃逸</span><br><span class="line">func GetNineGrid2() []int &#123;</span><br><span class="line">	var ret [9]int</span><br><span class="line">	return ret[:]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 创建并返回数组，数组是值语义，因此不会逃逸</span><br><span class="line">func GetNineGrid3() [9]int &#123;</span><br><span class="line">	return [9]int&#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这还不够，有时候还需要对计算流程进行优化:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">type Coord struct&#123;</span><br><span class="line">	X   int32</span><br><span class="line">	Z   int32</span><br><span class="line">&#125;</span><br><span class="line">func f1(c *Coord) *Coord &#123;</span><br><span class="line">	ret := Coord&#123;</span><br><span class="line">		X: 	c.X/2,</span><br><span class="line">		Z: 	c.Z/2,</span><br><span class="line">	&#125;</span><br><span class="line">	return &amp;ret</span><br><span class="line">&#125;</span><br><span class="line">func f2() int32 &#123;</span><br><span class="line">	c := &amp;Coord&#123;</span><br><span class="line">		X: 2,</span><br><span class="line">		Z: 4,</span><br><span class="line">	&#125;</span><br><span class="line">	c2 := f1(c)</span><br><span class="line">	return c2.X</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 优化后</span><br><span class="line">func new_f1(c *Coord, ret *Coord) &#123;</span><br><span class="line">	ret.X = c.X/2,</span><br><span class="line">	ret.Z = c.Z/2,</span><br><span class="line">&#125;</span><br><span class="line">func new_f3() int32 &#123;</span><br><span class="line">    c := &amp;Coord&#123;</span><br><span class="line">        X:  2,</span><br><span class="line">        Z:  4,</span><br><span class="line">    &#125;</span><br><span class="line">    ret := &amp;Coord&#123;&#125;</span><br><span class="line">    new_f1(c, ret)</span><br><span class="line">    return ret.X</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在上面的代码中，Go编译器会分析到f1的变量ret地址会返回，因此它不能分配在栈在(调用完成后，栈就回收了)，必须分配在堆上，这就是逃逸分析(escape analyze)。而对于f2中的变量c来说，虽然函数中用了c的地址，但都是用于其调用的子函数(此时f1的栈还有效)，并未返回或传到函数栈有效域外，因此f2中的c会分配到栈上。</p>
+<p>在默认编译参数下，f1会被内联的，因此f1的调用并不会有新的函数栈的扩展和收缩，都会在f2的函数栈上进行，由于f2中的变量都没有逃逸到f2之外，因此对f2的调用也不会有任何内存分配，可以通过<code>-gcflags -N -l</code>编译选项来禁用内联，并通过<code>-gcflags -m</code>打印逃逸分析信息。但内联也是有条件的，我们将在CPU优化中聊内联优化。</p>
+<p>抛开内联而言，假如f1由于比较复杂或其它原因没有被内联，就需要我们手动避免逃逸分析，将f1中的ret分配在栈在而不是堆上，如针对f2而言，由于f1的返回值只是用于临时计算，并不会超出函数栈有效域，因此它可以在自己的栈上分配f1的返回值，并且将返回值地址作为参数传入给f1，就可以优化f1的堆内存分配。</p>
+<p>这里我们再深入讨论下Go逃逸分析，逃逸分析虽然好用，却并不免费，只有理解其内部机制，才能将收益最大化(开发效率vs运行效率)。逃逸分析的本质是当编译器发现函数变量将脱离函数栈有效域或被函数栈有效域外的变量所引用时时，将变量分配在堆上而不是栈在，典型的情况有:</p>
+<ol>
+<li>函数返回变量地址，或者将变量地址写入到超出函数栈有效域的容器(如struct,map,slice)中，刚才已经讨论过</li>
+<li>将变量地址写入channel或sync.Pool，编译器无法获悉其它goroutine如何使用这个变量，也就无法在编译时决议变量的生命周期</li>
+<li>slice变量超过cap重新分配，栈的大小毕竟是固定和有限的</li>
+<li>将变量地址赋给可扩容容器(如map,slice)，将会导致变量分配</li>
+<li>将变量赋给可扩容Interface容器(k或v为Interface的map，或[]Interface)，也会导致变量逃逸</li>
+<li>涉及到Interface的地方都有可能导致对象逃逸，<code>MyInterface(x).Foo(a)</code>将会导致x逃逸，如果a是引用语义(指针,slice,map等)，a也会分配到堆上，涉及到Interface的很多逃逸优化都很保守，比如<code>reflect.ValueOf(x)</code>会显式调用<code>escapes(x)</code>导致x逃逸。<br>第4点和第5点单独说下，以slice和空接口为例:</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">func example() &#123;</span><br><span class="line">    s1 := make([]int, 10)</span><br><span class="line">    s2 := make([]*int, 10)</span><br><span class="line">    s3 := make([]interface&#123;&#125;, 10)</span><br><span class="line">    a := 123</span><br><span class="line">    s1[1] = a 	// case1: 导致a分配在栈在</span><br><span class="line">    s2[1] = &amp;a 	// case2: 导致a分配到堆上</span><br><span class="line">    s3[1] = a	// case3: 导致a分配在堆上</span><br><span class="line">    s3[1] = &amp;a	// case4: 导致a分配在堆上</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>首先我们知道slice重分配是在堆上，slice重分配时，会发生数据迁移，此时要将原本slice len内的元素<em>浅拷贝</em>到新的空间，而这个浅拷贝会导致新的slice(堆内存)引用了p(栈内存)的内容，而栈内存和堆内存的生命周期是不一样的，可能出现函数返回后，堆内存引用无效的栈内存的情况，这会影响到运行时的稳定性。因此即使slice变量本身没有显式逃逸，但由于隐式的数据迁移，编译器会保守地将slice或map的指针elem逃逸到堆上。这就是第4点的原因，也解释了上面代码中的case1 case2 case4，现在来看看case3。</p>
+<p>简单来说，interface{}让值语义变为引用语义，interface{}本质上为typ + pointer，这个pointer指向实际的data，参考我之前写的<a href="https://wudaijun.com/2018/01/go-interface-implement/">go interface实现</a>。<code>s3[i] = a</code>实际上让s3 slice持有了a的引用，因此a会逃逸到堆上分配。</p>
+<p>我们逻辑中调用的<code>fmt.Sprintf</code>或<code>logrus.Debugf</code>都会导致所有传入参数逃逸，因为不定参数实际上是slice的语法糖，编译器无法确定<code>logrus.Debugf</code>不会对参数slice进行append操作导致重分配，只能保守地将传入的参数分配到堆上以保证浅拷贝是正确的。我认为用保守来形容Go的逃逸分析策略是比较合适的，比如前面代码的s1,s2,s3，既slice变量本身没有逃逸，也没有发生扩容，那么让slice以及其元素都在栈上应该是安全的，目前不理解Go编译器出于何种考虑没有做这种优化。当然，好的逃逸分析需要在编译期更深入地理解程序，这本身就是非常困难的，特别是当涉及到interface{}，指针，可扩展容器的时候。</p>
+<h3 id="四-CPU优化"><a href="#四-CPU优化" class="headerlink" title="四. CPU优化"></a>四. CPU优化</h3><h4 id="1-常用操作优化"><a href="#1-常用操作优化" class="headerlink" title="1. 常用操作优化"></a>1. 常用操作优化</h4><h5 id="1-1-slice-copy"><a href="#1-1-slice-copy" class="headerlink" title="1.1 slice copy"></a>1.1 slice copy</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">n := 1000</span><br><span class="line">src := make([]int, n)</span><br><span class="line">dst := make([]int, 0, n)</span><br><span class="line">// 最慢的方式: 22666ns</span><br><span class="line">for i:=0; i&lt;n; i++ &#123;</span><br><span class="line">    dst = append(dst, src[i])</span><br><span class="line">&#125;</span><br><span class="line">// 普通方式: 90.2ns</span><br><span class="line">_ = append(dst, src...) // 90.2ns</span><br><span class="line">// 最快的方式: 2.2ns</span><br><span class="line">copy(dst, src) // 2.2ns</span><br></pre></td></tr></table></figure>
+<h5 id="1-2-string-concat"><a href="#1-2-string-concat" class="headerlink" title="1.2 string concat"></a>1.2 string concat</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">func BenchmarkForStringAppend(b *testing.B) &#123;</span><br><span class="line">	v := &quot;benchmark for string&quot;</span><br><span class="line">	var s string</span><br><span class="line">	var buf bytes.Buffer</span><br><span class="line">	mode := 4</span><br><span class="line">	b.ResetTimer()</span><br><span class="line">	b.ReportAllocs()</span><br><span class="line">	for i := 0; i &lt; b.N; i++ &#123;</span><br><span class="line">		switch mode &#123;</span><br><span class="line">		case 0: // fmt.Sprintf  186477 ns/op</span><br><span class="line">			s = fmt.Sprintf(&quot;%s[%s]&quot;, s, v)</span><br><span class="line">		case 1: // string + 	94728 ns/op</span><br><span class="line">			s = s + &quot;[&quot; + v + &quot;]&quot;</span><br><span class="line">		case 2: // strings.Join 153810 ns/op</span><br><span class="line">			s = strings.Join([]string&#123;s, &quot;[&quot;, v, &quot;]&quot;&#125;, &quot;&quot;)</span><br><span class="line">		case 3: // temporary bytes.Buffer 79.6 ns/op</span><br><span class="line">			b := bytes.Buffer&#123;&#125;</span><br><span class="line">			b.WriteString(&quot;[&quot;)</span><br><span class="line">			b.WriteString(v)</span><br><span class="line">			b.WriteString(&quot;]&quot;)</span><br><span class="line">			s = b.String()</span><br><span class="line">		case 4: // stable bytes.Buffer 50.6 ns/op</span><br><span class="line">			buf.WriteString(&quot;[&quot;)</span><br><span class="line">			buf.WriteString(v)</span><br><span class="line">			buf.WriteString(&quot;]&quot;)</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="1-3-byte-to-string"><a href="#1-3-byte-to-string" class="headerlink" title="1.3 []byte to string"></a>1.3 []byte to string</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">bs := make([]byte, 1000)</span><br><span class="line">// 2.48 ns/op 直接地址转换，慎用，破坏了string的字符常量语义，更改bs将影响到ss1 ！</span><br><span class="line">ss1 = *(*string)(unsafe.Pointer(&amp;bs))</span><br><span class="line">// 175 ns/op 底层会拷贝bs，保证string的字符常量语义</span><br><span class="line">ss2 = string(bs)</span><br></pre></td></tr></table></figure>
+<h4 id="2-内联"><a href="#2-内联" class="headerlink" title="2. 内联"></a>2. 内联</h4><p>Go1.9对内联做了比较大的优化，支持<a href="https://go.googlesource.com/proposal/+/master/design/19348-midstack-inlining.md" target="_blank" rel="noopener">mid-stack inline</a>，并且支持通过<code>-l</code>编译参数指定内联等级(参数定义参考<a href="https://github.com/golang/go/blob/71a6a44428feb844b9dd3c4c8e16be8dee2fd8fa/src/cmd/compile/internal/gc/inl.go#L10-L17" target="_blank" rel="noopener">cmd/compile/internal/gc/inl.go</a>)。但我们目前还没有调整过内联参数，因为这是有利有弊的，过于激进的内联会导致生成的二进制文件更大，CPU instruction cache miss也可能会增加。因此我们主要讨论默认内联等级: <code>-l 1</code>。</p>
+<p>默认等级的内联大部分时候都工作得很好，需要我们留意的是对Interface方法的调用不会被内联:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">type I interface &#123;</span><br><span class="line">	F() int</span><br><span class="line">&#125;</span><br><span class="line">type A struct&#123;</span><br><span class="line">	x int</span><br><span class="line">	y int</span><br><span class="line">&#125;</span><br><span class="line">func (a *A) F() int &#123;</span><br><span class="line">	z := a.x + a.y</span><br><span class="line">	return z</span><br><span class="line">&#125;</span><br><span class="line">func BenchmarkX(b *testing.B) &#123;</span><br><span class="line">	b.ReportAllocs()</span><br><span class="line">	for i:=0; i&lt;b.N; i++ &#123;</span><br><span class="line">		// F() 会被内联 0.36 ns/op</span><br><span class="line">		// var a = &amp;A&#123;&#125;</span><br><span class="line">		// a.F()</span><br><span class="line">		// 对Interface的方法调用不能被内联 18.4 ns/op</span><br><span class="line">		var i I = &amp;A&#123;&#125;</span><br><span class="line">		i.F()</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>对于一些底层基础的结构体，比如我们地图上的实体基础信息Entity，包含ID，坐标，碰撞半径等最基础的信息，我们为其抽象了一个接口IEntity，它只提供简单的对字段的访问和设置，最近再考虑将IEntity去掉，直接用Struct，借助于内联，字段访问会快5-6倍。</p>
+<h3 id="五-小结"><a href="#五-小结" class="headerlink" title="五. 小结"></a>五. 小结</h3><ol>
+<li>请确保对先压测，再根据性能瓶颈采取上述优化，并做前后对比测试</li>
+<li>建议借助Go静态代码检测工具如<code>golangci-lint</code>做静态代码分析，根据项目组实践选择合适的插件，以增强代码质量，减少BUG，并提升部分性能</li>
+<li>关注和更新Go最新版本可能是最”廉价”的优化手段，但有时很有效。如GC，编译器优化，defer等特性都还在不断改进，毕竟Go还很年轻</li>
+<li>通用的优化实践和技巧不在这里讨论，如数据结构，算法，异步，并发等，但不代表它们不重要</li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/go/" rel="tag"># go</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/05/programing-paradigm/" rel="next" title="编程范式游记">
+                <i class="fa fa-chevron-left"></i> 编程范式游记
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/assets/theme/avatar.png"
+                alt="wudaijun" />
+            
+              <p class="site-author-name" itemprop="name">wudaijun</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">116</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">18</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">31</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#一-不要过早优化"><span class="nav-text">一. 不要过早优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#二-方法"><span class="nav-text">二. 方法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-压测用例"><span class="nav-text">1. 压测用例</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-压测统计"><span class="nav-text">2. 压测统计</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#三-内存优化"><span class="nav-text">三. 内存优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-内存复用"><span class="nav-text">1. 内存复用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-预分配"><span class="nav-text">2. 预分配</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-避免不必要的分配"><span class="nav-text">3. 避免不必要的分配</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#四-CPU优化"><span class="nav-text">四. CPU优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-常用操作优化"><span class="nav-text">1. 常用操作优化</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#1-1-slice-copy"><span class="nav-text">1.1 slice copy</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#1-2-string-concat"><span class="nav-text">1.2 string concat</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#1-3-byte-to-string"><span class="nav-text">1.3 []byte to string</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-内联"><span class="nav-text">2. 内联</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#五-小结"><span class="nav-text">五. 小结</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+
+  
+
+  
+</div>
+
+
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v3.7.1</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://theme-next.org">NexT.Gemini</a> v6.3.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.3.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.3.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.3.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.3.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.3.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.3.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.3.0"></script>
+
+
+
+  
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  
+  
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(function (item) {
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'kL7con6xeU88chDAVyUSDSHI-gzGzoHsz',
+        appKey: '9XLxirxDW8NUhHJdu460Uiba',
+        placeholder: 'Just go go',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
