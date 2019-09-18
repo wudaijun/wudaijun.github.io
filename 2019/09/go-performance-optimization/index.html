@@ -116,7 +116,7 @@
 <meta property="og:site_name" content="wudaijun&#39;s blog">
 <meta property="og:description" content="这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。 一. 不要过早优化老生常谈，说说我的理解:  first make it work, then measure, then optimize 二八原则，80%的效率都耗在20%的逻辑上，在程序中可能更甚 需求变更快 对性能的主观直觉不靠谱">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-09-14T16:26:00.000Z">
+<meta property="og:updated_time" content="2019-09-18T11:55:57.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Go 性能优化">
 <meta name="twitter:description" content="这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。 一. 不要过早优化老生常谈，说说我的理解:  first make it work, then measure, then optimize 二八原则，80%的效率都耗在20%的逻辑上，在程序中可能更甚 需求变更快 对性能的主观直觉不靠谱">
@@ -498,7 +498,8 @@
 <ol>
 <li>函数返回变量地址，或者将变量地址写入到超出函数栈有效域的容器(如struct,map,slice)中，刚才已经讨论过</li>
 <li>将变量地址写入channel或sync.Pool，编译器无法获悉其它goroutine如何使用这个变量，也就无法在编译时决议变量的生命周期</li>
-<li>slice变量超过cap重新分配，栈的大小毕竟是固定和有限的</li>
+<li>闭包也可能导致闭包上下文逃逸</li>
+<li>slice变量超过cap重新分配时，将在堆上进行，栈的大小毕竟是固定和有限的</li>
 <li>将变量地址赋给可扩容容器(如map,slice)，将会导致变量分配</li>
 <li>将变量赋给可扩容Interface容器(k或v为Interface的map，或[]Interface)，也会导致变量逃逸</li>
 <li>涉及到Interface的地方都有可能导致对象逃逸，<code>MyInterface(x).Foo(a)</code>将会导致x逃逸，如果a是引用语义(指针,slice,map等)，a也会分配到堆上，涉及到Interface的很多逃逸优化都很保守，比如<code>reflect.ValueOf(x)</code>会显式调用<code>escapes(x)</code>导致x逃逸。<br>第4点和第5点单独说下，以slice和空接口为例:</li>
