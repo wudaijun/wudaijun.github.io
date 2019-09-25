@@ -108,18 +108,18 @@
 
 
 
-  <meta name="description" content="这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。 一. 不要过早优化虽是老生常谈，但确实需要在做性能优化的时候铭记在心，说说我的理解:  first make it work, then measure, then optimize 二八原则 需求变更快 对性能的主观直觉不靠谱">
+  <meta name="description" content="最近做的优化比较多，整理下和Go内存相关的一些东西。 一. 不要过早优化虽是老生常谈，但确实需要在做性能优化的时候铭记在心，说说我的理解:  first make it work, then measure, then optimize 二八原则 需求变更快 对性能的主观直觉不靠谱">
 <meta name="keywords" content="go">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Go 性能优化">
+<meta property="og:title" content="聊聊Go内存优化和相关底层机制">
 <meta property="og:url" content="http://wudaijun.com/2019/09/go-performance-optimization/index.html">
 <meta property="og:site_name" content="wudaijun&#39;s blog">
-<meta property="og:description" content="这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。 一. 不要过早优化虽是老生常谈，但确实需要在做性能优化的时候铭记在心，说说我的理解:  first make it work, then measure, then optimize 二八原则 需求变更快 对性能的主观直觉不靠谱">
+<meta property="og:description" content="最近做的优化比较多，整理下和Go内存相关的一些东西。 一. 不要过早优化虽是老生常谈，但确实需要在做性能优化的时候铭记在心，说说我的理解:  first make it work, then measure, then optimize 二八原则 需求变更快 对性能的主观直觉不靠谱">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-09-25T08:14:46.000Z">
+<meta property="og:updated_time" content="2019-09-25T08:45:25.000Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Go 性能优化">
-<meta name="twitter:description" content="这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。 一. 不要过早优化虽是老生常谈，但确实需要在做性能优化的时候铭记在心，说说我的理解:  first make it work, then measure, then optimize 二八原则 需求变更快 对性能的主观直觉不靠谱">
+<meta name="twitter:title" content="聊聊Go内存优化和相关底层机制">
+<meta name="twitter:description" content="最近做的优化比较多，整理下和Go内存相关的一些东西。 一. 不要过早优化虽是老生常谈，但确实需要在做性能优化的时候铭记在心，说说我的理解:  first make it work, then measure, then optimize 二八原则 需求变更快 对性能的主观直觉不靠谱">
 
 
 
@@ -136,7 +136,7 @@
   };
 </script>
 
-  <title>Go 性能优化 | wudaijun's blog</title>
+  <title>聊聊Go内存优化和相关底层机制 | wudaijun's blog</title>
   
 
 
@@ -357,7 +357,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">Go 性能优化
+          <h1 class="post-title" itemprop="name headline">聊聊Go内存优化和相关底层机制
               
             
           </h1>
@@ -444,7 +444,7 @@
       
 
       
-        <p>这几个月游戏进度很紧，最近在做压测和优化相关的一些东西，给大家分享下我们在Go性能优化方面的一些实践。</p>
+        <p>最近做的优化比较多，整理下和Go内存相关的一些东西。</p>
 <h2 id="一-不要过早优化"><a href="#一-不要过早优化" class="headerlink" title="一. 不要过早优化"></a>一. 不要过早优化</h2><p>虽是老生常谈，但确实需要在做性能优化的时候铭记在心，说说我的理解:</p>
 <ol>
 <li>first make it work, then measure, then optimize</li>
@@ -453,28 +453,8 @@
 <li>对性能的主观直觉不靠谱</li>
 </ol>
 <a id="more"></a>
-<h2 id="二-压测方法"><a href="#二-压测方法" class="headerlink" title="二. 压测方法"></a>二. 压测方法</h2><h3 id="1-压测机器人"><a href="#1-压测机器人" class="headerlink" title="1. 压测机器人"></a>1. 压测机器人</h3><p>压测机器人需要满足如下几个条件:</p>
-<ol>
-<li>异步请求: 异步才能模拟真实的客户端请求和压力</li>
-<li>数据同步: 像客户端一样缓存和处理服务器响应数据，这样才能做好有效请求和可重入</li>
-<li>可重入: 机器人应该可以在任何时候关闭/重启，而不应该假设初始状态(比如只有注册的时候能跑)</li>
-</ol>
-<h3 id="2-压测用例"><a href="#2-压测用例" class="headerlink" title="2. 压测用例"></a>2. 压测用例</h3><p>压测用例可以从这几个方面来考虑:</p>
-<ol>
-<li>服务器比较耗时的API: 如寻路，战斗等</li>
-<li>玩家越多越耗时的逻辑: 如视野同步，联盟广播等</li>
-<li>玩家日常操作频繁的行为: 如城建升级，联盟加入退出，以尽可能覆盖如任务，BUFF，排行榜等支撑系统</li>
-</ol>
-<h3 id="3-压测统计"><a href="#3-压测统计" class="headerlink" title="3. 压测统计"></a>3. 压测统计</h3><p>在做压测中，我们会从如下几个方面来获取性能指标:</p>
-<ol>
-<li>函数级分析: go prof简单易用，参考<a href="https://wudaijun.com/2018/04/go-pprof/">go pprof性能分析</a></li>
-<li>请求级统计: 统计每个逻辑Actor(如地图，玩家)对单次请求的处理时间 (最大，平均，次数)</li>
-<li>服务器消息延迟统计: 统计每条客户端消息从网关层收到请求到网关层发出响应的时间差 (最大，平均，次数)</li>
-<li>客户端消息延迟统计: 统计从请求发出到收到响应的处理时间 (最大，平均，次数)</li>
-</ol>
-<p>前面是我们做压测的一些方法，下面我们主要讨论Go内存相关的底层机制和优化技巧。</p>
-<h2 id="三-内存优化"><a href="#三-内存优化" class="headerlink" title="三. 内存优化"></a>三. 内存优化</h2><p>Golang运行时的内存分配算法主要源自 Google 为 C 语言开发的TCMalloc算法，全称Thread-Caching Malloc。核心思路是层级管理，以降低锁竞争开销。Golang内存管理大概分为三层，每个线程(GPM中的P)都会自行维护一个独立的内存池(mcache)，进行内存分配时优先从mcache中分配(无锁)，当mcache内存不足时才会向全局内存池(mcentral)申请(有锁)，当mcentral内存不足时再向全局堆空间管理(mheap)中申请(有锁+按照固定大小切割)，最后mheap如果不足，则向OS申请(SysCall)。mcache -&gt; mcentral -&gt; mheap -&gt; OS 代价逐层递增，Golang运行时的很多地方都有这种层级管理的思路，比如GPM调度模型中对G的分配，这种层级在并发运行时下，通常有比较好的性能表现。</p>
-<p>以下讨论下内存优化(主要是优化GC开销，而非内存占用大小)常用的手段。</p>
+<h2 id="二-内存优化"><a href="#二-内存优化" class="headerlink" title="二. 内存优化"></a>二. 内存优化</h2><p>Golang运行时的内存分配算法主要源自 Google 为 C 语言开发的TCMalloc算法，全称Thread-Caching Malloc。核心思路是层级管理，以降低锁竞争开销。Golang内存管理大概分为三层，每个线程(GPM中的P)都会自行维护一个独立的内存池(mcache)，进行内存分配时优先从mcache中分配(无锁)，当mcache内存不足时才会向全局内存池(mcentral)申请(有锁)，当mcentral内存不足时再向全局堆空间管理(mheap)中申请(有锁+按照固定大小切割)，最后mheap如果不足，则向OS申请(SysCall)。mcache -&gt; mcentral -&gt; mheap -&gt; OS 代价逐层递增，Golang运行时的很多地方都有这种层级管理的思路，比如GPM调度模型中对G的分配，这种层级在并发运行时下，通常有比较好的性能表现。</p>
+<p>以下讨论下内存优化(主要是优化分配和GC开销，而非内存占用大小)常用的手段。</p>
 <h3 id="1-内存复用"><a href="#1-内存复用" class="headerlink" title="1. 内存复用"></a>1. 内存复用</h3><p>关于内存复用最常见的手段就是内存池了，它缓存已分配但不再使用的对象，在下次分配时进行复用，以避免频繁的对象分配。</p>
 <h4 id="1-1-sync-Pool"><a href="#1-1-sync-Pool" class="headerlink" title="1.1 sync.Pool"></a>1.1 sync.Pool</h4><p>Go的<code>sync.Pool</code>包是Go官方提供的内存池，在使用sync.Pool时，需要注意:</p>
 <ol>
@@ -515,7 +495,7 @@
 <li><code>bytes.Buffer</code>: 有比slice默认更激进的cap分配，它的<code>String()</code>方法需要拷贝。适用于大量的字符串的二进制拼接，如网络层。</li>
 <li><code>strings.Builder</code>: 底层使用slice默认cap分配，主要的优点是调用<code>String()</code>不需要拷贝(直接地址转换)，适用于要求输出结果是string的地方</li>
 </ul>
-<h2 id="四-逃逸和内联"><a href="#四-逃逸和内联" class="headerlink" title="四 逃逸和内联"></a>四 逃逸和内联</h2><h3 id="1-逃逸分析"><a href="#1-逃逸分析" class="headerlink" title="1. 逃逸分析"></a>1. 逃逸分析</h3><p>前面简单提了下逃逸分析，这里我们再深入讨论下，逃逸分析虽然好用，却并不免费，只有理解其内部机制，才能将收益最大化(开发效率vs运行效率)。逃逸分析的本质是当编译器发现函数变量将脱离函数栈有效域或被函数栈有效域外的变量所引用时时，将变量分配在堆上而不是栈在，典型的情况有:</p>
+<h2 id="三-逃逸和内联"><a href="#三-逃逸和内联" class="headerlink" title="三 逃逸和内联"></a>三 逃逸和内联</h2><h3 id="1-逃逸分析"><a href="#1-逃逸分析" class="headerlink" title="1. 逃逸分析"></a>1. 逃逸分析</h3><p>前面简单提了下逃逸分析，这里我们再深入讨论下，逃逸分析虽然好用，却并不免费，只有理解其内部机制，才能将收益最大化(开发效率vs运行效率)。逃逸分析的本质是当编译器发现函数变量将脱离函数栈有效域或被函数栈有效域外的变量所引用时时，将变量分配在堆上而不是栈在，典型的情况有:</p>
 <ol>
 <li>函数返回变量地址，或返回包含变量地址的struct，刚才已经讨论过</li>
 <li>将变量地址写入channel或sync.Pool，编译器无法获悉其它goroutine如何使用这个变量，也就无法在编译时决议变量的生命周期</li>
@@ -535,16 +515,11 @@
 <p>Go1.9开始对内联做了比较大的运行时优化，开始支持<a href="https://go.googlesource.com/proposal/+/master/design/19348-midstack-inlining.md" target="_blank" rel="noopener">mid-stack inline</a>，talk链接在<a href="https://docs.google.com/presentation/d/1Wcblp3jpfeKwA0Y4FOmj63PW52M_qmNqlQkNaLj0P5o/edit#slide=id.g1d00ad65a7_2_17" target="_blank" rel="noopener">这里</a>。并且支持通过<code>-l</code>编译参数指定内联等级(参数定义参考<a href="https://github.com/golang/go/blob/71a6a44428feb844b9dd3c4c8e16be8dee2fd8fa/src/cmd/compile/internal/gc/inl.go#L10-L17" target="_blank" rel="noopener">cmd/compile/internal/gc/inl.go</a>)。并且只在<code>-l=4</code>中提供了mid-stack inline，据Go官方统计，这大概可以提升9%的性能，也增加了11%左右的二进制大小。</p>
 <p>Go1.10做一些Interface相关的优化，如<a href="https://github.com/golang/go/issues/19361" target="_blank" rel="noopener">devirtualization</a>，编译器在能够知晓Interface具体对象的情况下(如<code>var i Iface = &amp;myStruct{}</code>)，可以直接生成对象相关代码调用(还不是内联)，而无需走Interface方法查找。目前devirtualization优化还不完善，还不能应用于逃逸分析优化(<a href="https://github.com/golang/go/issues/33160#issuecomment-512653356" target="_blank" rel="noopener">这里</a>有讨论)。</p>
 <p>Go1.12开始默认支持了mid-stack inline。</p>
+<p>PS: 关注和更新Go最新版本可能是最”廉价”的优化手段。如GC，编译器优化，defer等特性都还在不断改进，毕竟Go还很年轻</p>
 <p>我们目前还没有调整过内联参数，因为这是有利有弊的，过于激进的内联会导致生成的二进制文件更大，CPU instruction cache miss也可能会增加。默认等级的内联大部分时候都工作得很好并且稳定，到目前(Go1.13)为止，对Interface方法的调用还不能被内联(即使编译器知晓具体类型):</p>
 <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> I <span class="keyword">interface</span> &#123;</span><br><span class="line">	F() <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">type</span> A <span class="keyword">struct</span>&#123;</span><br><span class="line">	x <span class="keyword">int</span></span><br><span class="line">	y <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(a *A)</span> <span class="title">F</span><span class="params">()</span> <span class="title">int</span></span> &#123;</span><br><span class="line">	z := a.x + a.y</span><br><span class="line">	<span class="keyword">return</span> z</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">BenchmarkX</span><span class="params">(b *testing.B)</span></span> &#123;</span><br><span class="line">	b.ReportAllocs()</span><br><span class="line">	<span class="keyword">for</span> i:=<span class="number">0</span>; i&lt;b.N; i++ &#123;</span><br><span class="line">		<span class="comment">// F() 会被内联 0.36 ns/op</span></span><br><span class="line">		<span class="comment">// var a = &amp;A&#123;&#125;</span></span><br><span class="line">		<span class="comment">// a.F()</span></span><br><span class="line">		<span class="comment">// 对Interface的方法调用不能被内联 18.4 ns/op</span></span><br><span class="line">		<span class="keyword">var</span> i I = &amp;A&#123;&#125;</span><br><span class="line">		i.F()</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>对于一些底层基础的结构体，比如我们地图上的实体基础信息Entity，包含ID，坐标，碰撞半径等最基础的信息，我们为其抽象了一个接口IEntity，它只提供简单的对字段的访问和设置，最近再考虑将IEntity去掉，直接用Struct，借助于内联，字段访问会快一个数量级。</p>
 <p>另外，针对目前Go Interface 内联做得不够好的情况，一个比较好的实践是，让你的公用API返回具体类型而非Interface，如<code>etcdclient.New</code>，<code>grpc.NewServer</code>等都是如此实践的，它们通过私有字段加公开方法让外部用起来像Interface一样，但数据逻辑层可能实践起来会有一些难度，因为Go的访问控制太弱了…</p>
-<h2 id="五-小结"><a href="#五-小结" class="headerlink" title="五. 小结"></a>五. 小结</h2><ol>
-<li>请确保对先压测，再根据性能瓶颈采取上述优化，并做前后对比测试</li>
-<li>建议借助Go静态代码检测工具如<code>golangci-lint</code>做静态代码分析，根据项目组实践选择合适的插件，以增强代码质量，减少BUG，并提升部分性能</li>
-<li>关注和更新Go最新版本可能是最”廉价”的优化手段，但有时很有效。如GC，编译器优化，defer等特性都还在不断改进，毕竟Go还很年轻</li>
-<li>通用的优化实践和技巧不在这里讨论，如数据结构，算法，异步，并发等，但不代表它们不重要</li>
-</ol>
 
       
     </div>
@@ -578,8 +553,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2019/05/programing-paradigm/" rel="next" title="编程范式游记">
-                <i class="fa fa-chevron-left"></i> 编程范式游记
+              <a href="/2019/09/gs-pressure-test/" rel="next" title="如何给GS做压测">
+                <i class="fa fa-chevron-left"></i> 如何给GS做压测
               </a>
             
           </div>
@@ -667,7 +642,7 @@
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">116</span>
+                    <span class="site-state-item-count">117</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>
@@ -827,7 +802,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-不要过早优化"><span class="nav-text">一. 不要过早优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-压测方法"><span class="nav-text">二. 压测方法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-压测机器人"><span class="nav-text">1. 压测机器人</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-压测用例"><span class="nav-text">2. 压测用例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-压测统计"><span class="nav-text">3. 压测统计</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-内存优化"><span class="nav-text">三. 内存优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-内存复用"><span class="nav-text">1. 内存复用</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-1-sync-Pool"><span class="nav-text">1.1 sync.Pool</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#1-2-leakybuf"><span class="nav-text">1.2 leakybuf</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#1-3-逻辑对象复用"><span class="nav-text">1.3 逻辑对象复用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#1-4-原地复用"><span class="nav-text">1.4. 原地复用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-预分配"><span class="nav-text">2. 预分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-避免不必要的分配"><span class="nav-text">3. 避免不必要的分配</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#3-1-减少返回值逃逸"><span class="nav-text">3.1 减少返回值逃逸</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-2-化指针为值"><span class="nav-text">3.2 化指针为值</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-3-字符串操作优化"><span class="nav-text">3.3 字符串操作优化</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四-逃逸和内联"><span class="nav-text">四 逃逸和内联</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-逃逸分析"><span class="nav-text">1. 逃逸分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-内联"><span class="nav-text">2. 内联</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五-小结"><span class="nav-text">五. 小结</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-不要过早优化"><span class="nav-text">一. 不要过早优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-内存优化"><span class="nav-text">二. 内存优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-内存复用"><span class="nav-text">1. 内存复用</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-1-sync-Pool"><span class="nav-text">1.1 sync.Pool</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#1-2-leakybuf"><span class="nav-text">1.2 leakybuf</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#1-3-逻辑对象复用"><span class="nav-text">1.3 逻辑对象复用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#1-4-原地复用"><span class="nav-text">1.4. 原地复用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-预分配"><span class="nav-text">2. 预分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-避免不必要的分配"><span class="nav-text">3. 避免不必要的分配</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#3-1-减少返回值逃逸"><span class="nav-text">3.1 减少返回值逃逸</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-2-化指针为值"><span class="nav-text">3.2 化指针为值</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-3-字符串操作优化"><span class="nav-text">3.3 字符串操作优化</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-逃逸和内联"><span class="nav-text">三 逃逸和内联</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-逃逸分析"><span class="nav-text">1. 逃逸分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-内联"><span class="nav-text">2. 内联</span></a></li></ol></li></ol></div>
             
 
           </div>

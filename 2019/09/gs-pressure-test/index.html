@@ -108,20 +108,25 @@
 
 
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="wudaijun&#39;s blog">
-<meta property="og:url" content="http://wudaijun.com/tags/go/index.html">
+  <meta name="description" content="简单谈谈我们最近是如何给GS做压测的。 1. 压测机器人压测机器人需要满足如下几个条件:  异步请求: 异步才能模拟真实的客户端请求和压力 数据同步: 像客户端一样缓存和处理服务器响应数据，这样才能做好有效请求和可重入 可重入: 机器人应该可以在任何时候关闭/重启，而不应该假设初始状态(比如只有注册的时候能跑)">
+<meta name="keywords" content="gameserver">
+<meta property="og:type" content="article">
+<meta property="og:title" content="如何给GS做压测">
+<meta property="og:url" content="http://wudaijun.com/2019/09/gs-pressure-test/index.html">
 <meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="简单谈谈我们最近是如何给GS做压测的。 1. 压测机器人压测机器人需要满足如下几个条件:  异步请求: 异步才能模拟真实的客户端请求和压力 数据同步: 像客户端一样缓存和处理服务器响应数据，这样才能做好有效请求和可重入 可重入: 机器人应该可以在任何时候关闭/重启，而不应该假设初始状态(比如只有注册的时候能跑)">
 <meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-09-25T08:36:59.000Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="wudaijun&#39;s blog">
+<meta name="twitter:title" content="如何给GS做压测">
+<meta name="twitter:description" content="简单谈谈我们最近是如何给GS做压测的。 1. 压测机器人压测机器人需要满足如下几个条件:  异步请求: 异步才能模拟真实的客户端请求和压力 数据同步: 像客户端一样缓存和处理服务器响应数据，这样才能做好有效请求和可重入 可重入: 机器人应该可以在任何时候关闭/重启，而不应该假设初始状态(比如只有注册的时候能跑)">
 
 
 
 
 
 
-  <link rel="canonical" href="http://wudaijun.com/tags/go/"/>
+  <link rel="canonical" href="http://wudaijun.com/2019/09/gs-pressure-test/"/>
 
 
 
@@ -131,7 +136,7 @@
   };
 </script>
 
-  <title>标签: go | wudaijun's blog</title>
+  <title>如何给GS做压测 | wudaijun's blog</title>
   
 
 
@@ -178,7 +183,7 @@
     
   
 
-  <div class="container sidebar-position-left ">
+  <div class="container sidebar-position-left page-post-detail">
     <div class="headband"></div>
 
     <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
@@ -235,7 +240,7 @@
         
         
           
-          <li class="menu-item menu-item-tags menu-item-active">
+          <li class="menu-item menu-item-tags">
     <a href="/tags/" rel="section">
       <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
   </li>
@@ -315,560 +320,228 @@
           
             
 
-    
-    
-      
-      
-    
-      
-      
-    
-      
-      
-    
-      
-      
-    
-      
-      
-    
-    
-
-  
-
-
           
           <div id="content" class="content">
             
 
+  <div id="posts" class="posts-expand">
+    
+
+  
+
   
   
   
-  <div class="post-block tag">
 
-    <div id="posts" class="posts-collapse">
-      <div class="collection-title">
-        <h1>go<small>标签</small>
-        </h1>
-      </div>
-
-      
-        
+  
 
   <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2019/09/gs-pressure-test/">
 
-      <h2 class="post-title">
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+
+    
+      <header class="post-header">
+
         
-            <a class="post-title-link" href="/2019/09/go-performance-optimization/" itemprop="url">
-              
-                <span itemprop="name">聊聊Go内存优化和相关底层机制</span>
-              
-            </a>
         
-      </h2>
+          <h1 class="post-title" itemprop="name headline">如何给GS做压测
+              
+            
+          </h1>
+        
 
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2019-09-14T00:00:00+08:00"
-              content="2019-09-14" >
-          09-14
-        </time>
-      </div>
+        <div class="post-meta">
+          <span class="post-time">
 
-    </header>
-  </article>
+            
+            
+            
 
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-09-13 00:00:00" itemprop="dateCreated datePublished" datetime="2019-09-13T00:00:00+08:00">2019-09-13</time>
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/09/gs-pressure-test/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2019/09/gs-pressure-test/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
 
       
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2018/11/scheduler-blabla/" itemprop="url">
-              
-                <span itemprop="name">再谈调度</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2018-11-30T00:00:00+08:00"
-              content="2018-11-30" >
-          11-30
-        </time>
-      </div>
-
-    </header>
-  </article>
-
+      
 
       
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2018/10/go-mod-intro/" itemprop="url">
-              
-                <span itemprop="name">go mod 依赖管理</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2018-10-25T00:00:00+08:00"
-              content="2018-10-25" >
-          10-25
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2018/08/go-is-not-good/" itemprop="url">
-              
-                <span itemprop="name">Go 的一些"坑"</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2018-08-25T00:00:00+08:00"
-              content="2018-08-25" >
-          08-25
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2018/07/go-package-goroutine-practice/" itemprop="url">
-              
-                <span itemprop="name">Go package和goroutine的一些理解和实践</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2018-07-14T00:00:00+08:00"
-              content="2018-07-14" >
-          07-14
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2018/04/go-pprof/" itemprop="url">
-              
-                <span itemprop="name">go pprof 性能分析</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2018-04-04T00:00:00+08:00"
-              content="2018-04-04" >
-          04-04
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2018/02/go-sync-map-implement/" itemprop="url">
-              
-                <span itemprop="name">Go sync.Map 实现</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2018-02-09T00:00:00+08:00"
-              content="2018-02-09" >
-          02-09
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2018/01/go-interface-implement/" itemprop="url">
-              
-                <span itemprop="name">Go Interface 实现</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2018-01-28T00:00:00+08:00"
-              content="2018-01-28" >
-          01-28
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2018/01/go-scheduler/" itemprop="url">
-              
-                <span itemprop="name">Go 调度模型</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2018-01-17T00:00:00+08:00"
-              content="2018-01-17" >
-          01-17
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2017/12/gc-study/" itemprop="url">
-              
-                <span itemprop="name">常见GC算法及Golang GC</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2017-12-03T00:00:00+08:00"
-              content="2017-12-03" >
-          12-03
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2017/10/go-select/" itemprop="url">
-              
-                <span itemprop="name">go select机制与常见的坑</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2017-10-12T00:00:00+08:00"
-              content="2017-10-12" >
-          10-12
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2017/08/go-conetxt-usage/" itemprop="url">
-              
-                <span itemprop="name">用context库规范化Go的异步调用</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2017-08-19T00:00:00+08:00"
-              content="2017-08-19" >
-          08-19
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2017/05/go-vs-erlang/" itemprop="url">
-              
-                <span itemprop="name">Go vs Erlang</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2017-05-31T00:00:00+08:00"
-              content="2017-05-31" >
-          05-31
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2017/01/go-command-notes/" itemprop="url">
-              
-                <span itemprop="name">Go 常用命令</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2017-01-20T00:00:00+08:00"
-              content="2017-01-20" >
-          01-20
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2016/09/goa-intro/" itemprop="url">
-              
-                <span itemprop="name">goa - go web框架</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2016-09-20T00:00:00+08:00"
-              content="2016-09-20" >
-          09-20
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2016/09/go-notes-2-procedural-programming/" itemprop="url">
-              
-                <span itemprop="name">Go 笔记(2) 顺序编程</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2016-09-09T00:00:00+08:00"
-              content="2016-09-09" >
-          09-09
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2016/09/go-notes-3-object-oriented/" itemprop="url">
-              
-                <span itemprop="name">Go 笔记(3) 面向对象和接口</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2016-09-09T00:00:00+08:00"
-              content="2016-09-09" >
-          09-09
-        </time>
-      </div>
-
-    </header>
-  </article>
-
-
-      
-        
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <h2 class="post-title">
-        
-            <a class="post-title-link" href="/2016/09/go-notes-1-datastructures/" itemprop="url">
-              
-                <span itemprop="name">Go 笔记(1) 常用数据结构及实现</span>
-              
-            </a>
-        
-      </h2>
-
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated"
-              datetime="2016-09-09T00:00:00+08:00"
-              content="2016-09-09" >
-          09-09
-        </time>
-      </div>
-
-    </header>
-  </article>
-
+        <p>简单谈谈我们最近是如何给GS做压测的。</p>
+<h3 id="1-压测机器人"><a href="#1-压测机器人" class="headerlink" title="1. 压测机器人"></a>1. 压测机器人</h3><p>压测机器人需要满足如下几个条件:</p>
+<ol>
+<li>异步请求: 异步才能模拟真实的客户端请求和压力</li>
+<li>数据同步: 像客户端一样缓存和处理服务器响应数据，这样才能做好有效请求和可重入</li>
+<li>可重入: 机器人应该可以在任何时候关闭/重启，而不应该假设初始状态(比如只有注册的时候能跑)</li>
+</ol>
+<a id="more"></a>
+<h3 id="2-压测用例"><a href="#2-压测用例" class="headerlink" title="2. 压测用例"></a>2. 压测用例</h3><p>压测用例可以从这几个方面来考虑:</p>
+<ol>
+<li>服务器比较耗时的API: 如寻路，战斗等</li>
+<li>玩家越多越耗时的逻辑: 如视野同步，消息广播等</li>
+<li>玩家日常操作频繁的行为: 如城建升级，联盟加入退出，以尽可能覆盖如任务，BUFF，排行榜等支撑系统</li>
+</ol>
+<h3 id="3-压测统计"><a href="#3-压测统计" class="headerlink" title="3. 压测统计"></a>3. 压测统计</h3><p>在做压测中，我们会从如下几个方面来获取性能指标:</p>
+<ol>
+<li>函数级分析: go prof简单易用，参考<a href="https://wudaijun.com/2018/04/go-pprof/">go pprof性能分析</a></li>
+<li>消息级统计: 统计每个逻辑Actor(如地图，玩家)对单次请求的处理时间(最大/平均/次数)，消息是Actor之间交互的最小单位，每个消息处理过程是一条函数调用链</li>
+<li>服务器请求统计: 统计每条客户端请求从网关层收到请求到网关层发出响应的时间差(最大/平均/次数)，相比消息级统计，服务器请求统计包含了多个Actor处理请求相关若干消息的时间，以及Actor之间的路由和通信开销</li>
+<li>客户端请求统计: 统计从请求发出到收到响应的处理时间(最大/平均/次数)，相比服务器消息统计，多了网络层的时延和机器人本身的处理时间，这是最接近客户端实际体验的指标</li>
+</ol>
 
       
     </div>
 
+    
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/gameserver/" rel="tag"># gameserver</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/05/programing-paradigm/" rel="next" title="编程范式游记">
+                <i class="fa fa-chevron-left"></i> 编程范式游记
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/09/go-performance-optimization/" rel="prev" title="聊聊Go内存优化和相关底层机制">
+                聊聊Go内存优化和相关底层机制 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
   </div>
   
   
   
+  </article>
 
-  
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
 
 
           </div>
           
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
 
         </div>
         
@@ -889,8 +562,17 @@
       
 
       
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
 
-      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+      <section class="site-overview-wrap sidebar-panel">
         <div class="site-overview">
           <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
             
@@ -1060,6 +742,22 @@
       </section>
 
       
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-压测机器人"><span class="nav-text">1. 压测机器人</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-压测用例"><span class="nav-text">2. 压测用例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-压测统计"><span class="nav-text">3. 压测统计</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
 
       
 
@@ -1193,6 +891,10 @@
 
 
   
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.3.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.3.0"></script>
+
+
 
   
 
