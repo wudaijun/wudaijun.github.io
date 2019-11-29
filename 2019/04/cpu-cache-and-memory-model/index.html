@@ -122,7 +122,7 @@
 <meta property="og:image" content="http://wudaijun.com/assets/image/201904/cache-with-store-buffer.png">
 <meta property="og:image" content="http://wudaijun.com/assets/image/201904/cache-with-store-forwarding.png">
 <meta property="og:image" content="http://wudaijun.com/assets/image/201904/cache-with-invalid-queue.png">
-<meta property="og:updated_time" content="2019-05-08T15:03:56.000Z">
+<meta property="og:updated_time" content="2019-11-29T06:05:02.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Cache一致性和内存模型">
 <meta name="twitter:description" content="本文主要谈谈CPU Cache的设计，内存屏障的原理和用法，最后简单聊聊内存一致性。 我们都知道存储器是分层级的，从CPU寄存器到硬盘，越靠近CPU的存储器越小越快，离CPU越远的存储器越大但越慢，即所谓存储器层级(Memory Hierarchy)。以下是计算机内各种存储器的容量和访问速度的典型值。     存储器类型 容量 特性 速度     CPU寄存器 几十到几百Bytes 数据电路触发器">
@@ -632,7 +632,8 @@
 <p>在这种情况下，可能出现全局执行序列为: D A B C，出现r1=r2=42的情况。<code>memory_order_relaxed</code>相当于没有加内存屏障。除了<code>memory_order_relaxed</code>外，还有:</p>
 <ul>
 <li><code>memory_order_acquire</code>: 在该原子变量的读操作前插入LoadLoad屏障，在读操作后插入LoadStore。即Load之后的所有读写操作不能重排到Load之前</li>
-<li><code>memory_order_release</code>: 在该原子变量的写操作前插入StoreStore屏障，在写操作后插入StoreLoad屏障。即Store之前的所有读写操作不能重排到Store之后</li>
+<li><code>memory_order_consume</code>: acquire限制了Load之后的所有读写操作向前重排，而consume则只限制相关联的读写操作(单线程语义内)</li>
+<li><code>memory_order_release</code>: 在该原子变量的写操作前插入LoadStore屏障，在写操作后插入StoreStore屏障。即Store之前的所有读写操作不能重排到Store之后</li>
 <li><code>memory_order_acq_rel</code>: 相当于 <code>memory_order_acquire</code> + <code>memory_order_release</code></li>
 <li><code>memory_order_seq_cst</code>: 最强的顺序一致性，在<code>memory_order_acq_rel</code>的基础上，支持单独全序，即所有线程以同一顺序观测到该原子变量的所有修改</li>
 </ul>
@@ -658,6 +659,7 @@
 <li><code>Strong Memory Model</code>: 如X86/64，强内存模型能够保证每条指令<code>acquire and release</code>语义，换句话说，它使用了LoadLoad/LoadStore/StoreStore三种内存屏障，即避免了四种乱序中的三种，仍然保留StoreLoad的重排，对于代码片段7来说，它仍然可能出现r1=r2=42的情况</li>
 <li><code>Sequential Consistency</code>: 最强的一致性，理想中的模型，在这种内存模型中，没有乱序的存在。如今很难找到一个硬件体系结构支持顺序一致性，因为它会严重限制硬件对CPU执行效率的优化(对寄存器/Cache/流水线的使用)。</li>
 </ul>
+<p>前面说到C++ atomic内存模型属于语言级的约束定义，它建立在处理器平台内存模型之上，如果处理器平台是SC(Sequential Consistency)的，那么语言级无论如何定义也无法将硬件改为更松散的内存模型。语言级的内存模型还有一个重要作用就是限制编译器reorder，即生成编译器屏障(fence)。因此即使处理器平台是SC的，语言层面定义为relaxed也可能因为编译器reorder导致结果不如预期。</p>
 <h3 id="Summary"><a href="#Summary" class="headerlink" title="Summary"></a>Summary</h3><p>本文比较杂乱，前面主要介绍CPU Cache结构和Cache一致性问题，引出内存屏障的概念。后面顺便简单谈了谈指令乱序和内存一致性。</p>
 <p>实际的CPU Cache结构比上面阐述的要复杂得多，其核心的优化理念都是化同步为异步，然后再去处理异步下的一致性问题(处理不了就交给开发者…)。尽管异步会带来更多的问题，但它仍然是达成高吞吐量的必经之路。硬件方面的结构优化到一定程度了，CPU/编译器就开始打应用层代码的主意: 指令重排。</p>
 <p>对开发者来说，应用程序可以通过封装好的mutex完成大部分的并发控制，而无需关注底层用了哪些内存屏障，各平台的内存一致性等细节。但是在使用比mutex更底层的同步机制(如atomic, volatile, memory-barrier, lock-free等)时，就要务必小心。从原子性，可见性，顺序性等方面确保代码执行结果如预期。</p>
@@ -666,6 +668,7 @@
 <li><a href="http://irl.cs.ucla.edu/~yingdi/web/paperreading/whymb.2010.06.07c.pdf" target="_blank" rel="noopener">Memory Barriers: a Hardware View for Software Hackers</a></li>
 <li><a href="https://preshing.com/20120930/weak-vs-strong-memory-models/" target="_blank" rel="noopener">Weak vs. Strong Memory Models</a></li>
 <li><a href="https://preshing.com/20120913/acquire-and-release-semantics/" target="_blank" rel="noopener">Acquire and Release Semantics</a></li>
+<li><a href="https://www.zhihu.com/question/24301047" target="_blank" rel="noopener">如何理解 C++11 的六种 memory order？</a></li>
 </ol>
 
       

@@ -116,7 +116,7 @@
 <meta property="og:site_name" content="wudaijun&#39;s blog">
 <meta property="og:description" content="本文记录最近做战斗系统的一些心得和思考，由于我们的战斗系统是回合制的，与大部分回合制游戏一样，需要服务器计算战斗，客户端以战报的方式回放。这里探讨一下服务端战斗系统的设计思路，实现一个灵活，可配置，扩展性强的战斗系统。 战斗流程战斗地图是一个X*Y的矩阵，每个参与者(Fighter)初始位于其中一个格子上。战斗开始后，按照回合迭代，达到胜负条件或最大回合数则战斗结束。回合内，英雄按照出手顺序先后行">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2018-08-31T06:18:01.000Z">
+<meta property="og:updated_time" content="2019-10-07T13:52:33.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="探讨服务端回合制战斗系统">
 <meta name="twitter:description" content="本文记录最近做战斗系统的一些心得和思考，由于我们的战斗系统是回合制的，与大部分回合制游戏一样，需要服务器计算战斗，客户端以战报的方式回放。这里探讨一下服务端战斗系统的设计思路，实现一个灵活，可配置，扩展性强的战斗系统。 战斗流程战斗地图是一个X*Y的矩阵，每个参与者(Fighter)初始位于其中一个格子上。战斗开始后，按照回合迭代，达到胜负条件或最大回合数则战斗结束。回合内，英雄按照出手顺序先后行">
@@ -483,7 +483,7 @@ DelEventListener(ListenerId)
 </ul>
 <p>目前我们所讨论的Buff都是独立的，有自己生命周期的个体，通过Event注册回调与战斗主流程解耦。但实际上Buff之间是有相互关联的，主要分为三种：Buff属性作用，Buff冲突免疫关系和Buff生命周期，下面分别介绍。</p>
 <h3 id="2-Buff属性作用"><a href="#2-Buff属性作用" class="headerlink" title="2. Buff属性作用"></a>2. Buff属性作用</h3><p>仍然是我们前面的SkillA技能，我们现在来看如何实现伤害翻倍这个Buff，该Buff是SkillA对应的Buff生成的子Buff，它应该被设计为可公用的伤害增加Buff，这个Buff的作用是影响伤害结算流程，按照我们之前的事件注册回调思路，我们可以注册伤害结算这个Event，接收当前算出的伤害，然后*200%并返回新伤害值。如BuffA提升10%伤害，BuffB增加20点真实伤害，BuffC降低20%的伤害，那么最终得到伤害为: <code>(基础伤害*110%+20)*80%</code>，这种方案默认公式计算的顺序与Buff挂载顺序一致，，而正确的伤害值应该为<code>(基础伤害+20)*(1+10%-20%)</code>，如果要处理这种优先级关系，需要遍历所有注册伤害结算Event的Handler，按照类型排序，再依次处理，如果一旦有同类Buff添加或移除，又要重新计算。这样公式与事件管理做到了一起，是不稳定的。</p>
-<p>BuffA,BuffB,BuffC之所以会有复杂的公式计算，一个原因在于它们作用于同一属性的不同维度，BuffA,BuffC作用于伤害值的比例增加这一维度，而BuffB作用于伤害值的绝对值增长这一维度，我们可以将它们分开，作为Fighter两个独虚拟属性ATTR_DAMAGE_ADD, ATTR_DAMAGE_MUL来维护，允许Buff对其修改，但此时的修改是只有加减关系的，避免了优先级的问题，在伤害结算时，通过公式计算: (基础伤害+ATTR_DMAGE_ADD)*ATTR_DAMAGE_MUL即可。</p>
+<p>BuffA,BuffB,BuffC之所以会有复杂的公式计算，一个原因在于它们作用于同一属性的不同维度，BuffA,BuffC作用于伤害值的比例增加这一维度，而BuffB作用于伤害值的绝对值增长这一维度，我们可以将它们分开，作为Fighter两个独虚拟属性ATTR_DAMAGE_ABS, ATTR_DAMAGE_PCT来维护，允许Buff对其修改，但此时的修改是只有加减关系的，避免了优先级的问题，在伤害结算时，通过公式计算: (基础伤害+ATTR_DMAGE_ABS)*ATTR_DAMAGE_PCT即可。</p>
 <p>整个交互流程为: </p>
 <ul>
 <li>战斗流程抛出事件 -&gt; 事件系统 -&gt;Buff系统 -&gt; Fighter属性维度</li>
