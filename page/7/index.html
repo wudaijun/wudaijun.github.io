@@ -336,6 +336,181 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/06/mongodb-read-write/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2016/06/mongodb-read-write/" itemprop="url">
+                  MongoDB 读写要点
+                </a>
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2016-06-23 00:00:00" itemprop="dateCreated datePublished" datetime="2016-06-23T00:00:00+08:00">2016-06-23</time>
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/database/" itemprop="url" rel="index"><span itemprop="name">database</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2016/06/mongodb-read-write/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2016/06/mongodb-read-write/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <h2 id="一-查询"><a href="#一-查询" class="headerlink" title="一. 查询"></a>一. 查询</h2><h3 id="1-1-“多段式”查询"><a href="#1-1-“多段式”查询" class="headerlink" title="1.1 “多段式”查询"></a>1.1 “多段式”查询</h3><p>当执行find操作的时候，只是返回一个游标，并不立即查询数据库，这样在执行之前可以给查询附加额外选项。几乎所有游标对象的方法都返回游标本身，因此可以按任意顺序组成方法链。以下查询是等价的：</p>
+<pre><code>&gt; var cursor = db.foo.find().sort({&quot;x&quot;:1}).limit(1).skip(10)
+&gt; var cursor = db.foo.find().limit(1).sort({&quot;x&quot;:1}).skip(10)
+&gt; var cursor = db.foo.find().skip(10).limit(1).sort({&quot;x&quot;:1})
+</code></pre><p>此时，我们只是构造了一个查询，并没有执行实际操作，当我们执行：</p>
+<pre><code>&gt; cursor.hasNext()
+</code></pre><p>这时，查询被发往服务器，sell立即获取第一个块(前101个文档或前1M数据，取其小者)，这样下次调用next或hasNext时，就不必再次向服务器发起一次查询。客户端用完了第一组结果，shell会再次向服务器获取下一组结果(大小不超过4MB)， 直至结果全部返回。可通过<a href="https://docs.mongodb.com/manual/reference/method/cursor.batchSize/#cursor.batchSize" target="_blank" rel="noopener">batchSize</a>设置游标返回的块的文档数量。</p>
+<p>注：如果在shell中，没有将返回的游标赋给一个var，shell将自动迭代游标20次，显示出前20调记录。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/2016/06/mongodb-read-write/" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/06/mongodb-sharding/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1856,175 +2031,6 @@ Eshell V8
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/01/erlang-server-design5-server-node/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2016/01/erlang-server-design5-server-node/" itemprop="url">
-                  开发笔记(5) cluster_server集群优化
-                </a>
-              
-            
-          </h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
-
-              <time title="创建时间：2016-01-08 00:00:00" itemprop="dateCreated datePublished" datetime="2016-01-08T00:00:00+08:00">2016-01-08</time>
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a></span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-              <span class="post-comments-count">
-                <span class="post-meta-divider">|</span>
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-comment-o"></i>
-                </span>
-                <a href="/2016/01/erlang-server-design5-server-node/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2016/01/erlang-server-design5-server-node/" itemprop="commentCount"></span>
-                </a>
-              </span>
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>在使用<a href="http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/">cluster_server</a>做gameserver后台集群支撑的过程中，逐步暴露出一些问题，在此记之。</p>
-<h4 id="1-节点交互效率低下"><a href="#1-节点交互效率低下" class="headerlink" title="1. 节点交互效率低下"></a>1. 节点交互效率低下</h4><p>我们按照业务职责将集群节点分为，agent，player，map，alliance，battle等，这些节点可以在一台物理机上(操作系统进程间交互)，也有可能部署到不同的物理机上(网络IO交互)，而玩家一个业务逻辑可能涉及到多个节点，形成一个节点交互链：如玩家在大地图上进行一场战斗，按照流程需要走：agent -&gt; player -&gt; map -&gt; battle -&gt; map -&gt; player -&gt; agent。整个过程都是异步的。这种交互是频繁的且低效的。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/2016/01/erlang-server-design5-server-node/" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -2076,7 +2082,7 @@ Eshell V8
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">117</span>
+                    <span class="site-state-item-count">118</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>
@@ -2125,7 +2131,9 @@ Eshell V8
                     
                       
                     
-                    <span class="site-state-item-count">18</span>
+                      
+                    
+                    <span class="site-state-item-count">19</span>
                     <span class="site-state-item-name">分类</span>
                   </a>
                 </div>
@@ -2200,7 +2208,9 @@ Eshell V8
                     
                       
                     
-                    <span class="site-state-item-count">31</span>
+                      
+                    
+                    <span class="site-state-item-count">32</span>
                     <span class="site-state-item-name">标签</span>
                   </a>
                 </div>
@@ -2240,7 +2250,7 @@ Eshell V8
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
   <span class="with-love" id="animate">
     <i class="fa fa-user"></i>
   </span>
