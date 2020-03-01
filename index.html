@@ -445,8 +445,8 @@
 
       
         
-          <p>之前被同事安利了很多次Rust，周末没事去<a href="https://kaisery.github.io/trpl-zh-cn/title-page.html" target="_blank" rel="noopener">Rust官方文档</a>学习了下，记录一些个人粗浅理解。</p>
-<h3 id="一-Rust中的所有权系统"><a href="#一-Rust中的所有权系统" class="headerlink" title="一. Rust中的所有权系统"></a>一. Rust中的所有权系统</h3><p>要说Rust最有别于其它语言的特性，应该就是它的所有权系统了。要谈所有权系统，从GC谈起是个不错的切入点，我们众所周知的程序语言GC只要包含两种: 手动GC和自动GC，它们各有利弊，总的来说是运行时效率和开发效率之前的权衡取舍，由于现代硬件设施发展速度很快，运行时效率越来越不是问题，因此自动GC逐渐成为新语言的标配。而Rust的GC，按照我的理解，可以将其看做半自动GC，即开发者在代码中通过所有权约束来明确变量的生命周期，这样Rust在编译器就已经知道内存应该何时释放，也就不需要运行时通过复杂的<a href="[常见GC算法](https://wudaijun.com/2017/12/gc-study/">GC算法</a>去解析变量的引用关系，对运行时几乎零负担，这也是Rust敢号称系统级编程语言，运行时效率叫板C/C++的底气来源。</p>
+          <p>之前被同事安利了很多次Rust，周末没事去<a href="https://kaisery.github.io/trpl-zh-cn/title-page.html" target="_blank" rel="noopener">Rust官方文档</a>学习了下，记录一些对Rust语言粗浅理解。</p>
+<h3 id="一-所有权系统"><a href="#一-所有权系统" class="headerlink" title="一. 所有权系统"></a>一. 所有权系统</h3><p>要说Rust最有别于其它语言的特性，应该就是它的所有权系统了。要谈所有权系统，从GC谈起是个不错的切入点，我们众所周知的程序语言GC只要包含两种: 手动GC和自动GC，它们各有利弊，总的来说是运行时效率和开发效率之前的权衡取舍，由于现代硬件设施发展速度很快，运行时效率越来越不是问题，因此自动GC逐渐成为新语言的标配。而Rust的GC，按照我的理解，可以将其看做半自动GC，即开发者在代码中通过所有权约束来明确变量的生命周期，这样Rust在编译器就已经知道内存应该何时释放，也就不需要运行时通过复杂的<a href="[常见GC算法](https://wudaijun.com/2017/12/gc-study/">GC算法</a>去解析变量的引用关系，对运行时几乎零负担，这也是Rust敢号称系统级编程语言，运行时效率叫板C/C++的底气来源。</p>
           <!--noindex-->
           <div class="post-button text-center">
             <a class="btn" href="/2020/02/rust-basic/" rel="contents">
