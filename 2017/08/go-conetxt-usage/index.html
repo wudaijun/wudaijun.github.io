@@ -116,7 +116,7 @@
 <meta property="og:site_name" content="wudaijun&#39;s blog">
 <meta property="og:description" content="常见并发模型之前对比过Go和Erlang的并发模型，提到了Go的优势在于流控，下面列举几种常见的流控: Ping-Pong这通常针对于两个goroutine之间进行简单的数据交互和协作，我们常用的RPC也属于此类，通过channel的类型可以灵活实现交互方式:  同步单工: 单个双向非缓冲channel 同步双工: 多个单向非缓冲channel 异步双工: 多个单向缓冲channel">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2018-08-02T05:52:15.000Z">
+<meta property="og:updated_time" content="2020-07-23T12:46:22.712Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="用context库规范化Go的异步调用">
 <meta name="twitter:description" content="常见并发模型之前对比过Go和Erlang的并发模型，提到了Go的优势在于流控，下面列举几种常见的流控: Ping-Pong这通常针对于两个goroutine之间进行简单的数据交互和协作，我们常用的RPC也属于此类，通过channel的类型可以灵活实现交互方式:  同步单工: 单个双向非缓冲channel 同步双工: 多个单向非缓冲channel 异步双工: 多个单向缓冲channel">
@@ -468,7 +468,7 @@ func sq(in &lt;-chan int) &lt;-chan int {
 <pre><code>sq(sq(sq(ch)))
 </code></pre><p>在实际应用中，如DB读写，网络读写等外部阻塞操作通常都放到单独的流水线去做，下游主goroutine可以灵活处理IO结果(如通过select完成IO复用)。</p>
 <h4 id="扇入扇出"><a href="#扇入扇出" class="headerlink" title="扇入扇出"></a>扇入扇出</h4><p>流水线工作通常是一对一的”工作对接”，通过select可以达成IO复用，比如GS同时处理网络消息，RPC调用，Timer消息等，这其实就是简单的扇入模型，扇出模型也比较常见，比如在对一些无状态的任务做分发时，可以让多个goroutine处理一个channel任务队列上的数据，最大程度地提升处理效率。</p>
-<p>上面三个模式是应用最常用到的，因此不再举例具体说明，<a href="http://strucoder.com/2016/03/15/gozhong-de-bing-fa-ke-shi-hua/" target="_blank" rel="noopener">Go并发可视化</a>这篇文章很好地归纳和总结了这些模型，推荐一读。</p>
+<p>上面三个模式是应用最常用到的，因此不再举例具体说明，<a href="https://studygolang.com/articles/11908" target="_blank" rel="noopener">Go并发可视化</a>这篇文章很好地归纳和总结了这些模型，推荐一读。</p>
 <h3 id="交互规范"><a href="#交互规范" class="headerlink" title="交互规范"></a>交互规范</h3><p>上面只所以提出这三种模型主要是为了导出接下来的问题，当用到多个goroutine时，如何协调它们的工作：</p>
 <h4 id="如何正确关闭其它goroutine"><a href="#如何正确关闭其它goroutine" class="headerlink" title="如何正确关闭其它goroutine"></a>如何正确关闭其它goroutine</h4><p>这类问题的通常情形是：当某个goroutine遇到异常或错误，需要退出时，如何通知其它goroutine，或者当服务器需要停止时，如何正常终止整个并发结构，为了简化处理问题模型，以流水线模型为例，在正常情况下，它们会按照正常的流程结束并关闭channel(上游关闭channel，下游range停止迭代，如此反复)，但当某个下游的goroutine遇到错误需要退出，上游是不知道的，它会将channel写满阻塞，channel内存和函数栈内存将导致内存泄露，在常规处理方案中，我们会使用一个done channel来灵活地通知和协调其它goroutine，通过向done channel写入数据(需要知道要关闭多少个goroutine)或关闭channel(所有的读取者都会收到零值，range会停止迭代)。</p>
 <h4 id="如何处理请求超时"><a href="#如何处理请求超时" class="headerlink" title="如何处理请求超时"></a>如何处理请求超时</h4><p>至于超时和请求放弃，通常我们可以通过select来实现单次请求的超时，比如 A -&gt; B -&gt; C 的Ping-Pong异步调用链，我们可以在A中select设置超时，然后在B调用C时也设置超时，这种机制存在如下问题:</p>
