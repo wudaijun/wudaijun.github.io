@@ -116,7 +116,7 @@
 <meta property="og:site_name" content="wudaijun&#39;s blog">
 <meta property="og:description" content="一. 关键指标 慢查询：当MongoDB处理能力不足时，找出系统中的慢查询，分析原因，看能否通过建立索引或重新设计schema改进 内存使用：MongoDB吃内存(特别是MMAPv1)，至少要给MongoDB足够的内存存放索引，最理想的情况是能够存放所有数据。当内存占用过高，或者page faults过高时，考虑能不能给MongoDB预留更多的内存。 磁盘占用：特别是对于MMAPv1，涉及到磁盘占">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2018-08-02T05:52:15.000Z">
+<meta property="og:updated_time" content="2020-08-04T03:22:31.461Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="MongoDB 状态监控">
 <meta name="twitter:description" content="一. 关键指标 慢查询：当MongoDB处理能力不足时，找出系统中的慢查询，分析原因，看能否通过建立索引或重新设计schema改进 内存使用：MongoDB吃内存(特别是MMAPv1)，至少要给MongoDB足够的内存存放索引，最理想的情况是能够存放所有数据。当内存占用过高，或者page faults过高时，考虑能不能给MongoDB预留更多的内存。 磁盘占用：特别是对于MMAPv1，涉及到磁盘占">
@@ -525,6 +525,7 @@ WriteResult({ &quot;nInserted&quot; : 1 })
 </code></pre><p>更多<a href="https://docs.mongodb.com/manual/reference/command/dbStats/" target="_blank" rel="noopener">参考</a>。</p>
 <h3 id="6-db-collStats"><a href="#6-db-collStats" class="headerlink" title="6. db.collStats()"></a>6. db.collStats()</h3><p>返回集合详细信息.</p>
 <p>更多<a href="https://docs.mongodb.com/manual/reference/command/collStats/#dbcmd.collStats" target="_blank" rel="noopener">参考</a>。</p>
+<h3 id="7-db-enableFreeMonitoring"><a href="#7-db-enableFreeMonitoring" class="headerlink" title="7. db.enableFreeMonitoring"></a>7. db.enableFreeMonitoring</h3><p>Mongo官方提供的免费监视服务，可以脱离altas云服务独立使用，<code>db.enableFreeMonitoring()</code>会返回一个URL地址，上面有包含MongoDB内存，CPU，读写，网络，磁盘等全方位的可视化监控。</p>
 
       
     </div>
@@ -823,7 +824,7 @@ WriteResult({ &quot;nInserted&quot; : 1 })
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-关键指标"><span class="nav-text">一. 关键指标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-监控工具"><span class="nav-text">二. 监控工具</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-mongostat"><span class="nav-text">1. mongostat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-db-serverStatus"><span class="nav-text">2. db.serverStatus()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Profiler"><span class="nav-text">3. Profiler</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-db-currentOp"><span class="nav-text">4. db.currentOp()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-db-stats"><span class="nav-text">5. db.stats()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-db-collStats"><span class="nav-text">6. db.collStats()</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-关键指标"><span class="nav-text">一. 关键指标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-监控工具"><span class="nav-text">二. 监控工具</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-mongostat"><span class="nav-text">1. mongostat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-db-serverStatus"><span class="nav-text">2. db.serverStatus()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Profiler"><span class="nav-text">3. Profiler</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-db-currentOp"><span class="nav-text">4. db.currentOp()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-db-stats"><span class="nav-text">5. db.stats()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-db-collStats"><span class="nav-text">6. db.collStats()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-db-enableFreeMonitoring"><span class="nav-text">7. db.enableFreeMonitoring</span></a></li></ol></li></ol></div>
             
 
           </div>
