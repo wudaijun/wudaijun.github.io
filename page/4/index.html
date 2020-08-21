@@ -336,6 +336,185 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/03/docker-swarm/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2018/03/docker-swarm/" itemprop="url">
+                  Docker Swarm - 轻量级容器编排工具
+                </a>
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-03-08 00:00:00" itemprop="dateCreated datePublished" datetime="2018-03-08T00:00:00+08:00">2018-03-08</time>
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/tool/" itemprop="url" rel="index"><span itemprop="name">tool</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2018/03/docker-swarm/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2018/03/docker-swarm/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <h3 id="一-Docker-Machine"><a href="#一-Docker-Machine" class="headerlink" title="一. Docker Machine"></a>一. Docker Machine</h3><p>通常我们使用的Docker都是直接在物理机上安装Docker Engine，docker-machine是一个在虚拟机上安装Docker Engine的工具，使用起来很方便:</p>
+<pre><code># 创建一个docker machine，命名为abc
+&gt; docker-machine create abc
+# 列出当前主机上所有的docker machine
+&gt; docker-machine ls
+# 通过ssh连接到abc
+&gt; docker-machine ssh abc
+# 现在就已经在abc machine上，可以像使用Docker Engine一样正常使用
+docker@abc:~$ docker ps
+# 退出machine
+docker@abc:~$ exit
+</code></pre><p>docker-machine可以用来在本机部署Docker集群，或者在云上部署Docker。docker-machine支持多种虚拟方案，virtualbox，xhyve，hyperv等等。具体使用比较简单，命令参考附录文档。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/2018/03/docker-swarm/" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/02/go-sync-map-implement/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1851,185 +2030,11 @@ none不
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2017/08/go-conetxt-usage/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2017/08/go-conetxt-usage/" itemprop="url">
-                  用context库规范化Go的异步调用
-                </a>
-              
-            
-          </h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
-
-              <time title="创建时间：2017-08-19 00:00:00" itemprop="dateCreated datePublished" datetime="2017-08-19T00:00:00+08:00">2017-08-19</time>
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/go/" itemprop="url" rel="index"><span itemprop="name">go</span></a></span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-              <span class="post-comments-count">
-                <span class="post-meta-divider">|</span>
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-comment-o"></i>
-                </span>
-                <a href="/2017/08/go-conetxt-usage/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2017/08/go-conetxt-usage/" itemprop="commentCount"></span>
-                </a>
-              </span>
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <h3 id="常见并发模型"><a href="#常见并发模型" class="headerlink" title="常见并发模型"></a>常见并发模型</h3><p>之前对比过<a href="http://wudaijun.com/2017/05/go-vs-erlang/">Go和Erlang的并发模型</a>，提到了Go的优势在于流控，下面列举几种常见的流控:</p>
-<h4 id="Ping-Pong"><a href="#Ping-Pong" class="headerlink" title="Ping-Pong"></a>Ping-Pong</h4><p>这通常针对于两个goroutine之间进行简单的数据交互和协作，我们常用的RPC也属于此类，通过channel的类型可以灵活实现交互方式:</p>
-<ul>
-<li>同步单工: 单个双向非缓冲channel</li>
-<li>同步双工: 多个单向非缓冲channel</li>
-<li>异步双工: 多个单向缓冲channel</li>
-</ul>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/2017/08/go-conetxt-usage/" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/3/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/3/">3</a><span class="page-number current">4</span><a class="page-number" href="/page/5/">5</a><span class="space">&hellip;</span><a class="page-number" href="/page/12/">12</a><a class="extend next" rel="next" href="/page/5/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/3/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/3/">3</a><span class="page-number current">4</span><a class="page-number" href="/page/5/">5</a><span class="space">&hellip;</span><a class="page-number" href="/page/13/">13</a><a class="extend next" rel="next" href="/page/5/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -2076,7 +2081,7 @@ none不
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">120</span>
+                    <span class="site-state-item-count">121</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>
@@ -2776,9 +2781,9 @@ none不
       
     
       
-        
-      
     
+      
+        
       
     
       

@@ -336,6 +336,181 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/07/monitor-mongodb/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2016/07/monitor-mongodb/" itemprop="url">
+                  MongoDB 状态监控
+                </a>
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2016-07-05 00:00:00" itemprop="dateCreated datePublished" datetime="2016-07-05T00:00:00+08:00">2016-07-05</time>
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/database/" itemprop="url" rel="index"><span itemprop="name">database</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2016/07/monitor-mongodb/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2016/07/monitor-mongodb/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <h2 id="一-关键指标"><a href="#一-关键指标" class="headerlink" title="一. 关键指标"></a>一. 关键指标</h2><ul>
+<li>慢查询：当MongoDB处理能力不足时，找出系统中的慢查询，分析原因，看能否通过建立索引或重新设计schema改进</li>
+<li>内存使用：MongoDB吃内存(特别是MMAPv1)，至少要给MongoDB足够的内存存放索引，最理想的情况是能够存放所有数据。当内存占用过高，或者page faults过高时，考虑能不能给MongoDB预留更多的内存。</li>
+<li>磁盘占用：特别是对于MMAPv1，涉及到磁盘占用的因素有很多，不合理的schema(文档频繁移动)或集合/文档的删除都可能会导致磁盘空间利用不足。前期需要设计好schema，后期维护也需要定期整理磁盘数据。</li>
+<li>连接数：MongoDB为每个连接分配一个线程，因此连接是占资源的，并且也不是越多连接越好。合理地控制连接数。</li>
+<li>索引不命中：查看所有查询的索引不命中情况，尽量让所有查询都通过索引</li>
+<li>锁等待：锁等待的原因有很多，连接数过多，操作频繁，慢操作，schema设计过于反范式化等，可从上面的原因针对性解决。</li>
+</ul>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/2016/07/monitor-mongodb/" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/06/virtual-memory/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1872,180 +2047,11 @@ Eshell V8
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/03/erlang-distribution-1/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2016/03/erlang-distribution-1/" itemprop="url">
-                  Erlang 分布式系统(1)
-                </a>
-              
-            
-          </h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
-
-              <time title="创建时间：2016-03-17 00:00:00" itemprop="dateCreated datePublished" datetime="2016-03-17T00:00:00+08:00">2016-03-17</time>
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/distributed/" itemprop="url" rel="index"><span itemprop="name">distributed</span></a></span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-              <span class="post-comments-count">
-                <span class="post-meta-divider">|</span>
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-comment-o"></i>
-                </span>
-                <a href="/2016/03/erlang-distribution-1/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2016/03/erlang-distribution-1/" itemprop="commentCount"></span>
-                </a>
-              </span>
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <h3 id="一-分布式计算的八大谬论"><a href="#一-分布式计算的八大谬论" class="headerlink" title="一. 分布式计算的八大谬论"></a>一. 分布式计算的八大谬论</h3><h4 id="1-网络总是可靠的"><a href="#1-网络总是可靠的" class="headerlink" title="1. 网络总是可靠的"></a>1. 网络总是可靠的</h4><p>在分布式系统中，你可能最容易犯下的错误就是认为远程节点是永远可用的，尽管这可以通过添加更多的硬件(比如主从)来实现，但这也带来了冗余性。网络可能随时因为断电，硬件故障，自然因素，人为因素等不可用，在这种情况下，保证你的程序能够在远程节点或者第三方服务不可用时，能够正常运行是非常重要的。Erlang除了能够监测到外部服务失去连接(或者不能响应)之外，没有任何的其它措施，毕竟，除了你自己以外，谁也不知道某个组件有多重要。</p>
-<p>注意，Erlang跨节点的monitor和link操作是比较危险的，因为一旦远程节点不可用，将触发关于该节点所有的远程monitor和link，这可能会引起一场网络风暴，给系统带来意料之外的高负载。在不可靠的网络上构建可靠的分布式应用，需要你随时准备面临这种突发状况，并且保证系统能够继续正常稳定地工作。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/2016/03/erlang-distribution-1/" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/6/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/6/">6</a><span class="page-number current">7</span><a class="page-number" href="/page/8/">8</a><span class="space">&hellip;</span><a class="page-number" href="/page/12/">12</a><a class="extend next" rel="next" href="/page/8/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/6/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/6/">6</a><span class="page-number current">7</span><a class="page-number" href="/page/8/">8</a><span class="space">&hellip;</span><a class="page-number" href="/page/13/">13</a><a class="extend next" rel="next" href="/page/8/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -2092,7 +2098,7 @@ Eshell V8
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">120</span>
+                    <span class="site-state-item-count">121</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>

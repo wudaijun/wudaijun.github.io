@@ -336,6 +336,182 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2019/02/lazy-evaluation/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/02/lazy-evaluation/" itemprop="url">
+                  函数式中的延迟计算及惰性求值
+                </a>
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-02-17 00:00:00" itemprop="dateCreated datePublished" datetime="2019-02-17T00:00:00+08:00">2019-02-17</time>
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/programing/" itemprop="url" rel="index"><span itemprop="name">programing</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/02/lazy-evaluation/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2019/02/lazy-evaluation/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>本文谈谈在函数式编程中的延迟计算，惰性求值等技术及其应用。</p>
+<h2 id="Racket"><a href="#Racket" class="headerlink" title="Racket"></a>Racket</h2><p>本文将以 Racket 为例，以下是 Racket 的概要:</p>
+<ol>
+<li>更广泛的函数概念: 什么 if define + myfunc 等，统统都是函数</li>
+<li>前缀表达式: 同 Lisp, Scheme 等语言一样，Racket 使用前缀表达式，如(myfunc 1 2)，(+ 1 2 3)等</li>
+<li>支持可变性: 可修改变量值(不建议)，如 (set! x 2)，并且支持修改 Pair，Map 的指定元素</li>
+</ol>
+<p>其它关于 Racket 的具体语法和 API 细节请参考<a href="https://github.com/OnRoadZy/RacketGuideInChinese" target="_blank" rel="noopener">Raccket 中文文档</a>。</p>
+<h2 id="Delay-Evaluation"><a href="#Delay-Evaluation" class="headerlink" title="Delay Evaluation"></a>Delay Evaluation</h2><p>Delay Evaluation 意为延迟计算，即表达式只在必要时才求值，而非被赋给某个变量时立即求值。</p>
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/2019/02/lazy-evaluation/" rel="contents">
+              阅读全文 &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2019/02/gs-mesh-nav/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1857,179 +2033,11 @@
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/07/web-async-programing/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2018/07/web-async-programing/" itemprop="url">
-                  Web 中的异步编程
-                </a>
-              
-            
-          </h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
-
-              <time title="创建时间：2018-07-21 00:00:00" itemprop="dateCreated datePublished" datetime="2018-07-21T00:00:00+08:00">2018-07-21</time>
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a></span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-              <span class="post-comments-count">
-                <span class="post-meta-divider">|</span>
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-comment-o"></i>
-                </span>
-                <a href="/2018/07/web-async-programing/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2018/07/web-async-programing/" itemprop="commentCount"></span>
-                </a>
-              </span>
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <h4 id="Callback-Event"><a href="#Callback-Event" class="headerlink" title="Callback / Event"></a>Callback / Event</h4><p>Callback 在 JS 中无处不在，Ajax，XMLHttpRequest 等很多前端技术都围绕回调展开，比如创建一个 Button: <code>&lt;button onclick=&quot;myFunction()&quot;&gt;Click me&lt;/button&gt;</code>。回调的优点是简单易于理解和实现，缺点一是调层数过深时，代码会变得非常难维护(所谓回调地狱，Callback Hell)，二是任务和回调之间紧耦合，并且只能指定一个回调函数。</p>
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/2018/07/web-async-programing/" rel="contents">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><span class="space">&hellip;</span><a class="page-number" href="/page/12/">12</a><a class="extend next" rel="next" href="/page/3/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><span class="space">&hellip;</span><a class="page-number" href="/page/13/">13</a><a class="extend next" rel="next" href="/page/3/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -2076,7 +2084,7 @@
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">120</span>
+                    <span class="site-state-item-count">121</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>
