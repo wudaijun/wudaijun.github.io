@@ -1,138 +1,50 @@
 <!DOCTYPE html>
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-
-<html class="theme-next gemini use-motion" lang="zh-CN">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8"/>
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
 <meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
 
 
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
 
-
-
-
-
-
-
-
-
-
-<meta http-equiv="Cache-Control" content="no-transform" />
-<meta http-equiv="Cache-Control" content="no-siteapp" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
-
-<link href="/css/main.css?v=6.3.0" rel="stylesheet" type="text/css" />
-
-
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png?v=6.3.0">
-
-
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico?v=6.3.0">
-
-
-  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico?v=6.3.0">
-
-
-  <link rel="mask-icon" href="/images/logo.svg?v=6.3.0" color="#222">
-
-
-
-
-
-
-
-
-
-<script type="text/javascript" id="hexo.configurations">
-  var NexT = window.NexT || {};
-  var CONFIG = {
-    root: '/',
-    scheme: 'Gemini',
-    version: '6.3.0',
-    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
-    fancybox: false,
-    fastclick: false,
-    lazyload: false,
-    tabs: true,
-    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
-    algolia: {
-      applicationID: '',
-      apiKey: '',
-      indexName: '',
-      hits: {"per_page":10},
-      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
-    }
-  };
-</script>
-
-
-  
-
-
-
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
 
   <meta name="description" content="异步思维是后端架构设计的必备思维，尽管同步代码简单直观且易于维护，但为了构建健壮，可靠的后端系统，对于同步的选择是应该慎之又慎的。为了方便讨论同步可能带来的问题，我将同步请求大概分为三类:   不带超时的同步请求 带超时但非关键的同步请求 带超时且关键的同步请求  第一类同步请求的问题很明显，就是请求方无法对对端的响应有一个最坏预期，即有可能对端挂掉了，永远也不响应，那么请求方就永远被阻塞了。很多">
-<meta name="keywords" content="gameserver,programing,js">
 <meta property="og:type" content="article">
 <meta property="og:title" content="GS 中的异步编程">
 <meta property="og:url" content="http://wudaijun.com/2018/07/gs-async-programing/index.html">
 <meta property="og:site_name" content="wudaijun&#39;s blog">
 <meta property="og:description" content="异步思维是后端架构设计的必备思维，尽管同步代码简单直观且易于维护，但为了构建健壮，可靠的后端系统，对于同步的选择是应该慎之又慎的。为了方便讨论同步可能带来的问题，我将同步请求大概分为三类:   不带超时的同步请求 带超时但非关键的同步请求 带超时且关键的同步请求  第一类同步请求的问题很明显，就是请求方无法对对端的响应有一个最坏预期，即有可能对端挂掉了，永远也不响应，那么请求方就永远被阻塞了。很多">
-<meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-06-10T10:50:11.000Z">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-07-21T16:00:00.000Z">
+<meta property="article:modified_time" content="2019-06-10T10:50:11.000Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="gameserver">
+<meta property="article:tag" content="programing">
+<meta property="article:tag" content="js">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="GS 中的异步编程">
-<meta name="twitter:description" content="异步思维是后端架构设计的必备思维，尽管同步代码简单直观且易于维护，但为了构建健壮，可靠的后端系统，对于同步的选择是应该慎之又慎的。为了方便讨论同步可能带来的问题，我将同步请求大概分为三类:   不带超时的同步请求 带超时但非关键的同步请求 带超时且关键的同步请求  第一类同步请求的问题很明显，就是请求方无法对对端的响应有一个最坏预期，即有可能对端挂掉了，永远也不响应，那么请求方就永远被阻塞了。很多">
+
+<link rel="canonical" href="http://wudaijun.com/2018/07/gs-async-programing/">
 
 
-
-
-
-
-  <link rel="canonical" href="http://wudaijun.com/2018/07/gs-async-programing/"/>
-
-
-
-<script type="text/javascript" id="page.configurations">
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
   };
 </script>
 
@@ -144,304 +56,215 @@
 
 
 
-
-
-
   <noscript>
-  <style type="text/css">
-    .use-motion .motion-element,
-    .use-motion .brand,
-    .use-motion .menu-item,
-    .sidebar-inner,
-    .use-motion .post-block,
-    .use-motion .pagination,
-    .use-motion .comments,
-    .use-motion .post-header,
-    .use-motion .post-body,
-    .use-motion .collection-title { opacity: initial; }
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
 
-    .use-motion .logo,
-    .use-motion .site-title,
-    .use-motion .site-subtitle {
-      opacity: initial;
-      top: initial;
-    }
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
 
-    .use-motion {
-      .logo-line-before i { left: initial; }
-      .logo-line-after i { right: initial; }
-    }
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
   </style>
 </noscript>
 
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 </head>
 
-<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
-
-  
-  
-    
-  
-
-  <div class="container sidebar-position-left page-post-detail">
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
     <div class="headband"></div>
 
-    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-brand-wrapper">
-  <div class="site-meta ">
-    
-
-    <div class="custom-logo-site-title">
-      <a href="/" class="brand" rel="start">
-        <span class="logo-line-before"><i></i></span>
-        <span class="site-title">wudaijun's blog</span>
-        <span class="logo-line-after"><i></i></span>
-      </a>
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
     </div>
-    
-      
-        <p class="site-subtitle">Done is better than perfect</p>
-      
-    
   </div>
 
-  <div class="site-nav-toggle">
-    <button aria-label="切换导航栏">
-      <span class="btn-bar"></span>
-      <span class="btn-bar"></span>
-      <span class="btn-bar"></span>
-    </button>
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
   </div>
 </div>
+
 
 
 
 <nav class="site-nav">
-  
-    <ul id="menu" class="menu">
-      
-        
-        
-        
-          
-          <li class="menu-item menu-item-home">
-    <a href="/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />首页</a>
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-about">
-    <a href="/about/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-user"></i> <br />关于</a>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-tags">
-    <a href="/tags/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-categories">
-    <a href="/categories/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-th"></i> <br />分类</a>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-archives">
-    <a href="/archives/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />归档</a>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
   </li>
+        <li class="menu-item menu-item-rss">
 
-      
-      
-        <li class="menu-item menu-item-search">
-          
-            <a href="javascript:;" class="popup-trigger">
-          
-            
-              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />搜索</a>
-        </li>
-      
-    </ul>
-  
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
 
-  
-
-  
-    <div class="site-search">
-      
-  <div class="popup search-popup local-search-popup">
-  <div class="local-search-header clearfix">
-    <span class="search-icon">
-      <i class="fa fa-search"></i>
-    </span>
-    <span class="popup-btn-close">
-      <i class="fa fa-times-circle"></i>
-    </span>
-    <div class="local-search-input-wrapper">
-      <input autocomplete="off"
-             placeholder="搜索..." spellcheck="false"
-             type="text" id="local-search-input">
-    </div>
-  </div>
-  <div id="local-search-result"></div>
-</div>
-
-
-
-    </div>
-  
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
 </nav>
 
 
 
-  
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
 
-
+    </div>
+  </div>
 
 </div>
     </header>
 
     
+  <div class="reading-progress-bar"></div>
 
 
-    <main id="main" class="main">
+    <main class="main">
       <div class="main-inner">
         <div class="content-wrap">
           
+
+          <div class="content post posts-expand">
             
 
-          
-          <div id="content" class="content">
-            
-
-  <div id="posts" class="posts-expand">
     
-
-  
-
   
   
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/07/gs-async-programing/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
       <meta itemprop="name" content="wudaijun">
       <meta itemprop="description" content="">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="wudaijun's blog">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">GS 中的异步编程
-              
-            
-          </h1>
-        
+        <h1 class="post-title" itemprop="name headline">
+          GS 中的异步编程
+        </h1>
 
         <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
+              <span class="post-meta-item-text">发表于</span>
 
               <time title="创建时间：2018-07-22 00:00:00" itemprop="dateCreated datePublished" datetime="2018-07-22T00:00:00+08:00">2018-07-22</time>
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a></span>
-
-                
-                
-              
             </span>
-          
-
-          
-            
-              <span class="post-comments-count">
-                <span class="post-meta-divider">|</span>
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-comment-o"></i>
-                </span>
-                <a href="/2018/07/gs-async-programing/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2018/07/gs-async-programing/" itemprop="commentCount"></span>
-                </a>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
               </span>
-            
-          
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
 
           
-          
-
-          
-
-          
-
-          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/07/gs-async-programing/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/07/gs-async-programing/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
 
         </div>
       </header>
-    
 
     
     
     
     <div class="post-body" itemprop="articleBody">
-
-      
-      
 
       
         <p>异步思维是后端架构设计的必备思维，尽管同步代码简单直观且易于维护，但为了构建健壮，可靠的后端系统，对于同步的选择是应该慎之又慎的。为了方便讨论同步可能带来的问题，我将同步请求大概分为三类: </p>
@@ -462,9 +285,9 @@
 <h4 id="基于消息"><a href="#基于消息" class="headerlink" title="基于消息"></a>基于消息</h4><p>基于消息的通信模式可以说非常古老了，从 C/S 到服务器进程/线程间，这种方案的优点是扩展性很强，不管是跨主机/进程/线程/轻量级线程，可以用同一套通信方案。像 Erlang 这种 Actor 通信模型，就只有一套异步通信模型: 异步消息。这样最大的好处就是完全屏蔽了目标 Process 的物理位置(同一进程/跨进程/跨网络)，获得非常好的系统扩展性和灵活性。比如某个 Process 被重新部署到其它节点上，已有代码几乎无需任何更改。基于消息的异步交互会去考虑数据和交互边界，维护尽可能少的上下文。谈了这么多优点，下面我们来谈谈它的缺点:</p>
 <p>假设 A 向 B 发起一个请求，B无非分为以下三种情况: 无响应，单次响应，多次响应。这里的响应只是针对本次交互而言，该响应可能也是下次交互的请求，如 A -&gt; B -&gt; A -&gt; B 模式，但为了便于理解，通常我们都会将异步交互简化为请求 -&gt; 响应模式，即 A -&gt; B -&gt; A -&gt; B 通常被理解为 A 对 B 发起了两次请求，第一次有响应，第二次无响应。</p>
 <p>OK，理解了请求响应模式，我们来举个例子:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">// A 线程</span><br><span class="line">func handle  (x,y,z int) int &#123;</span><br><span class="line">	ack 	:= CallB(&amp;AddReq&#123;A:x,B:y&#125;)</span><br><span class="line">	return ack.Result * z</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// B 线程</span><br><span class="line">func handleAddReq(req *AddReq) *AddAck &#123;</span><br><span class="line">	result := req.A + req.B</span><br><span class="line">	return &amp;AddAck&#123;Result: result&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; A 线程</span><br><span class="line">func handle  (x,y,z int) int &#123;</span><br><span class="line">	ack 	:&#x3D; CallB(&amp;AddReq&#123;A:x,B:y&#125;)</span><br><span class="line">	return ack.Result * z</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; B 线程</span><br><span class="line">func handleAddReq(req *AddReq) *AddAck &#123;</span><br><span class="line">	result :&#x3D; req.A + req.B</span><br><span class="line">	return &amp;AddAck&#123;Result: result&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>例子很简单，A线程需要B线程发起请求(这里是一个简单的加法)，然后再继续自己的逻辑，A 通过同步 RPC 很简单地完成了逻辑，现在我们尝试将其换成异步消息:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// A 线程</span><br><span class="line">func handle(x,y,z int) &#123;</span><br><span class="line">	Send2B(&amp;AddReq&#123;A:x,B:y&#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// B 线程发送上下文</span><br><span class="line">func handleAddReq(req *AddReq) &#123;</span><br><span class="line">	result := req.A + req.B</span><br><span class="line">	Send2A(&amp;AddAck&#123;Result:result&#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// A 线程</span><br><span class="line">func handleAddAck(ack *AddAck) &#123;</span><br><span class="line">	// handleReq 中的 z 参数去哪里了？</span><br><span class="line">	result = ack.result * z</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; A 线程</span><br><span class="line">func handle(x,y,z int) &#123;</span><br><span class="line">	Send2B(&amp;AddReq&#123;A:x,B:y&#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; B 线程发送上下文</span><br><span class="line">func handleAddReq(req *AddReq) &#123;</span><br><span class="line">	result :&#x3D; req.A + req.B</span><br><span class="line">	Send2A(&amp;AddAck&#123;Result:result&#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; A 线程</span><br><span class="line">func handleAddAck(ack *AddAck) &#123;</span><br><span class="line">	&#x2F;&#x2F; handleReq 中的 z 参数去哪里了？</span><br><span class="line">	result &#x3D; ack.result * z</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>这里忽略了消息编解码，消息注册等细节，但暴露了异步消息交互的基本问题之一: 发送上下文的保存(也叫调用上下文，但这容易将异步消息交互局限在函数调用)，这里的上下文是指只有发送方需要用于后续处理，而接收方不关心的内容。在我的理解中，一个完整的异步请求应该考虑到如下四个部分:</p>
 <ol>
 <li>消息内容本身，即上例中的 AddReq</li>
@@ -474,13 +297,13 @@
 </ol>
 <p>第一个不必多言，第二个发送上下文，在异步消息交互中，通常发送上下文保存方式有两种:</p>
 <ol>
-<li>将发送上下文与消息内容本身一起发送给接收方(如<code>AddReq{A,B,C}</code>)，然后发送方再返回回来，这种方案适用于部分逻辑，但当AddReq有多种上下文时(如<code>AddReq(x,y)*z</code>, <code>AddReq(x,y)-a-b</code>)，则无法复用 AddReq，B 需要去关心和拷贝每个发送上下文，代码复用性差。当 B 是 DB 这类公用模块时，这类问题尤其突出。当然，你也可以通过框架去隐藏发送上下文，做到透明传输，但仍然带来了消息负载开销。还有一点就是这种方式很难实现异步超时(上下文丢了)。</li>
+<li>将发送上下文与消息内容本身一起发送给接收方(如<code>AddReq&#123;A,B,C&#125;</code>)，然后发送方再返回回来，这种方案适用于部分逻辑，但当AddReq有多种上下文时(如<code>AddReq(x,y)*z</code>, <code>AddReq(x,y)-a-b</code>)，则无法复用 AddReq，B 需要去关心和拷贝每个发送上下文，代码复用性差。当 B 是 DB 这类公用模块时，这类问题尤其突出。当然，你也可以通过框架去隐藏发送上下文，做到透明传输，但仍然带来了消息负载开销。还有一点就是这种方式很难实现异步超时(上下文丢了)。</li>
 <li>在 A 线程保存发送上下文(通常叫做 Session)，然后将这个发送上下文的ID(SessionID)传给B， A再通过这个SessionID找出发送上下文，如 DB 层通常有个 SessionMgr 来保存每次 DB 交互的上下文。这种方式可以根据 SessionID 来做超时。</li>
 </ol>
-<p>第三点消息响应路径接收方和发送上下文类似，在上面的例子中，我们是在 handleAddReq 中直接调用 <code>Send2A(&amp;AddAck{Result:result})</code> 的，这意味这被请求方需要知道它应该返回<strong>哪一条消息</strong>给<strong>哪一个线程</strong>，这是被硬编码在代码中的，那么当 C,D线程也会请求 B 时，就需要定义 AddReqForC, AddReqForD 请求，与发送上下文的问题一样，不利于代码复用和解耦，在异步消息中，可以通过框架层去解决这个问题，如每次请求附上对应响应 ID(AddAck)，并且由框架层识别消息来源(A)，这样 B 可以专注地处理 AddReq 本身，消息会被正确地响应给发送方。</p>
+<p>第三点消息响应路径接收方和发送上下文类似，在上面的例子中，我们是在 handleAddReq 中直接调用 <code>Send2A(&amp;AddAck&#123;Result:result&#125;)</code> 的，这意味这被请求方需要知道它应该返回<strong>哪一条消息</strong>给<strong>哪一个线程</strong>，这是被硬编码在代码中的，那么当 C,D线程也会请求 B 时，就需要定义 AddReqForC, AddReqForD 请求，与发送上下文的问题一样，不利于代码复用和解耦，在异步消息中，可以通过框架层去解决这个问题，如每次请求附上对应响应 ID(AddAck)，并且由框架层识别消息来源(A)，这样 B 可以专注地处理 AddReq 本身，消息会被正确地响应给发送方。</p>
 <p>第四点超时机制在这里不过多展开，简单来讲就是在具体实践中，我们很少在真正的异步消息机制中去做超时，一是因为这需要额外做更多的基础支撑，如 Session 管理，状态轮询等，二是标准库提供的网络 IO，文件 IO，以及第三方库如 etcd，grpc 都是同步甚至带超时选项的，基于其上封装异步我们可以感知到对端存活状态或消息是否正确到达，通常这个层次的超时就够了。基于响应到达的超时通常没有必要并且容易出错，比如刚超时处理，响应就到达了。</p>
 <h4 id="基于回调的异步-RPC"><a href="#基于回调的异步-RPC" class="headerlink" title="基于回调的异步 RPC"></a>基于回调的异步 RPC</h4><p>异步 RPC，咋一听可能会觉得很奇怪，这是因为我将 RPC 理解为请求-响应模式，而不是与同步绑定在一起。基于回调可以认为是基于消息之上的一层扩展，有一定的发送上下文保存能力，能够一定程度地简化异步交互，比如我们 GS 中封装的异步调用:</p>
-<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  A 线程</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handle</span><span class="params">(x,y,z)</span></span> &#123;</span><br><span class="line">	self.AsynCall(bChan, &amp;AddReq&#123;A: x, B: y&#125;, handleAddAck, CbCtx&#123;<span class="string">"z"</span>:z&#125;)</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// A 线程</span></span><br><span class="line"><span class="comment">// ret: 消息响应</span></span><br><span class="line"><span class="comment">// ctx: AsynCall 中传入的 CbCtx</span></span><br><span class="line"><span class="comment">// err: 异步调用过程中出现的错误</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handleAddAck</span> <span class="params">(ret <span class="keyword">interface</span>&#123;&#125;, ctx CbCtx, err error)</span></span> &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// B 线程</span></span><br><span class="line"><span class="comment">// ci: 保存了调用方的 channel，调用上下文，回调函数等</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handleAddReq</span><span class="params">(ci *CallInfo)</span></span> &#123;</span><br><span class="line">	req := ci.Req.(*AddReq)</span><br><span class="line">	result := req.A + req.B</span><br><span class="line">	<span class="comment">// 直接返回，无需关心调用上下文，响应路径等</span></span><br><span class="line">	ci.Ret(&amp;AddAck&#123;Result: result&#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  A 线程</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handle</span><span class="params">(x,y,z)</span></span> &#123;</span><br><span class="line">	self.AsynCall(bChan, &amp;AddReq&#123;A: x, B: y&#125;, handleAddAck, CbCtx&#123;<span class="string">&quot;z&quot;</span>:z&#125;)</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// A 线程</span></span><br><span class="line"><span class="comment">// ret: 消息响应</span></span><br><span class="line"><span class="comment">// ctx: AsynCall 中传入的 CbCtx</span></span><br><span class="line"><span class="comment">// err: 异步调用过程中出现的错误</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handleAddAck</span> <span class="params">(ret <span class="keyword">interface</span>&#123;&#125;, ctx CbCtx, err error)</span></span> &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// B 线程</span></span><br><span class="line"><span class="comment">// ci: 保存了调用方的 channel，调用上下文，回调函数等</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handleAddReq</span><span class="params">(ci *CallInfo)</span></span> &#123;</span><br><span class="line">	req := ci.Req.(*AddReq)</span><br><span class="line">	result := req.A + req.B</span><br><span class="line">	<span class="comment">// 直接返回，无需关心调用上下文，响应路径等</span></span><br><span class="line">	ci.Ret(&amp;AddAck&#123;Result: result&#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>简单来讲，就是在 go channel 上封装了一些上下文保存操作，将CbCtx(调用上下文)，发送方channel(消息来源)，回调函数(相当于响应消息ID)保存到框架(发送方self)中，这种方案相对基于消息更方便，接收方专注于处理请求本身，更容易复用。但我们这里的AsynCall 限定了是一次请求一次响应的(如果是没有响应，则直接用 Cast，如果多个响应，则在最后一个 Ack 前通过 Cast 投递其它响应)，因此不是纯正的异步消息语义(尽管基于 channel)，而更像是异步 RPC( 也是 AsynCall 名字的来源)。另外这种方式的扩展性也不如消息强。</p>
 <p>顺便提一下，用 AsynCall写逻辑时如果用匿名函数或闭包的方式写回调，可能带来的上下文不一致问题，即如果回调函数不重新获取上下文，而通过external local value的方式，会有不一致的风险:</p>
 <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">f</span><span class="params">(p *player)</span></span> &#123;</span><br><span class="line">    lv := player.Level</span><br><span class="line">    asynCall(req, <span class="function"><span class="keyword">func</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="comment">// 此时访问的 lv 为 external local value，可能已经过时! 针对指针数据则更危险</span></span><br><span class="line">        fmt.Println(lv)</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -490,401 +313,250 @@
 <h4 id="基于轻量级线程"><a href="#基于轻量级线程" class="headerlink" title="基于轻量级线程"></a>基于轻量级线程</h4><p>传统多线程开发的难题很多时候都是由于线程新建和切换开销过大导致的，因此现代很多语言都实现了自己的轻量级线程，如 Go 的 goroutine，Erlang 的 process，它们和协程的不同之处在于轻量级线程的调度是语言级的调度器决定的，而不是开发者决定的，实际上，自己用 C 实现一个 thread pool + service 的结构并不难(我以前写了个小 Demo <a href="http://wudaijun.com/2014/10/ngserver-service/">ngserver</a>)，真正难的其实在调度器上，比如当某个轻量级线程执行时间过长时，是否应该抢占，如何抢占，何时抢占，如果此时正在执行系统调用呢？在调度器上，Go 和 Erlang 有不同的策略，Go 调度器总的来说就是轻量，去除了 OS 调度器时间片，优先级的概念，抢占机制也比较简单，相对易于理解(参考<a href="http://wudaijun.com/2018/01/go-scheduler/">Go 调度模型</a>)，而 Erlang调度器则更看重公平性，时间片，优先级应有尽有，抢占机制也及其复杂，更像一个 OS 调度器。</p>
 <p>扯远了，回到我们的轻量级线程上来，现在由于我们有了更轻量级的线程，创建和切换的开销都很低，因此我们可以尝试将逻辑粒度分得更细，比如每个玩家一个轻量级线程，这样玩家在执行一些阻塞操作时，就让它阻塞好了，这其实就是 Actor 编程模型，也是异步编程的一个思路：将服务拆分得更细，阻塞和错误的影响降到更低，这样对于玩家登录这种操作，就不需要复杂的状态机来维护了，直接同步调用就行。目前在我们的Go 服务器中没有用 Actor 模型，主要出于对 SLG 游戏交互复杂度的考量。</p>
 <h4 id="基于消息中间件"><a href="#基于消息中间件" class="headerlink" title="基于消息中间件"></a>基于消息中间件</h4><p>本质上仍然是消息通信，但解决了消息路由问题，加了中间件这一层之后，解耦了服务之间的直接依赖，可以灵活实现如一对一，组播，发布/订阅等通信模式，并且避免了全联通网络。消息中间件是个很好用的东西，我目前也在学习如何在项目中更好地应用它，比如将所有服务器内部服务间的通信由 etcd + grpc/protobuf 换成 RabbitMQ，这样每个服务不需要知道其它服务的地址，通信协议，状态等，只需要知道有这样一个服务，对服务本身来讲，也只有两种外部通信协议，RabbitMQ 消息协议以及 C/S 通信协议，集群的扩展性更强。当然，加了中间件之后，状态性就变弱了，比如可能收到过时消息。</p>
-<h4 id="异步-RPC-库"><a href="#异步-RPC-库" class="headerlink" title="异步 RPC 库"></a>异步 RPC 库</h4><p>目前流行的 RPC 框架主要是 <a href="https://grpc.io/" target="_blank" rel="noopener">grpc</a>和<a href="https://github.com/apache/thrift" target="_blank" rel="noopener">thrift</a>，但它们对异步的支持非常有限，比如 grpc 就只支持 C++版本的异步调用，通常依赖应用层的封装。另外，grpc 的<a href="https://grpc.io/docs/tutorials/basic/go.html#bidirectional-streaming-rpc" target="_blank" rel="noopener">双向Stream通信</a>也是个很不错的 feature，我们目前将其用于 Gate 和 Game 的双工通信。</p>
+<h4 id="异步-RPC-库"><a href="#异步-RPC-库" class="headerlink" title="异步 RPC 库"></a>异步 RPC 库</h4><p>目前流行的 RPC 框架主要是 <a target="_blank" rel="noopener" href="https://grpc.io/">grpc</a>和<a target="_blank" rel="noopener" href="https://github.com/apache/thrift">thrift</a>，但它们对异步的支持非常有限，比如 grpc 就只支持 C++版本的异步调用，通常依赖应用层的封装。另外，grpc 的<a target="_blank" rel="noopener" href="https://grpc.io/docs/tutorials/basic/go.html#bidirectional-streaming-rpc">双向Stream通信</a>也是个很不错的 feature，我们目前将其用于 Gate 和 Game 的双工通信。</p>
 <p>总结一下，不同于<a href="wudaijun.com/2018-07-21-web-async-programing/">Web异步编程</a>，GS 更看重可扩展性，讲究组件与组件间的解耦，并且组件之间的交互也更加灵活，因此通常服务之间会通过消息而不是回调或RPC的方式来交互。另外，不同的语言或框架可能提供了不同的轻量级执行体(轻量级线程，协程)，在使用时在确定阻塞造成的影响，这需要结合语言调度机制(是否会占用调度线程，是否抢占等)，以及执行体划分粒度来分析。</p>
 
-      
     </div>
 
     
-
     
     
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-        <div class="post-tags">
-          
-            <a href="/tags/gameserver/" rel="tag"># gameserver</a>
-          
-            <a href="/tags/programing/" rel="tag"># programing</a>
-          
-            <a href="/tags/js/" rel="tag"># js</a>
-          
-        </div>
-      
-
-      
-      
-      
-
-      
-        <div class="post-nav">
-          <div class="post-nav-next post-nav-item">
-            
-              <a href="/2018/07/web-async-programing/" rel="next" title="Web 中的异步编程">
-                <i class="fa fa-chevron-left"></i> Web 中的异步编程
-              </a>
-            
-          </div>
-
-          <span class="post-nav-divider"></span>
-
-          <div class="post-nav-prev post-nav-item">
-            
-              <a href="/2018/08/gs-devops/" rel="prev" title="GS DevOps 实践">
-                GS DevOps 实践 <i class="fa fa-chevron-right"></i>
-              </a>
-            
-          </div>
-        </div>
-      
-
-      
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-
-    <div class="post-spread">
-      
-    </div>
-  </div>
-
-
-          </div>
-          
-
-  
-    <div class="comments" id="comments">
-    </div>
-  
-
-
-
-        </div>
         
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/07/gs-async-programing/" title="GS 中的异步编程">http://wudaijun.com/2018/07/gs-async-programing/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/gameserver/" rel="tag"><i class="fa fa-tag"></i> gameserver</a>
+              <a href="/tags/programing/" rel="tag"><i class="fa fa-tag"></i> programing</a>
+              <a href="/tags/js/" rel="tag"><i class="fa fa-tag"></i> js</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/07/web-async-programing/" rel="prev" title="Web 中的异步编程">
+      <i class="fa fa-chevron-left"></i> Web 中的异步编程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/08/gs-devops/" rel="next" title="GS DevOps 实践">
+      GS DevOps 实践 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
           
   
-  <div class="sidebar-toggle">
-    <div class="sidebar-toggle-line-wrap">
-      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
-      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
-      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
-    </div>
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
   </div>
 
-  <aside id="sidebar" class="sidebar">
-    
+  <aside class="sidebar">
     <div class="sidebar-inner">
 
-      
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
 
-      
-        <ul class="sidebar-nav motion-element">
-          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
-            文章目录
-          </li>
-          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
-            站点概览
-          </li>
-        </ul>
-      
-
-      <section class="site-overview-wrap sidebar-panel">
-        <div class="site-overview">
-          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-            
-              <img class="site-author-image" itemprop="image"
-                src="/assets/theme/avatar.png"
-                alt="wudaijun" />
-            
-              <p class="site-author-name" itemprop="name">wudaijun</p>
-              <p class="site-description motion-element" itemprop="description"></p>
-          </div>
-
-          
-            <nav class="site-state motion-element">
-              
-                <div class="site-state-item site-state-posts">
-                
-                  <a href="/archives/">
-                
-                    <span class="site-state-item-count">121</span>
-                    <span class="site-state-item-name">日志</span>
-                  </a>
-                </div>
-              
-
-              
-                
-                
-                <div class="site-state-item site-state-categories">
-                  <a href="/categories/index.html">
-                    
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                    <span class="site-state-item-count">21</span>
-                    <span class="site-state-item-name">分类</span>
-                  </a>
-                </div>
-              
-
-              
-                
-                
-                <div class="site-state-item site-state-tags">
-                  <a href="/tags/index.html">
-                    
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                    <span class="site-state-item-count">34</span>
-                    <span class="site-state-item-name">标签</span>
-                  </a>
-                </div>
-              
-            </nav>
-          
-
-          
-
-          
-
-          
-          
-
-          
-          
-
-          
-            
-          
-          
-
-        </div>
-      </section>
-
-      
       <!--noindex-->
-        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
-          <div class="post-toc">
-
-            
-              
-            
-
-            
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#基于消息"><span class="nav-text">基于消息</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#基于回调的异步-RPC"><span class="nav-text">基于回调的异步 RPC</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#基于协程"><span class="nav-text">基于协程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#基于轻量级线程"><span class="nav-text">基于轻量级线程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#基于消息中间件"><span class="nav-text">基于消息中间件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#异步-RPC-库"><span class="nav-text">异步 RPC 库</span></a></li></ol></div>
-            
-
-          </div>
-        </section>
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E6%B6%88%E6%81%AF"><span class="nav-text">基于消息</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E5%9B%9E%E8%B0%83%E7%9A%84%E5%BC%82%E6%AD%A5-RPC"><span class="nav-text">基于回调的异步 RPC</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E5%8D%8F%E7%A8%8B"><span class="nav-text">基于协程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E8%BD%BB%E9%87%8F%E7%BA%A7%E7%BA%BF%E7%A8%8B"><span class="nav-text">基于轻量级线程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6"><span class="nav-text">基于消息中间件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5-RPC-%E5%BA%93"><span class="nav-text">异步 RPC 库</span></a></li></ol></div>
+      </div>
       <!--/noindex-->
-      
 
-      
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">120</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https://github.com/wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https://blog.csdn.net/wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
 
     </div>
   </aside>
+  <div id="sidebar-dimmer"></div>
 
 
-        
       </div>
     </main>
 
-    <footer id="footer" class="footer">
+    <footer class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
-  <span class="with-love" id="animate">
-    <i class="fa fa-user"></i>
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
   </span>
   <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
 
-  
-
-  
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
 </div>
 
 
 
 
-  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v3.7.1</div>
-
-
-
-  <span class="post-meta-divider">|</span>
-
-
-
-  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://theme-next.org">NexT.Gemini</a> v6.3.0</div>
 
 
 
 
-        
-
-
-
-
-
-
-
-
-        
       </div>
     </footer>
-
-    
-      <div class="back-to-top">
-        <i class="fa fa-arrow-up"></i>
-        
-      </div>
-    
-
-    
-
   </div>
 
   
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
 
-<script type="text/javascript">
-  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
-    window.Promise = null;
-  }
-</script>
+<script src="/js/utils.js"></script>
 
-
-
+<script src="/js/motion.js"></script>
 
 
+<script src="/js/schemes/pisces.js"></script>
 
 
-
-
+<script src="/js/next-boot.js"></script>
 
 
 
 
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
 
 
 
@@ -899,457 +571,39 @@
 
 
   
-  
-    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
-  
 
   
-  
-    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
-  
-
-  
-  
-    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
-  
-
 
   
 
 
-  <script type="text/javascript" src="/js/src/utils.js?v=6.3.0"></script>
-
-  <script type="text/javascript" src="/js/src/motion.js?v=6.3.0"></script>
-
-
-
-  
-  
-
-
-  <script type="text/javascript" src="/js/src/affix.js?v=6.3.0"></script>
-
-  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.3.0"></script>
-
-
-
-  
-  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.3.0"></script>
-<script type="text/javascript" src="/js/src/post-details.js?v=6.3.0"></script>
-
-
-
-  
-
-
-  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.3.0"></script>
-
-
-
-  
-
-
-
-	
-
-
-
-
-
-  
-
-
-
-
-
-  
-
-
-
-
-
-
-
-
-  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-  
-  
-  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
-  
-  <script type="text/javascript">
-    var GUEST = ['nick','mail','link'];
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
     var guest = 'nick,mail,link';
-    guest = guest.split(',').filter(function (item) {
-      return GUEST.indexOf(item)>-1;
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
     });
     new Valine({
-        el: '#comments' ,
-        verify: false,
-        notify: false,
-        appId: 'kL7con6xeU88chDAVyUSDSHI-gzGzoHsz',
-        appKey: '9XLxirxDW8NUhHJdu460Uiba',
-        placeholder: 'Just go go',
-        avatar:'mm',
-        guest_info:guest,
-        pageSize:'10' || 10,
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'kL7con6xeU88chDAVyUSDSHI-gzGzoHsz',
+      appKey     : '9XLxirxDW8NUhHJdu460Uiba',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
     });
-  </script>
-
-
-
-  
-
-  <script type="text/javascript">
-    // Popup Window;
-    var isfetched = false;
-    var isXml = true;
-    // Search DB path;
-    var search_path = "search.xml";
-    if (search_path.length === 0) {
-      search_path = "search.xml";
-    } else if (/json$/i.test(search_path)) {
-      isXml = false;
-    }
-    var path = "/" + search_path;
-    // monitor main search box;
-
-    var onPopupClose = function (e) {
-      $('.popup').hide();
-      $('#local-search-input').val('');
-      $('.search-result-list').remove();
-      $('#no-result').remove();
-      $(".local-search-pop-overlay").remove();
-      $('body').css('overflow', '');
-    }
-
-    function proceedsearch() {
-      $("body")
-        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
-        .css('overflow', 'hidden');
-      $('.search-popup-overlay').click(onPopupClose);
-      $('.popup').toggle();
-      var $localSearchInput = $('#local-search-input');
-      $localSearchInput.attr("autocapitalize", "none");
-      $localSearchInput.attr("autocorrect", "off");
-      $localSearchInput.focus();
-    }
-
-    // search function;
-    var searchFunc = function(path, search_id, content_id) {
-      'use strict';
-
-      // start loading animation
-      $("body")
-        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
-          '<div id="search-loading-icon">' +
-          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
-          '</div>' +
-          '</div>')
-        .css('overflow', 'hidden');
-      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
-
-      
-
-      $.ajax({
-        url: path,
-        dataType: isXml ? "xml" : "json",
-        async: true,
-        success: function(res) {
-          // get the contents from search data
-          isfetched = true;
-          $('.popup').detach().appendTo('.header-inner');
-          var datas = isXml ? $("entry", res).map(function() {
-            return {
-              title: $("title", this).text(),
-              content: $("content",this).text(),
-              url: $("url" , this).text()
-            };
-          }).get() : res;
-          var input = document.getElementById(search_id);
-          var resultContent = document.getElementById(content_id);
-          var inputEventFunction = function() {
-            var searchText = input.value.trim().toLowerCase();
-            var keywords = searchText.split(/[\s\-]+/);
-            if (keywords.length > 1) {
-              keywords.push(searchText);
-            }
-            var resultItems = [];
-            if (searchText.length > 0) {
-              // perform local searching
-              datas.forEach(function(data) {
-                var isMatch = false;
-                var hitCount = 0;
-                var searchTextCount = 0;
-                var title = data.title.trim();
-                var titleInLowerCase = title.toLowerCase();
-                var content = data.content.trim().replace(/<[^>]+>/g,"");
-                
-                var contentInLowerCase = content.toLowerCase();
-                var articleUrl = decodeURIComponent(data.url);
-                var indexOfTitle = [];
-                var indexOfContent = [];
-                // only match articles with not empty titles
-                if(title != '') {
-                  keywords.forEach(function(keyword) {
-                    function getIndexByWord(word, text, caseSensitive) {
-                      var wordLen = word.length;
-                      if (wordLen === 0) {
-                        return [];
-                      }
-                      var startPosition = 0, position = [], index = [];
-                      if (!caseSensitive) {
-                        text = text.toLowerCase();
-                        word = word.toLowerCase();
-                      }
-                      while ((position = text.indexOf(word, startPosition)) > -1) {
-                        index.push({position: position, word: word});
-                        startPosition = position + wordLen;
-                      }
-                      return index;
-                    }
-
-                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
-                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
-                  });
-                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
-                    isMatch = true;
-                    hitCount = indexOfTitle.length + indexOfContent.length;
-                  }
-                }
-
-                // show search results
-
-                if (isMatch) {
-                  // sort index by position of keyword
-
-                  [indexOfTitle, indexOfContent].forEach(function (index) {
-                    index.sort(function (itemLeft, itemRight) {
-                      if (itemRight.position !== itemLeft.position) {
-                        return itemRight.position - itemLeft.position;
-                      } else {
-                        return itemLeft.word.length - itemRight.word.length;
-                      }
-                    });
-                  });
-
-                  // merge hits into slices
-
-                  function mergeIntoSlice(text, start, end, index) {
-                    var item = index[index.length - 1];
-                    var position = item.position;
-                    var word = item.word;
-                    var hits = [];
-                    var searchTextCountInSlice = 0;
-                    while (position + word.length <= end && index.length != 0) {
-                      if (word === searchText) {
-                        searchTextCountInSlice++;
-                      }
-                      hits.push({position: position, length: word.length});
-                      var wordEnd = position + word.length;
-
-                      // move to next position of hit
-
-                      index.pop();
-                      while (index.length != 0) {
-                        item = index[index.length - 1];
-                        position = item.position;
-                        word = item.word;
-                        if (wordEnd > position) {
-                          index.pop();
-                        } else {
-                          break;
-                        }
-                      }
-                    }
-                    searchTextCount += searchTextCountInSlice;
-                    return {
-                      hits: hits,
-                      start: start,
-                      end: end,
-                      searchTextCount: searchTextCountInSlice
-                    };
-                  }
-
-                  var slicesOfTitle = [];
-                  if (indexOfTitle.length != 0) {
-                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
-                  }
-
-                  var slicesOfContent = [];
-                  while (indexOfContent.length != 0) {
-                    var item = indexOfContent[indexOfContent.length - 1];
-                    var position = item.position;
-                    var word = item.word;
-                    // cut out 100 characters
-                    var start = position - 20;
-                    var end = position + 80;
-                    if(start < 0){
-                      start = 0;
-                    }
-                    if (end < position + word.length) {
-                      end = position + word.length;
-                    }
-                    if(end > content.length){
-                      end = content.length;
-                    }
-                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
-                  }
-
-                  // sort slices in content by search text's count and hits' count
-
-                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
-                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
-                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
-                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
-                      return sliceRight.hits.length - sliceLeft.hits.length;
-                    } else {
-                      return sliceLeft.start - sliceRight.start;
-                    }
-                  });
-
-                  // select top N slices in content
-
-                  var upperBound = parseInt('1');
-                  if (upperBound >= 0) {
-                    slicesOfContent = slicesOfContent.slice(0, upperBound);
-                  }
-
-                  // highlight title and content
-
-                  function highlightKeyword(text, slice) {
-                    var result = '';
-                    var prevEnd = slice.start;
-                    slice.hits.forEach(function (hit) {
-                      result += text.substring(prevEnd, hit.position);
-                      var end = hit.position + hit.length;
-                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
-                      prevEnd = end;
-                    });
-                    result += text.substring(prevEnd, slice.end);
-                    return result;
-                  }
-
-                  var resultItem = '';
-
-                  if (slicesOfTitle.length != 0) {
-                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
-                  } else {
-                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
-                  }
-
-                  slicesOfContent.forEach(function (slice) {
-                    resultItem += "<a href='" + articleUrl + "'>" +
-                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
-                      "...</p>" + "</a>";
-                  });
-
-                  resultItem += "</li>";
-                  resultItems.push({
-                    item: resultItem,
-                    searchTextCount: searchTextCount,
-                    hitCount: hitCount,
-                    id: resultItems.length
-                  });
-                }
-              })
-            };
-            if (keywords.length === 1 && keywords[0] === "") {
-              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
-            } else if (resultItems.length === 0) {
-              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
-            } else {
-              resultItems.sort(function (resultLeft, resultRight) {
-                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
-                  return resultRight.searchTextCount - resultLeft.searchTextCount;
-                } else if (resultLeft.hitCount !== resultRight.hitCount) {
-                  return resultRight.hitCount - resultLeft.hitCount;
-                } else {
-                  return resultRight.id - resultLeft.id;
-                }
-              });
-              var searchResultList = '<ul class=\"search-result-list\">';
-              resultItems.forEach(function (result) {
-                searchResultList += result.item;
-              })
-              searchResultList += "</ul>";
-              resultContent.innerHTML = searchResultList;
-            }
-          }
-
-          if ('auto' === 'auto') {
-            input.addEventListener('input', inputEventFunction);
-          } else {
-            $('.search-icon').click(inputEventFunction);
-            input.addEventListener('keypress', function (event) {
-              if (event.keyCode === 13) {
-                inputEventFunction();
-              }
-            });
-          }
-
-          // remove loading animation
-          $(".local-search-pop-overlay").remove();
-          $('body').css('overflow', '');
-
-          proceedsearch();
-        }
-      });
-    }
-
-    // handle and trigger popup window;
-    $('.popup-trigger').click(function(e) {
-      e.stopPropagation();
-      if (isfetched === false) {
-        searchFunc(path, 'local-search-input', 'local-search-result');
-      } else {
-        proceedsearch();
-      };
-    });
-
-    $('.popup-btn-close').click(onPopupClose);
-    $('.popup').click(function(e){
-      e.stopPropagation();
-    });
-    $(document).on('keyup', function (event) {
-      var shouldDismissSearchPopup = event.which === 27 &&
-        $('.search-popup').is(':visible');
-      if (shouldDismissSearchPopup) {
-        onPopupClose();
-      }
-    });
-  </script>
-
-
-
-
-
-  
-
-  
-
-  
-
-  
-  
-
-  
-  
-
-  
-
-
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 </body>
 </html>

@@ -1,138 +1,48 @@
 <!DOCTYPE html>
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-
-<html class="theme-next gemini use-motion" lang="zh-CN">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8"/>
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
 <meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
 
 
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
 
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
 
-
-
-
-
-
-
-
-
-<meta http-equiv="Cache-Control" content="no-transform" />
-<meta http-equiv="Cache-Control" content="no-siteapp" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
-
-<link href="/css/main.css?v=6.3.0" rel="stylesheet" type="text/css" />
-
-
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png?v=6.3.0">
-
-
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico?v=6.3.0">
-
-
-  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico?v=6.3.0">
-
-
-  <link rel="mask-icon" href="/images/logo.svg?v=6.3.0" color="#222">
-
-
-
-
-
-
-
-
-
-<script type="text/javascript" id="hexo.configurations">
-  var NexT = window.NexT || {};
-  var CONFIG = {
-    root: '/',
-    scheme: 'Gemini',
-    version: '6.3.0',
-    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
-    fancybox: false,
-    fastclick: false,
-    lazyload: false,
-    tabs: true,
-    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
-    algolia: {
-      applicationID: '',
-      apiKey: '',
-      indexName: '',
-      hits: {"per_page":10},
-      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
-    }
-  };
-</script>
-
-
-  
-
-
-
-
-  <meta name="description" content="什么是一致性？在谈到一致性这个词时，你会想到CAP理论的 consistency，或者 ACID 中的 consistency，或者 cache 一致性协议的 coherence，还是 Raft/Paxos 中的 consensus？ 一致性大概是分布式系统中最容易造成困惑的概念之一，因为它已经被用烂了。在很多中文文献中，都将consistency，coherence，consensus 三个单词">
-<meta name="keywords" content="distributed">
+  <meta name="description" content="什么是一致性？在谈到一致性这个词时，你会想到CAP理论的 consistency，或者 ACID 中的 consistency，或者 cache 一致性协议的 coherence，还是 Raft&#x2F;Paxos 中的 consensus？ 一致性大概是分布式系统中最容易造成困惑的概念之一，因为它已经被用烂了。在很多中文文献中，都将consistency，coherence，consensus 三个单词">
 <meta property="og:type" content="article">
 <meta property="og:title" content="一致性杂谈">
 <meta property="og:url" content="http://wudaijun.com/2018/09/distributed-consistency/index.html">
 <meta property="og:site_name" content="wudaijun&#39;s blog">
-<meta property="og:description" content="什么是一致性？在谈到一致性这个词时，你会想到CAP理论的 consistency，或者 ACID 中的 consistency，或者 cache 一致性协议的 coherence，还是 Raft/Paxos 中的 consensus？ 一致性大概是分布式系统中最容易造成困惑的概念之一，因为它已经被用烂了。在很多中文文献中，都将consistency，coherence，consensus 三个单词">
-<meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2020-06-30T06:30:09.893Z">
+<meta property="og:description" content="什么是一致性？在谈到一致性这个词时，你会想到CAP理论的 consistency，或者 ACID 中的 consistency，或者 cache 一致性协议的 coherence，还是 Raft&#x2F;Paxos 中的 consensus？ 一致性大概是分布式系统中最容易造成困惑的概念之一，因为它已经被用烂了。在很多中文文献中，都将consistency，coherence，consensus 三个单词">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-09-22T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-06-30T06:30:09.894Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="distributed">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="一致性杂谈">
-<meta name="twitter:description" content="什么是一致性？在谈到一致性这个词时，你会想到CAP理论的 consistency，或者 ACID 中的 consistency，或者 cache 一致性协议的 coherence，还是 Raft/Paxos 中的 consensus？ 一致性大概是分布式系统中最容易造成困惑的概念之一，因为它已经被用烂了。在很多中文文献中，都将consistency，coherence，consensus 三个单词">
+
+<link rel="canonical" href="http://wudaijun.com/2018/09/distributed-consistency/">
 
 
-
-
-
-
-  <link rel="canonical" href="http://wudaijun.com/2018/09/distributed-consistency/"/>
-
-
-
-<script type="text/javascript" id="page.configurations">
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
   };
 </script>
 
@@ -144,296 +54,210 @@
 
 
 
-
-
-
   <noscript>
-  <style type="text/css">
-    .use-motion .motion-element,
-    .use-motion .brand,
-    .use-motion .menu-item,
-    .sidebar-inner,
-    .use-motion .post-block,
-    .use-motion .pagination,
-    .use-motion .comments,
-    .use-motion .post-header,
-    .use-motion .post-body,
-    .use-motion .collection-title { opacity: initial; }
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
 
-    .use-motion .logo,
-    .use-motion .site-title,
-    .use-motion .site-subtitle {
-      opacity: initial;
-      top: initial;
-    }
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
 
-    .use-motion {
-      .logo-line-before i { left: initial; }
-      .logo-line-after i { right: initial; }
-    }
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
   </style>
 </noscript>
 
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 </head>
 
-<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
-
-  
-  
-    
-  
-
-  <div class="container sidebar-position-left page-post-detail">
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
     <div class="headband"></div>
 
-    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-brand-wrapper">
-  <div class="site-meta ">
-    
-
-    <div class="custom-logo-site-title">
-      <a href="/" class="brand" rel="start">
-        <span class="logo-line-before"><i></i></span>
-        <span class="site-title">wudaijun's blog</span>
-        <span class="logo-line-after"><i></i></span>
-      </a>
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
     </div>
-    
-      
-        <p class="site-subtitle">Done is better than perfect</p>
-      
-    
   </div>
 
-  <div class="site-nav-toggle">
-    <button aria-label="切换导航栏">
-      <span class="btn-bar"></span>
-      <span class="btn-bar"></span>
-      <span class="btn-bar"></span>
-    </button>
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
   </div>
 </div>
+
 
 
 
 <nav class="site-nav">
-  
-    <ul id="menu" class="menu">
-      
-        
-        
-        
-          
-          <li class="menu-item menu-item-home">
-    <a href="/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />首页</a>
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-about">
-    <a href="/about/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-user"></i> <br />关于</a>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-tags">
-    <a href="/tags/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-categories">
-    <a href="/categories/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-th"></i> <br />分类</a>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-archives">
-    <a href="/archives/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />归档</a>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
   </li>
+        <li class="menu-item menu-item-rss">
 
-      
-      
-        <li class="menu-item menu-item-search">
-          
-            <a href="javascript:;" class="popup-trigger">
-          
-            
-              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />搜索</a>
-        </li>
-      
-    </ul>
-  
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
 
-  
-
-  
-    <div class="site-search">
-      
-  <div class="popup search-popup local-search-popup">
-  <div class="local-search-header clearfix">
-    <span class="search-icon">
-      <i class="fa fa-search"></i>
-    </span>
-    <span class="popup-btn-close">
-      <i class="fa fa-times-circle"></i>
-    </span>
-    <div class="local-search-input-wrapper">
-      <input autocomplete="off"
-             placeholder="搜索..." spellcheck="false"
-             type="text" id="local-search-input">
-    </div>
-  </div>
-  <div id="local-search-result"></div>
-</div>
-
-
-
-    </div>
-  
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
 </nav>
 
 
 
-  
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
 
-
+    </div>
+  </div>
 
 </div>
     </header>
 
     
+  <div class="reading-progress-bar"></div>
 
 
-    <main id="main" class="main">
+    <main class="main">
       <div class="main-inner">
         <div class="content-wrap">
           
+
+          <div class="content post posts-expand">
             
 
-          
-          <div id="content" class="content">
-            
-
-  <div id="posts" class="posts-expand">
     
-
-  
-
   
   
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/09/distributed-consistency/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
       <meta itemprop="name" content="wudaijun">
       <meta itemprop="description" content="">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="wudaijun's blog">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">一致性杂谈
-              
-            
-          </h1>
-        
+        <h1 class="post-title" itemprop="name headline">
+          一致性杂谈
+        </h1>
 
         <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
+              <span class="post-meta-item-text">发表于</span>
 
               <time title="创建时间：2018-09-23 00:00:00" itemprop="dateCreated datePublished" datetime="2018-09-23T00:00:00+08:00">2018-09-23</time>
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/distributed/" itemprop="url" rel="index"><span itemprop="name">distributed</span></a></span>
-
-                
-                
-              
             </span>
-          
-
-          
-            
-              <span class="post-comments-count">
-                <span class="post-meta-divider">|</span>
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-comment-o"></i>
-                </span>
-                <a href="/2018/09/distributed-consistency/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2018/09/distributed-consistency/" itemprop="commentCount"></span>
-                </a>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
               </span>
-            
-          
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/distributed/" itemprop="url" rel="index"><span itemprop="name">distributed</span></a>
+                </span>
+            </span>
 
           
-          
-
-          
-
-          
-
-          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/09/distributed-consistency/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/09/distributed-consistency/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
 
         </div>
       </header>
-    
 
     
     
@@ -441,26 +265,23 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
         <h3 id="什么是一致性？"><a href="#什么是一致性？" class="headerlink" title="什么是一致性？"></a>什么是一致性？</h3><p>在谈到一致性这个词时，你会想到CAP理论的 consistency，或者 ACID 中的 consistency，或者 cache 一致性协议的 coherence，还是 Raft/Paxos 中的 consensus？</p>
 <p>一致性大概是分布式系统中最容易造成困惑的概念之一，因为它已经被用烂了。在很多中文文献中，都将consistency，coherence，consensus 三个单词统一翻译为”一致性”。因此在谈一致性之前，我认为有必要对这几个概念做一个区分:</p>
 <a id="more"></a>
 <h4 id="Consensus"><a href="#Consensus" class="headerlink" title="Consensus"></a>Consensus</h4><p>更准确的翻译是共识，关注的是多个提议者达成共识的过程。比如 Paxos，Raft 共识算法本质上解决的是如何在分布式系统下保证所有节点对某个结果达成共识，其中需要考虑节点宕机，网络时延，网络分区等分布式中各种问题。共识算法通常应用在复制状态机中，比如 etcd，zookeeper，用于构建高可用容错系统。在这种应用情景下，Raft/Paxos 共识算法被用来确保各个复制状态机(节点)的日志是一致的。类似的，区块链中非常重要的一部分也是共识算法，但通常使用是 POW(Proof of Work) 或 POS(Proof of Stake)，这类共识算法通常适合用在公网，去中心化的情形下。</p>
-<h4 id="Coherence"><a href="#Coherence" class="headerlink" title="Coherence"></a>Coherence</h4><p>Coherence 通只出现在 <a href="https://en.wikipedia.org/wiki/Cache_coherence" target="_blank" rel="noopener">Cache Coherence</a> 一词中，作为”缓存一致性”被提出。我们知道现代的多核 CPU Cache 都是多层结构，通常每个 CPU Core 都有一个私有的 LB/SB, L1, L2 级 Cache，多个 CPU Core 共享一个 L3 Cache。比如 CPU1 修改了全局变量 g 并写入了 CPU1 L1 Cache，此时 CPU2 要读取变量 g，然而 CPU2 L1 Cache 中的 g 仍然是旧值，这里就需要 Cache Coherence (以下简称 CC)机制来保证 CPU2 读取到的一定是 g 的最新值。因此，CC 的本质是让多组 Cache 看起来就像一组 Cache 一样。现代 CPU 都已经实现了 CC，通常程序员也不需要关心 CC 的具体实现策略，目前大部分 CPU 采用的是基于 MESI(Modified-Shared-Invalid-Exclusive) 协议的 CC，这里有一篇<a href="http://www.infoq.com/cn/articles/cache-coherency-primer" target="_blank" rel="noopener">参考文章</a>。</p>
+<h4 id="Coherence"><a href="#Coherence" class="headerlink" title="Coherence"></a>Coherence</h4><p>Coherence 通只出现在 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Cache_coherence">Cache Coherence</a> 一词中，作为”缓存一致性”被提出。我们知道现代的多核 CPU Cache 都是多层结构，通常每个 CPU Core 都有一个私有的 LB/SB, L1, L2 级 Cache，多个 CPU Core 共享一个 L3 Cache。比如 CPU1 修改了全局变量 g 并写入了 CPU1 L1 Cache，此时 CPU2 要读取变量 g，然而 CPU2 L1 Cache 中的 g 仍然是旧值，这里就需要 Cache Coherence (以下简称 CC)机制来保证 CPU2 读取到的一定是 g 的最新值。因此，CC 的本质是让多组 Cache 看起来就像一组 Cache 一样。现代 CPU 都已经实现了 CC，通常程序员也不需要关心 CC 的具体实现策略，目前大部分 CPU 采用的是基于 MESI(Modified-Shared-Invalid-Exclusive) 协议的 CC，这里有一篇<a target="_blank" rel="noopener" href="http://www.infoq.com/cn/articles/cache-coherency-primer">参考文章</a>。</p>
 <p>解释完了Consensus 和 Coherence，剩下 ACID 和 CAP，两者的 C 都叫做 Consistency，你可能以为这两者应该就是我们常提到的分布式中的一致性了吧。其实并不是，两者也是完全不同的概念。</p>
 <h4 id="ACID-Consistency"><a href="#ACID-Consistency" class="headerlink" title="ACID Consistency"></a>ACID Consistency</h4><p>ACID 中的一致性是指数据库的一致性约束，ACID 一致性完全与数据库规则相关，包括约束，级联，触发器等。在事务开始之前和事务结束以后，都必须遵守这些不变量，保证数据库的完整性不被破坏，因此 ACID 中的 C 表示数据库执行事务前后状态的一致性，防止非法事务导致数据库被破坏。比如银行系统 A 和 B 两个账户的余额总和为 100，那么无论 A, B 之间怎么转换，这个余额和是不变，前后一致的。</p>
 <h4 id="CAP-Consistency"><a href="#CAP-Consistency" class="headerlink" title="CAP Consistency"></a>CAP Consistency</h4><p>CAP 理论中的 C 也就是我们常说的分布式系统中的一致性，更确切地说，指的是分布式一致性中的一种: 线性一致性(Linearizability)，也叫做原子一致性(Atomic consistency)。</p>
-<p>谈到 CAP，和一致性一样，CAP 理论也是个被滥用的词汇，关于 CAP 的正确定义可参考<a href="https://www.the-paper-trail.org/page/cap-faq/" target="_blank" rel="noopener">cap faq</a>。</p>
+<p>谈到 CAP，和一致性一样，CAP 理论也是个被滥用的词汇，关于 CAP 的正确定义可参考<a target="_blank" rel="noopener" href="https://www.the-paper-trail.org/page/cap-faq/">cap faq</a>。</p>
 <p>简单总结CAP理论，在一个分布式的存储系统中，只能Consistency, Availability, Partition三选二，而由于在大规模的分布式系统中，网络不可靠几乎是不可避免的，即Partition网络分区容忍是必选项，因此对系统设计需要在AP(舍弃一致性，可能读出不一致)和CP(发生网络分区时系统不可用，即无法写入)之间权衡。</p>
-<p>很多时候我们会用 CAP 模型去评估一个分布式系统，但<a href="https://blog.the-pans.com/cap/" target="_blank" rel="noopener">这篇文章</a>会告诉你 CAP 理论的局限性，因为 CAP 理论是一个被过度简化的理论(一个只能读写单个数据的寄存器)，按照 CAP 理论，很多系统包括 MongoDB，ZooKeeper 既不满足一致性(线性一致性)，也不满足可用性(任意一个工作中的节点都要可以处理请求)，但这并不意味着它们不是优秀的系统，而是 CAP 定理本身并没有考虑处理延迟(为了做到强一致性的事务同步开销)，硬件故障，可读/可写的部分可用性等。这里不再展开，推荐阅读原文。</p>
-<p>正因为 CAP 中对C和A的定义过度理想化，后来又有人提出了BASE 理论，即基本可用(Basically Available）、软状态(Soft State)、最终一致性(Eventual Consistency)。BASE的核心思想是即使无法做到强一致性，但每个应用都可以根据自身的业务特点，采用适当的方法来使系统达到最终一致性(关于最终一致性，这篇亚马逊CTO Werner Vogels的<a href="https://www.allthingsdistributed.com/2008/12/eventually_consistent.html" target="_blank" rel="noopener">博客</a>值得一读)。显然，最终一致性弱于 CAP 中的 线性一致性。很多分布式系统都是基于 BASE 中的”基本可用”和”最终一致性”来实现的，比如 MySQL/PostgreSQL Replication 异步复制。</p>
+<p>很多时候我们会用 CAP 模型去评估一个分布式系统，但<a target="_blank" rel="noopener" href="https://blog.the-pans.com/cap/">这篇文章</a>会告诉你 CAP 理论的局限性，因为 CAP 理论是一个被过度简化的理论(一个只能读写单个数据的寄存器)，按照 CAP 理论，很多系统包括 MongoDB，ZooKeeper 既不满足一致性(线性一致性)，也不满足可用性(任意一个工作中的节点都要可以处理请求)，但这并不意味着它们不是优秀的系统，而是 CAP 定理本身并没有考虑处理延迟(为了做到强一致性的事务同步开销)，硬件故障，可读/可写的部分可用性等。这里不再展开，推荐阅读原文。</p>
+<p>正因为 CAP 中对C和A的定义过度理想化，后来又有人提出了BASE 理论，即基本可用(Basically Available）、软状态(Soft State)、最终一致性(Eventual Consistency)。BASE的核心思想是即使无法做到强一致性，但每个应用都可以根据自身的业务特点，采用适当的方法来使系统达到最终一致性(关于最终一致性，这篇亚马逊CTO Werner Vogels的<a target="_blank" rel="noopener" href="https://www.allthingsdistributed.com/2008/12/eventually_consistent.html">博客</a>值得一读)。显然，最终一致性弱于 CAP 中的 线性一致性。很多分布式系统都是基于 BASE 中的”基本可用”和”最终一致性”来实现的，比如 MySQL/PostgreSQL Replication 异步复制。</p>
 <p>以下我们不再纠结CAP理论本身，而聚焦于分布式一致性的定义和基本概念。</p>
 <h3 id="分布式一致性模型"><a href="#分布式一致性模型" class="headerlink" title="分布式一致性模型"></a>分布式一致性模型</h3><p>在分布式共享内存系统或者分布式数据存储中，数据一致性模型指定程序员和系统之间的契约，系统保证如果程序员遵守规则，则存储器将是一致的，并且读取，写入或更新存储器的结果将是可预测的。我们最常用于讨论的便是复制状态机(Replicated state machines)的一致性问题，比如 etcd, zookeeper，当进程 A 执行 <code>set x 3</code> 时，进程 B 是否能在 A 执行完成后立即读到 x 的新值。这个问题在单节点上是显而易见的，但在分布式中，对进程 来说，则需要通过一致性模型来确保server 给出的结果可预测。分布式系统中的一致性有强弱之分，理想情况下，当进程写入 replicate 中的某个节点，其改变会被立即同步到集群其它节点，其它进程 能立即读取到该值。弱一些的一致性是最终一致性，即操作完成之后的某段时间内可能各个节点的数据副本不一致(导致不同进程 访问到的数据会不一致)，但最终会是一致的。比如 DNS 服务。</p>
 <p>因此，当别人在谈到”一致性”时，可能需要花些时间来确认他究竟在说什么，有可能你们所谈论的不是一个东西。本文主要讨论的是分布式中的一致性。</p>
 <h4 id="分布式一致性基本概念"><a href="#分布式一致性基本概念" class="headerlink" title="分布式一致性基本概念"></a>分布式一致性基本概念</h4><p>要理解分布式一致性，先来谈谈分布式中几个必要的概念: 时间，事件，和顺序。</p>
-<p>分布式系统的时间主要分为物理时间和逻辑时间两种，物理时间是指程序能够直接获取到的 OS 时间，在分布式系统中，由于光速有限，你永远无法同步两台计算机的时间。想要在分布式中仅依靠物理时间来决定事件的客观先后顺序是不可能的。因此分布式系统中，通常使用<a href="https://my.oschina.net/fileoptions/blog/1821958" target="_blank" rel="noopener">逻辑时间</a>来处理事件的先后关系。</p>
+<p>分布式系统的时间主要分为物理时间和逻辑时间两种，物理时间是指程序能够直接获取到的 OS 时间，在分布式系统中，由于光速有限，你永远无法同步两台计算机的时间。想要在分布式中仅依靠物理时间来决定事件的客观先后顺序是不可能的。因此分布式系统中，通常使用<a target="_blank" rel="noopener" href="https://my.oschina.net/fileoptions/blog/1821958">逻辑时间</a>来处理事件的先后关系。</p>
 <p>分布式中的事件不是瞬间的概念，它有一个起始和结束时间，因此不同进程 发起的事件可能发生重叠，对于发生重叠的事件，我们说它们是并发执行的，在物理时间上是不分先后的。</p>
 <p>理想情况下，我们希望整个分布式系统中的所有事件都有先后顺序，这种顺序就是全序，即整个事件集合中任意两个事件都有先后顺序。但 1.物理时间是很难同步的，2. 网络是异步的，因此在分布式系统中，想要维持全序是非常困难的。不同的节点对两个事件谁先发生可能具有不同的看法，并且大部分时候我只需要知道偏序关系，用于确保因果关系。所谓偏序关系是指:</p>
 <ol>
@@ -492,7 +313,7 @@
 <p>如果将 D 的 <code>R(x,1)</code>改为 <code>R(x,2)</code>，则不满足线性一致性，因为 C 的 <code>R(x,1)</code> 和  D 的 <code>R(x,2)</code>都发生在 A, B 的 W 事件之后，因此它们应该对 x 的值结果具有相同的视角，不会读出不一致的结果。</p>
 <p>如果说顺序一致性只保证单节点事件先后顺序的话，线性一致性还保证节点间的事件先后顺序，因此线性一致性的实现是非常困难的，一方面它需要一个全局同步的时钟(顺序一致性不需要全局同步的时钟)，另一方面，越严格的一致性，会让分布式系统的复杂度更高，并且与之对应的，性能也会更差。</p>
 <p>除了线性一致性和顺序一致性外，还一些其它更弱的一致性模型，比如因果一致性，最终一致性等，这里不再赘述。理解一致性本身和一些基础概念之后，理解其它一致性都不难。</p>
-<h3 id="内存一致性模型"><a href="#内存一致性模型" class="headerlink" title="内存一致性模型"></a>内存一致性模型</h3><p>在前面我将顺序一致性简单描述为调度器模型，这可能会让你想到操作系统的进程/线程调度，在进程/线程的视角下，多路 CPU 本身不就是个”微型分布式系统”么。是的，不过多核体系是早于分布式的，因此它的一致性模型叫做<a href="https://zh.wikipedia.org/wiki/%E5%86%85%E5%AD%98%E4%B8%80%E8%87%B4%E6%80%A7%E6%A8%A1%E5%9E%8B" target="_blank" rel="noopener">内存一致性模型</a>。那问题来了，现代多核体系的内存一致性模型满足顺序一致性么？再来看个例子:</p>
+<h3 id="内存一致性模型"><a href="#内存一致性模型" class="headerlink" title="内存一致性模型"></a>内存一致性模型</h3><p>在前面我将顺序一致性简单描述为调度器模型，这可能会让你想到操作系统的进程/线程调度，在进程/线程的视角下，多路 CPU 本身不就是个”微型分布式系统”么。是的，不过多核体系是早于分布式的，因此它的一致性模型叫做<a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/%E5%86%85%E5%AD%98%E4%B8%80%E8%87%B4%E6%80%A7%E6%A8%A1%E5%9E%8B">内存一致性模型</a>。那问题来了，现代多核体系的内存一致性模型满足顺序一致性么？再来看个例子:</p>
 <p>初始状态下，x = 0, y = 0</p>
 <div class="table-container">
 <table>
@@ -522,9 +343,9 @@
 </ol>
 <p>基于以上三点，现代 CPU 架构基本都是不支持顺序一致性的，因为其需要非常高昂的代价，严重限制编译器和硬件的优化能力。比如顺序一致性要求处理器按照程序序(program order)来执行程序，但在大部分情况下，这是没必要的。因此，现代硬件体系遵循的其实是: sequential consistency for data race free programs，即对没有 data race 的程序来说，是满足顺序一致性的(编译器能够分析上下文相关性)，但如果涉及到 data race，程序员需要使用 compile barrier 和 memory barrier 来限制编译器和 CPU 的乱序能力，以保证多线程下顺序一致性。这方面推荐一些优秀的文章:</p>
 <ol>
-<li><a href="http://www.parallellabs.com/2010/03/06/why-should-programmer-care-about-sequential-consistency-rather-than-cache-coherence/" target="_blank" rel="noopener">为什么程序员需要关心顺序一致性而不是Cache一致性？</a></li>
-<li><a href="http://dreamrunner.org/blog/2014/06/28/qian-tan-memory-reordering/" target="_blank" rel="noopener">浅谈Memory Reordering</a></li>
-<li><a href="http://0xffffff.org/2017/02/21/40-atomic-variable-mutex-and-memory-barrier/" target="_blank" rel="noopener">聊聊原子变量、锁、内存屏障那点事</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.parallellabs.com/2010/03/06/why-should-programmer-care-about-sequential-consistency-rather-than-cache-coherence/">为什么程序员需要关心顺序一致性而不是Cache一致性？</a></li>
+<li><a target="_blank" rel="noopener" href="http://dreamrunner.org/blog/2014/06/28/qian-tan-memory-reordering/">浅谈Memory Reordering</a></li>
+<li><a target="_blank" rel="noopener" href="http://0xffffff.org/2017/02/21/40-atomic-variable-mutex-and-memory-barrier/">聊聊原子变量、锁、内存屏障那点事</a></li>
 </ol>
 <h3 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h3><h4 id="分布式一致性模型的局限性"><a href="#分布式一致性模型的局限性" class="headerlink" title="分布式一致性模型的局限性"></a>分布式一致性模型的局限性</h4><p>分布式一致性模型是被简化过的模型，它将整个分布式系统简化为single-object(如 k-v store, queue)，single-op(如 Read/Write, Enqueue/Dequeue)，因此有些东西是它没有讨论到的:</p>
 <ol>
@@ -534,394 +355,245 @@
 <p>因此一些分布式系统在不同的配置选项或不同的连接状态下，可能体现出不同的一致性。</p>
 <h4 id="微观-vs-宏观"><a href="#微观-vs-宏观" class="headerlink" title="微观 vs 宏观"></a>微观 vs 宏观</h4><p>在理解顺序一致性的时候，我引入了内存一致性模型，这其实是一个很大的课题，寥寥几句不可能交代清楚。我之所以要放到这里， 是因为两者可以相互启发，分布式设计中很多难题都可以从计算机体系结构中借鉴，比如分布式 Cache 同步 和 CPU Cache 同步，或者内存一致性和分布式一致性。计算机体系结构就是一本历史书，里面包含很多经验教训和千锤百炼的最佳实践，如果能够将其抽象泛化，应用到实际问题中，将是非常宝贵的。比如你要设计一个安全的消息加密，那么 https 会让你少走很多弯路，如果你要实现微服务间的流量控制，tcp 拥塞控制算法会给你很多启发，等等。学底层知识，可能最终学的就是这些”套路”。</p>
 
-      
     </div>
 
     
-
     
     
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-        <div class="post-tags">
-          
-            <a href="/tags/distributed/" rel="tag"># distributed</a>
-          
-        </div>
-      
-
-      
-      
-      
-
-      
-        <div class="post-nav">
-          <div class="post-nav-next post-nav-item">
-            
-              <a href="/2018/08/go-is-not-good/" rel="next" title="Go 的一些"坑"">
-                <i class="fa fa-chevron-left"></i> Go 的一些"坑"
-              </a>
-            
-          </div>
-
-          <span class="post-nav-divider"></span>
-
-          <div class="post-nav-prev post-nav-item">
-            
-              <a href="/2018/10/linux-cgroup/" rel="prev" title="Linux CGroup 基础">
-                Linux CGroup 基础 <i class="fa fa-chevron-right"></i>
-              </a>
-            
-          </div>
-        </div>
-      
-
-      
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-
-    <div class="post-spread">
-      
-    </div>
-  </div>
-
-
-          </div>
-          
-
-  
-    <div class="comments" id="comments">
-    </div>
-  
-
-
-
-        </div>
         
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/09/distributed-consistency/" title="一致性杂谈">http://wudaijun.com/2018/09/distributed-consistency/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/distributed/" rel="tag"><i class="fa fa-tag"></i> distributed</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/08/go-is-not-good/" rel="prev" title="Go 的一些"坑"">
+      <i class="fa fa-chevron-left"></i> Go 的一些"坑"
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/10/linux-cgroup/" rel="next" title="Linux CGroup 基础">
+      Linux CGroup 基础 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
           
   
-  <div class="sidebar-toggle">
-    <div class="sidebar-toggle-line-wrap">
-      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
-      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
-      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
-    </div>
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
   </div>
 
-  <aside id="sidebar" class="sidebar">
-    
+  <aside class="sidebar">
     <div class="sidebar-inner">
 
-      
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
 
-      
-        <ul class="sidebar-nav motion-element">
-          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
-            文章目录
-          </li>
-          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
-            站点概览
-          </li>
-        </ul>
-      
-
-      <section class="site-overview-wrap sidebar-panel">
-        <div class="site-overview">
-          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-            
-              <img class="site-author-image" itemprop="image"
-                src="/assets/theme/avatar.png"
-                alt="wudaijun" />
-            
-              <p class="site-author-name" itemprop="name">wudaijun</p>
-              <p class="site-description motion-element" itemprop="description"></p>
-          </div>
-
-          
-            <nav class="site-state motion-element">
-              
-                <div class="site-state-item site-state-posts">
-                
-                  <a href="/archives/">
-                
-                    <span class="site-state-item-count">121</span>
-                    <span class="site-state-item-name">日志</span>
-                  </a>
-                </div>
-              
-
-              
-                
-                
-                <div class="site-state-item site-state-categories">
-                  <a href="/categories/index.html">
-                    
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                    <span class="site-state-item-count">21</span>
-                    <span class="site-state-item-name">分类</span>
-                  </a>
-                </div>
-              
-
-              
-                
-                
-                <div class="site-state-item site-state-tags">
-                  <a href="/tags/index.html">
-                    
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                    <span class="site-state-item-count">34</span>
-                    <span class="site-state-item-name">标签</span>
-                  </a>
-                </div>
-              
-            </nav>
-          
-
-          
-
-          
-
-          
-          
-
-          
-          
-
-          
-            
-          
-          
-
-        </div>
-      </section>
-
-      
       <!--noindex-->
-        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
-          <div class="post-toc">
-
-            
-              
-            
-
-            
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#什么是一致性？"><span class="nav-text">什么是一致性？</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Consensus"><span class="nav-text">Consensus</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Coherence"><span class="nav-text">Coherence</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ACID-Consistency"><span class="nav-text">ACID Consistency</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#CAP-Consistency"><span class="nav-text">CAP Consistency</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分布式一致性模型"><span class="nav-text">分布式一致性模型</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#分布式一致性基本概念"><span class="nav-text">分布式一致性基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#顺序一致性-Sequential-Consistency"><span class="nav-text">顺序一致性(Sequential Consistency)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#线性一致性-Linearizability"><span class="nav-text">线性一致性(Linearizability)</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存一致性模型"><span class="nav-text">内存一致性模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#最后"><span class="nav-text">最后</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#分布式一致性模型的局限性"><span class="nav-text">分布式一致性模型的局限性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#微观-vs-宏观"><span class="nav-text">微观 vs 宏观</span></a></li></ol></li></ol></div>
-            
-
-          </div>
-        </section>
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E4%B8%80%E8%87%B4%E6%80%A7%EF%BC%9F"><span class="nav-text">什么是一致性？</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Consensus"><span class="nav-text">Consensus</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Coherence"><span class="nav-text">Coherence</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ACID-Consistency"><span class="nav-text">ACID Consistency</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#CAP-Consistency"><span class="nav-text">CAP Consistency</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7%E6%A8%A1%E5%9E%8B"><span class="nav-text">分布式一致性模型</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-text">分布式一致性基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%A1%BA%E5%BA%8F%E4%B8%80%E8%87%B4%E6%80%A7-Sequential-Consistency"><span class="nav-text">顺序一致性(Sequential Consistency)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%BA%BF%E6%80%A7%E4%B8%80%E8%87%B4%E6%80%A7-Linearizability"><span class="nav-text">线性一致性(Linearizability)</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E4%B8%80%E8%87%B4%E6%80%A7%E6%A8%A1%E5%9E%8B"><span class="nav-text">内存一致性模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%80%E5%90%8E"><span class="nav-text">最后</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7%E6%A8%A1%E5%9E%8B%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="nav-text">分布式一致性模型的局限性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BE%AE%E8%A7%82-vs-%E5%AE%8F%E8%A7%82"><span class="nav-text">微观 vs 宏观</span></a></li></ol></li></ol></div>
+      </div>
       <!--/noindex-->
-      
 
-      
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">120</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https://github.com/wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https://blog.csdn.net/wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
 
     </div>
   </aside>
+  <div id="sidebar-dimmer"></div>
 
 
-        
       </div>
     </main>
 
-    <footer id="footer" class="footer">
+    <footer class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
-  <span class="with-love" id="animate">
-    <i class="fa fa-user"></i>
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
   </span>
   <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
 
-  
-
-  
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
 </div>
 
 
 
 
-  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v3.7.1</div>
-
-
-
-  <span class="post-meta-divider">|</span>
-
-
-
-  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://theme-next.org">NexT.Gemini</a> v6.3.0</div>
 
 
 
 
-        
-
-
-
-
-
-
-
-
-        
       </div>
     </footer>
-
-    
-      <div class="back-to-top">
-        <i class="fa fa-arrow-up"></i>
-        
-      </div>
-    
-
-    
-
   </div>
 
   
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
 
-<script type="text/javascript">
-  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
-    window.Promise = null;
-  }
-</script>
+<script src="/js/utils.js"></script>
 
-
-
+<script src="/js/motion.js"></script>
 
 
+<script src="/js/schemes/pisces.js"></script>
 
 
-
-
+<script src="/js/next-boot.js"></script>
 
 
 
 
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
 
 
 
@@ -936,457 +608,39 @@
 
 
   
-  
-    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
-  
 
   
-  
-    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
-  
-
-  
-  
-    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
-  
-
 
   
 
 
-  <script type="text/javascript" src="/js/src/utils.js?v=6.3.0"></script>
-
-  <script type="text/javascript" src="/js/src/motion.js?v=6.3.0"></script>
-
-
-
-  
-  
-
-
-  <script type="text/javascript" src="/js/src/affix.js?v=6.3.0"></script>
-
-  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.3.0"></script>
-
-
-
-  
-  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.3.0"></script>
-<script type="text/javascript" src="/js/src/post-details.js?v=6.3.0"></script>
-
-
-
-  
-
-
-  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.3.0"></script>
-
-
-
-  
-
-
-
-	
-
-
-
-
-
-  
-
-
-
-
-
-  
-
-
-
-
-
-
-
-
-  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-  
-  
-  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
-  
-  <script type="text/javascript">
-    var GUEST = ['nick','mail','link'];
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
     var guest = 'nick,mail,link';
-    guest = guest.split(',').filter(function (item) {
-      return GUEST.indexOf(item)>-1;
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
     });
     new Valine({
-        el: '#comments' ,
-        verify: false,
-        notify: false,
-        appId: 'kL7con6xeU88chDAVyUSDSHI-gzGzoHsz',
-        appKey: '9XLxirxDW8NUhHJdu460Uiba',
-        placeholder: 'Just go go',
-        avatar:'mm',
-        guest_info:guest,
-        pageSize:'10' || 10,
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'kL7con6xeU88chDAVyUSDSHI-gzGzoHsz',
+      appKey     : '9XLxirxDW8NUhHJdu460Uiba',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
     });
-  </script>
-
-
-
-  
-
-  <script type="text/javascript">
-    // Popup Window;
-    var isfetched = false;
-    var isXml = true;
-    // Search DB path;
-    var search_path = "search.xml";
-    if (search_path.length === 0) {
-      search_path = "search.xml";
-    } else if (/json$/i.test(search_path)) {
-      isXml = false;
-    }
-    var path = "/" + search_path;
-    // monitor main search box;
-
-    var onPopupClose = function (e) {
-      $('.popup').hide();
-      $('#local-search-input').val('');
-      $('.search-result-list').remove();
-      $('#no-result').remove();
-      $(".local-search-pop-overlay").remove();
-      $('body').css('overflow', '');
-    }
-
-    function proceedsearch() {
-      $("body")
-        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
-        .css('overflow', 'hidden');
-      $('.search-popup-overlay').click(onPopupClose);
-      $('.popup').toggle();
-      var $localSearchInput = $('#local-search-input');
-      $localSearchInput.attr("autocapitalize", "none");
-      $localSearchInput.attr("autocorrect", "off");
-      $localSearchInput.focus();
-    }
-
-    // search function;
-    var searchFunc = function(path, search_id, content_id) {
-      'use strict';
-
-      // start loading animation
-      $("body")
-        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
-          '<div id="search-loading-icon">' +
-          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
-          '</div>' +
-          '</div>')
-        .css('overflow', 'hidden');
-      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
-
-      
-
-      $.ajax({
-        url: path,
-        dataType: isXml ? "xml" : "json",
-        async: true,
-        success: function(res) {
-          // get the contents from search data
-          isfetched = true;
-          $('.popup').detach().appendTo('.header-inner');
-          var datas = isXml ? $("entry", res).map(function() {
-            return {
-              title: $("title", this).text(),
-              content: $("content",this).text(),
-              url: $("url" , this).text()
-            };
-          }).get() : res;
-          var input = document.getElementById(search_id);
-          var resultContent = document.getElementById(content_id);
-          var inputEventFunction = function() {
-            var searchText = input.value.trim().toLowerCase();
-            var keywords = searchText.split(/[\s\-]+/);
-            if (keywords.length > 1) {
-              keywords.push(searchText);
-            }
-            var resultItems = [];
-            if (searchText.length > 0) {
-              // perform local searching
-              datas.forEach(function(data) {
-                var isMatch = false;
-                var hitCount = 0;
-                var searchTextCount = 0;
-                var title = data.title.trim();
-                var titleInLowerCase = title.toLowerCase();
-                var content = data.content.trim().replace(/<[^>]+>/g,"");
-                
-                var contentInLowerCase = content.toLowerCase();
-                var articleUrl = decodeURIComponent(data.url);
-                var indexOfTitle = [];
-                var indexOfContent = [];
-                // only match articles with not empty titles
-                if(title != '') {
-                  keywords.forEach(function(keyword) {
-                    function getIndexByWord(word, text, caseSensitive) {
-                      var wordLen = word.length;
-                      if (wordLen === 0) {
-                        return [];
-                      }
-                      var startPosition = 0, position = [], index = [];
-                      if (!caseSensitive) {
-                        text = text.toLowerCase();
-                        word = word.toLowerCase();
-                      }
-                      while ((position = text.indexOf(word, startPosition)) > -1) {
-                        index.push({position: position, word: word});
-                        startPosition = position + wordLen;
-                      }
-                      return index;
-                    }
-
-                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
-                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
-                  });
-                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
-                    isMatch = true;
-                    hitCount = indexOfTitle.length + indexOfContent.length;
-                  }
-                }
-
-                // show search results
-
-                if (isMatch) {
-                  // sort index by position of keyword
-
-                  [indexOfTitle, indexOfContent].forEach(function (index) {
-                    index.sort(function (itemLeft, itemRight) {
-                      if (itemRight.position !== itemLeft.position) {
-                        return itemRight.position - itemLeft.position;
-                      } else {
-                        return itemLeft.word.length - itemRight.word.length;
-                      }
-                    });
-                  });
-
-                  // merge hits into slices
-
-                  function mergeIntoSlice(text, start, end, index) {
-                    var item = index[index.length - 1];
-                    var position = item.position;
-                    var word = item.word;
-                    var hits = [];
-                    var searchTextCountInSlice = 0;
-                    while (position + word.length <= end && index.length != 0) {
-                      if (word === searchText) {
-                        searchTextCountInSlice++;
-                      }
-                      hits.push({position: position, length: word.length});
-                      var wordEnd = position + word.length;
-
-                      // move to next position of hit
-
-                      index.pop();
-                      while (index.length != 0) {
-                        item = index[index.length - 1];
-                        position = item.position;
-                        word = item.word;
-                        if (wordEnd > position) {
-                          index.pop();
-                        } else {
-                          break;
-                        }
-                      }
-                    }
-                    searchTextCount += searchTextCountInSlice;
-                    return {
-                      hits: hits,
-                      start: start,
-                      end: end,
-                      searchTextCount: searchTextCountInSlice
-                    };
-                  }
-
-                  var slicesOfTitle = [];
-                  if (indexOfTitle.length != 0) {
-                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
-                  }
-
-                  var slicesOfContent = [];
-                  while (indexOfContent.length != 0) {
-                    var item = indexOfContent[indexOfContent.length - 1];
-                    var position = item.position;
-                    var word = item.word;
-                    // cut out 100 characters
-                    var start = position - 20;
-                    var end = position + 80;
-                    if(start < 0){
-                      start = 0;
-                    }
-                    if (end < position + word.length) {
-                      end = position + word.length;
-                    }
-                    if(end > content.length){
-                      end = content.length;
-                    }
-                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
-                  }
-
-                  // sort slices in content by search text's count and hits' count
-
-                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
-                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
-                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
-                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
-                      return sliceRight.hits.length - sliceLeft.hits.length;
-                    } else {
-                      return sliceLeft.start - sliceRight.start;
-                    }
-                  });
-
-                  // select top N slices in content
-
-                  var upperBound = parseInt('1');
-                  if (upperBound >= 0) {
-                    slicesOfContent = slicesOfContent.slice(0, upperBound);
-                  }
-
-                  // highlight title and content
-
-                  function highlightKeyword(text, slice) {
-                    var result = '';
-                    var prevEnd = slice.start;
-                    slice.hits.forEach(function (hit) {
-                      result += text.substring(prevEnd, hit.position);
-                      var end = hit.position + hit.length;
-                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
-                      prevEnd = end;
-                    });
-                    result += text.substring(prevEnd, slice.end);
-                    return result;
-                  }
-
-                  var resultItem = '';
-
-                  if (slicesOfTitle.length != 0) {
-                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
-                  } else {
-                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
-                  }
-
-                  slicesOfContent.forEach(function (slice) {
-                    resultItem += "<a href='" + articleUrl + "'>" +
-                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
-                      "...</p>" + "</a>";
-                  });
-
-                  resultItem += "</li>";
-                  resultItems.push({
-                    item: resultItem,
-                    searchTextCount: searchTextCount,
-                    hitCount: hitCount,
-                    id: resultItems.length
-                  });
-                }
-              })
-            };
-            if (keywords.length === 1 && keywords[0] === "") {
-              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
-            } else if (resultItems.length === 0) {
-              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
-            } else {
-              resultItems.sort(function (resultLeft, resultRight) {
-                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
-                  return resultRight.searchTextCount - resultLeft.searchTextCount;
-                } else if (resultLeft.hitCount !== resultRight.hitCount) {
-                  return resultRight.hitCount - resultLeft.hitCount;
-                } else {
-                  return resultRight.id - resultLeft.id;
-                }
-              });
-              var searchResultList = '<ul class=\"search-result-list\">';
-              resultItems.forEach(function (result) {
-                searchResultList += result.item;
-              })
-              searchResultList += "</ul>";
-              resultContent.innerHTML = searchResultList;
-            }
-          }
-
-          if ('auto' === 'auto') {
-            input.addEventListener('input', inputEventFunction);
-          } else {
-            $('.search-icon').click(inputEventFunction);
-            input.addEventListener('keypress', function (event) {
-              if (event.keyCode === 13) {
-                inputEventFunction();
-              }
-            });
-          }
-
-          // remove loading animation
-          $(".local-search-pop-overlay").remove();
-          $('body').css('overflow', '');
-
-          proceedsearch();
-        }
-      });
-    }
-
-    // handle and trigger popup window;
-    $('.popup-trigger').click(function(e) {
-      e.stopPropagation();
-      if (isfetched === false) {
-        searchFunc(path, 'local-search-input', 'local-search-result');
-      } else {
-        proceedsearch();
-      };
-    });
-
-    $('.popup-btn-close').click(onPopupClose);
-    $('.popup').click(function(e){
-      e.stopPropagation();
-    });
-    $(document).on('keyup', function (event) {
-      var shouldDismissSearchPopup = event.which === 27 &&
-        $('.search-popup').is(':visible');
-      if (shouldDismissSearchPopup) {
-        onPopupClose();
-      }
-    });
-  </script>
-
-
-
-
-
-  
-
-  
-
-  
-
-  
-  
-
-  
-  
-
-  
-
-
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 </body>
 </html>

@@ -1,141 +1,51 @@
 <!DOCTYPE html>
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-
-<html class="theme-next gemini use-motion" lang="zh-CN">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8"/>
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
 <meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
 
 
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
 
-
-
-
-
-
-
-
-
-
-<meta http-equiv="Cache-Control" content="no-transform" />
-<meta http-equiv="Cache-Control" content="no-siteapp" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
-
-<link href="/css/main.css?v=6.3.0" rel="stylesheet" type="text/css" />
-
-
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png?v=6.3.0">
-
-
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico?v=6.3.0">
-
-
-  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico?v=6.3.0">
-
-
-  <link rel="mask-icon" href="/images/logo.svg?v=6.3.0" color="#222">
-
-
-
-
-
-
-
-
-
-<script type="text/javascript" id="hexo.configurations">
-  var NexT = window.NexT || {};
-  var CONFIG = {
-    root: '/',
-    scheme: 'Gemini',
-    version: '6.3.0',
-    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
-    fancybox: false,
-    fastclick: false,
-    lazyload: false,
-    tabs: true,
-    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
-    algolia: {
-      applicationID: '',
-      apiKey: '',
-      indexName: '',
-      hits: {"per_page":10},
-      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
-    }
-  };
-</script>
-
-
-  
-
-
-
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
 
   <meta name="description" content="源自于我做的一次公司内部的技术分享，这是初稿。 PPT 就不贴了。 一. 序章: 可计算模型1936 阿隆佐·邱奇发表可计算函数的第一份精确定义，即Lambda演算(λ演算)。λ演算是一套从数学逻辑中发展，以变量绑定和替换的规则，来研究函数如何抽象化定义、函数如何被应用以及递归的形式系统。1936 艾伦·图灵提出图灵机设想，通过TAPE,HEAD,TABLE,STATE四个部分模拟人的纸笔运算19">
-<meta name="keywords" content="programing">
 <meta property="og:type" content="article">
 <meta property="og:title" content="理解函数式编程">
 <meta property="og:url" content="http://wudaijun.com/2018/05/understand-functional-programing/index.html">
 <meta property="og:site_name" content="wudaijun&#39;s blog">
 <meta property="og:description" content="源自于我做的一次公司内部的技术分享，这是初稿。 PPT 就不贴了。 一. 序章: 可计算模型1936 阿隆佐·邱奇发表可计算函数的第一份精确定义，即Lambda演算(λ演算)。λ演算是一套从数学逻辑中发展，以变量绑定和替换的规则，来研究函数如何抽象化定义、函数如何被应用以及递归的形式系统。1936 艾伦·图灵提出图灵机设想，通过TAPE,HEAD,TABLE,STATE四个部分模拟人的纸笔运算19">
-<meta property="og:locale" content="zh-CN">
+<meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="leanote://file/getImage?fileId=5ad172004a714562e4000001">
 <meta property="og:image" content="http://wudaijun.com/assets/image/201805/haskell-monad.png">
-<meta property="og:updated_time" content="2019-02-17T07:12:41.000Z">
+<meta property="article:published_time" content="2018-05-11T16:00:00.000Z">
+<meta property="article:modified_time" content="2019-02-17T07:12:41.000Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="programing">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="理解函数式编程">
-<meta name="twitter:description" content="源自于我做的一次公司内部的技术分享，这是初稿。 PPT 就不贴了。 一. 序章: 可计算模型1936 阿隆佐·邱奇发表可计算函数的第一份精确定义，即Lambda演算(λ演算)。λ演算是一套从数学逻辑中发展，以变量绑定和替换的规则，来研究函数如何抽象化定义、函数如何被应用以及递归的形式系统。1936 艾伦·图灵提出图灵机设想，通过TAPE,HEAD,TABLE,STATE四个部分模拟人的纸笔运算19">
 <meta name="twitter:image" content="leanote://file/getImage?fileId=5ad172004a714562e4000001">
 
+<link rel="canonical" href="http://wudaijun.com/2018/05/understand-functional-programing/">
 
 
-
-
-
-  <link rel="canonical" href="http://wudaijun.com/2018/05/understand-functional-programing/"/>
-
-
-
-<script type="text/javascript" id="page.configurations">
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
   };
 </script>
 
@@ -147,296 +57,210 @@
 
 
 
-
-
-
   <noscript>
-  <style type="text/css">
-    .use-motion .motion-element,
-    .use-motion .brand,
-    .use-motion .menu-item,
-    .sidebar-inner,
-    .use-motion .post-block,
-    .use-motion .pagination,
-    .use-motion .comments,
-    .use-motion .post-header,
-    .use-motion .post-body,
-    .use-motion .collection-title { opacity: initial; }
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
 
-    .use-motion .logo,
-    .use-motion .site-title,
-    .use-motion .site-subtitle {
-      opacity: initial;
-      top: initial;
-    }
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
 
-    .use-motion {
-      .logo-line-before i { left: initial; }
-      .logo-line-after i { right: initial; }
-    }
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
   </style>
 </noscript>
 
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 </head>
 
-<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
-
-  
-  
-    
-  
-
-  <div class="container sidebar-position-left page-post-detail">
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
     <div class="headband"></div>
 
-    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-brand-wrapper">
-  <div class="site-meta ">
-    
-
-    <div class="custom-logo-site-title">
-      <a href="/" class="brand" rel="start">
-        <span class="logo-line-before"><i></i></span>
-        <span class="site-title">wudaijun's blog</span>
-        <span class="logo-line-after"><i></i></span>
-      </a>
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
     </div>
-    
-      
-        <p class="site-subtitle">Done is better than perfect</p>
-      
-    
   </div>
 
-  <div class="site-nav-toggle">
-    <button aria-label="切换导航栏">
-      <span class="btn-bar"></span>
-      <span class="btn-bar"></span>
-      <span class="btn-bar"></span>
-    </button>
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
   </div>
 </div>
+
 
 
 
 <nav class="site-nav">
-  
-    <ul id="menu" class="menu">
-      
-        
-        
-        
-          
-          <li class="menu-item menu-item-home">
-    <a href="/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />首页</a>
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-about">
-    <a href="/about/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-user"></i> <br />关于</a>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-tags">
-    <a href="/tags/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-categories">
-    <a href="/categories/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-th"></i> <br />分类</a>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
   </li>
-        
-        
-        
-          
-          <li class="menu-item menu-item-archives">
-    <a href="/archives/" rel="section">
-      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />归档</a>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
   </li>
+        <li class="menu-item menu-item-rss">
 
-      
-      
-        <li class="menu-item menu-item-search">
-          
-            <a href="javascript:;" class="popup-trigger">
-          
-            
-              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />搜索</a>
-        </li>
-      
-    </ul>
-  
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
 
-  
-
-  
-    <div class="site-search">
-      
-  <div class="popup search-popup local-search-popup">
-  <div class="local-search-header clearfix">
-    <span class="search-icon">
-      <i class="fa fa-search"></i>
-    </span>
-    <span class="popup-btn-close">
-      <i class="fa fa-times-circle"></i>
-    </span>
-    <div class="local-search-input-wrapper">
-      <input autocomplete="off"
-             placeholder="搜索..." spellcheck="false"
-             type="text" id="local-search-input">
-    </div>
-  </div>
-  <div id="local-search-result"></div>
-</div>
-
-
-
-    </div>
-  
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
 </nav>
 
 
 
-  
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
 
-
+    </div>
+  </div>
 
 </div>
     </header>
 
     
+  <div class="reading-progress-bar"></div>
 
 
-    <main id="main" class="main">
+    <main class="main">
       <div class="main-inner">
         <div class="content-wrap">
           
+
+          <div class="content post posts-expand">
             
 
-          
-          <div id="content" class="content">
-            
-
-  <div id="posts" class="posts-expand">
     
-
-  
-
   
   
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/05/understand-functional-programing/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
       <meta itemprop="name" content="wudaijun">
       <meta itemprop="description" content="">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="wudaijun's blog">
     </span>
-
-    
       <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">理解函数式编程
-              
-            
-          </h1>
-        
+        <h1 class="post-title" itemprop="name headline">
+          理解函数式编程
+        </h1>
 
         <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
+            <span class="post-meta-item">
               <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
+                <i class="far fa-calendar"></i>
               </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
+              <span class="post-meta-item-text">发表于</span>
 
               <time title="创建时间：2018-05-12 00:00:00" itemprop="dateCreated datePublished" datetime="2018-05-12T00:00:00+08:00">2018-05-12</time>
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/programing/" itemprop="url" rel="index"><span itemprop="name">programing</span></a></span>
-
-                
-                
-              
             </span>
-          
-
-          
-            
-              <span class="post-comments-count">
-                <span class="post-meta-divider">|</span>
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-comment-o"></i>
-                </span>
-                <a href="/2018/05/understand-functional-programing/#comments" itemprop="discussionUrl">
-                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/2018/05/understand-functional-programing/" itemprop="commentCount"></span>
-                </a>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
               </span>
-            
-          
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/programing/" itemprop="url" rel="index"><span itemprop="name">programing</span></a>
+                </span>
+            </span>
 
           
-          
-
-          
-
-          
-
-          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/05/understand-functional-programing/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/05/understand-functional-programing/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
 
         </div>
       </header>
-    
 
     
     
@@ -444,11 +268,8 @@
     <div class="post-body" itemprop="articleBody">
 
       
-      
-
-      
         <p>源自于我做的一次公司内部的技术分享，这是初稿。 PPT 就不贴了。</p>
-<h2 id="一-序章-可计算模型"><a href="#一-序章-可计算模型" class="headerlink" title="一. 序章: 可计算模型"></a>一. 序章: 可计算模型</h2><p>1936 阿隆佐·邱奇发表可计算函数的第一份精确定义，即<a href="https://zh.wikipedia.org/wiki/%CE%9B%E6%BC%94%E7%AE%97" target="_blank" rel="noopener">Lambda演算(λ演算)</a>。λ演算是一套从数学逻辑中发展，以变量绑定和替换的规则，来研究函数如何抽象化定义、函数如何被应用以及递归的形式系统。<br>1936 艾伦·图灵提出<a href="ttps://zh.wikipedia.org/wiki/%E5%9B%BE%E7%81%B5%E6%9C%BA" target="_blank" rel="noopener">图灵机</a>设想，通过TAPE,HEAD,TABLE,STATE四个部分模拟人的纸笔运算<br>1945 冯·诺伊曼提出冯·诺伊曼结构(存储程序型电脑)，是通用图灵机实现<br>1958 约翰·麦卡锡，发明了一种列表处理语言（Lisp），这种语言是一种阿隆佐lambda演算在现实世界的实现，而且它能在冯·诺伊曼计算机上运行</p>
+<h2 id="一-序章-可计算模型"><a href="#一-序章-可计算模型" class="headerlink" title="一. 序章: 可计算模型"></a>一. 序章: 可计算模型</h2><p>1936 阿隆佐·邱奇发表可计算函数的第一份精确定义，即<a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/%CE%9B%E6%BC%94%E7%AE%97">Lambda演算(λ演算)</a>。λ演算是一套从数学逻辑中发展，以变量绑定和替换的规则，来研究函数如何抽象化定义、函数如何被应用以及递归的形式系统。<br>1936 艾伦·图灵提出<a href="ttps://zh.wikipedia.org/wiki/%E5%9B%BE%E7%81%B5%E6%9C%BA">图灵机</a>设想，通过TAPE,HEAD,TABLE,STATE四个部分模拟人的纸笔运算<br>1945 冯·诺伊曼提出冯·诺伊曼结构(存储程序型电脑)，是通用图灵机实现<br>1958 约翰·麦卡锡，发明了一种列表处理语言（Lisp），这种语言是一种阿隆佐lambda演算在现实世界的实现，而且它能在冯·诺伊曼计算机上运行</p>
 <p>图灵机设想和 Lamdba 演算都是一种抽象计算模型，是解决可计算问题的一种方案，通俗来讲，就是将计算以数学的方式抽象化，以便证明和推导。图灵机和 Lamdba 演算这两个可计算理论已经被证明是等价的。</p>
 <a id="more"></a>
 <p>函数式的起源Lambda 演算甚至还要早于图灵机，但图灵机由于其更具实现意义，也更容易被理解，因此很早就有了硬件实现基础，而 Lambda 演算是一套更接近软件而非硬件的形式系统，Lambda 演算的第一台硬件则要等到1973年的 MIT 人工智能实验室开发的Lisp机。</p>
@@ -467,18 +288,18 @@
 </ul>
 <h2 id="四-函数式编程特性"><a href="#四-函数式编程特性" class="headerlink" title="四. 函数式编程特性"></a>四. 函数式编程特性</h2><h3 id="1-不可变语义"><a href="#1-不可变语义" class="headerlink" title="1. 不可变语义"></a>1. 不可变语义</h3><p>比如我们有一个 Point类，其 moveBy 方法对 x,y 坐标进行偏移，得到新的 Point 对象:</p>
 <pre><code>// 命令式写法: 直接修改内存值
-func (p *Point) moveBy(deltaX, deltaY int) {
+func (p *Point) moveBy(deltaX, deltaY int) &#123;
     p.x = p.x + deltaX
     p.y = p.y + deltaX
-}
+&#125;
 
 // 函数式写法: 新建一个 Point 对象，函数本身只需关心对象的映射，而非对象复用等实现细节。在语义上，新旧 Point 代表完全独立并可不变的两个&quot;Point 值&quot;。
-func moveBy(p *Point, deltaX, deltaY int) *Point {
-    return &amp;Point{
+func moveBy(p *Point, deltaX, deltaY int) *Point &#123;
+    return &amp;Point&#123;
         x:    p.x+deltaX,
         y:    p.y+deltaY,
-    }
-}
+    &#125;
+&#125;
 </code></pre><p>没有可变状态，也就没有 for, while 循环，使得函数式编程严重依赖递归。</p>
 <p>这里的不可变，指的是语义上的不可变，而非其底层实现上的不变。比如Erlang 虚拟机用 C 实现，通过写时拷贝来实现不可变语义，但针对比如binary 升级，Pid打包等，虽然底层的实现结构可能会改变，但对应用层来说语义是不变的。</p>
 <h3 id="2-纯函数"><a href="#2-纯函数" class="headerlink" title="2. 纯函数"></a>2. 纯函数</h3><ul>
@@ -491,22 +312,22 @@ func moveBy(p *Point, deltaX, deltaY int) *Point {
 <h3 id="3-递归与尾递归"><a href="#3-递归与尾递归" class="headerlink" title="3. 递归与尾递归"></a>3. 递归与尾递归</h3><p>递归在几乎所有命令式编程语言中都有，即函数调用自身，在函数式编程中，由于没有可变状态，for, while 循环都只能通过递归来实现，因此函数式编程严重依赖递归:</p>
 <p>以阶乘为例:<br><img src="leanote://file/getImage?fileId=5ad172004a714562e4000001" alt=""></p>
 <pre><code>// 自底向上，递推求解
-func fact_1(n int) int {
+func fact_1(n int) int &#123;
     acc := 1
-    for k:=1; k&lt;=n; k++ {
+    for k:=1; k&lt;=n; k++ &#123;
         acc = acc*k
-    }
+    &#125;
     return acc
-}
+&#125;
 
 //  自顶向下，递归求解
-func fact_2(n int) int {
-    if n == 0 {
+func fact_2(n int) int &#123;
+    if n == 0 &#123;
         return 1
-    } else {
+    &#125; else &#123;
         return fact_2(n-1)*n
-    }
-}
+    &#125;
+&#125;
 
 // 自顶向下，递归求解 - Erlang
 fact(N) when N == 0 -&gt; 1;
@@ -521,33 +342,33 @@ fact(Acc, N) when N &gt; 0 -&gt; fact(Acc*N, N-1).
 <p>递归是函数式中非常核心的一个概念，其在函数式语言中的低位要比在命令式语言高很多，理解递归是理解函数式的基础。递归是另一种我们思考和解决问题的方式，在一些情景下，使用递归会让问题简化许多。比如经典的找零钱问题:</p>
 <pre><code>// 若干面值钞票，给一张大面值货币要兑换成零钱，求有多少种兑换方式
 // 递归版本
-func countChange(money int, coins []int) int {
-    if money &lt; 0 || len(coins) == 0 {
+func countChange(money int, coins []int) int &#123;
+    if money &lt; 0 || len(coins) == 0 &#123;
         return 0
-    }
-    if money == 0 {
+    &#125;
+    if money == 0 &#123;
         return 1
-    }
+    &#125;
     return countChange(money, coins[1:]) + countChange(money-coins[0], coins)
-}
+&#125;
 
 // 迭代版本
-func countChange2(changes []int, money int) int {
+func countChange2(changes []int, money int) int &#123;
     n  := len(changes)
     dp := make([]int, money+1)
-    for i:=1; i&lt;=money; i++ {
+    for i:=1; i&lt;=money; i++ &#123;
         dp[i] = 0
-    }
+    &#125;
     dp[0] = 1
-    for i:=0; i&lt;n; i++ {
-        for j:=changes[i]; j&lt;=money; j++{
+    for i:=0; i&lt;n; i++ &#123;
+        for j:=changes[i]; j&lt;=money; j++&#123;
             dp[j] += dp[j-changes[i]]
-        }
-    }
+        &#125;
+    &#125;
     return dp[money]
-}
+&#125;
 </code></pre><p>可以看到，递归版比迭代版要容易理解得多，后者需要手动维护状态，而前者将状态隐藏到递归过程中了。类似的还有背包问题，都是理解递归很好的例子。</p>
-<h3 id="4-惰性求值-乱序求值"><a href="#4-惰性求值-乱序求值" class="headerlink" title="4. 惰性求值/乱序求值"></a>4. 惰性求值/乱序求值</h3><p>表达式不在它被绑定到变量之后就立即求值，而是在该值被取用的时候求值。<a href="http://wudaijun/2019/02/lazy-evaluation/" target="_blank" rel="noopener">这篇文章</a> 更详细地讨论了惰性求值。</p>
+<h3 id="4-惰性求值-乱序求值"><a href="#4-惰性求值-乱序求值" class="headerlink" title="4. 惰性求值/乱序求值"></a>4. 惰性求值/乱序求值</h3><p>表达式不在它被绑定到变量之后就立即求值，而是在该值被取用的时候求值。<a target="_blank" rel="noopener" href="http://wudaijun/2019/02/lazy-evaluation/">这篇文章</a> 更详细地讨论了惰性求值。</p>
 <pre><code>A = dosomething1()
 B = dosomething2(A)
 C = dosomething3()    
@@ -597,7 +418,7 @@ sum(F, A, B) -&gt; F(A) + sum(F, A+1, B).
 <p>Monad 的概念被引入到 Haskell，表示”注入”和”提取”的概念，用于处理 IO，串联函数等。</p>
 <p>Haskell严格地把纯代码从那些有副作用的代码(如 IO)中分隔开。就是说，它给纯代码提供了完全的副作用隔离。除了帮助程序员推断他们自己代码的正确性，它还使编译器可以自动采取优化和并行化成为可能。而 Monad 加上 Haskell 的类型类即成为分离纯函数和副作用函数的利器:</p>
 <p><img src="/assets/image/201805/haskell-monad.png" alt=""></p>
-<p><a href="http://zhuoqiang.me/what-is-monad.html" target="_blank" rel="noopener">图片出处</a></p>
+<p><a target="_blank" rel="noopener" href="http://zhuoqiang.me/what-is-monad.html">图片出处</a></p>
 <p>上图说明了 Haskell 如何通过 Monad 管理纯函数副作用函数。具体到代码，看起来像是这样:</p>
 <pre><code>name2reply :: String -&gt; String
 name2reply name =
@@ -651,405 +472,256 @@ main = do
 <p>如今很多语言都支持多种编程范式，一些函数式语言也有可变状态，一些命令式语言支持部分函数式特性，理解函数式可以扩展我们解决问题的思路，找到更简洁有效的解决方案，如递归而不是迭代，函数注入而不是对象注入等。最后，我认为每个程序员都可以去学习一门函数式语言，扩展自己的思维，写出更灵活，安全，”纯洁”的代码。</p>
 <p>参考:</p>
 <ol>
-<li><a href="https://www.zhihu.com/question/28292740" target="_blank" rel="noopener">什么是函数式思维?</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/28292740">什么是函数式思维?</a></li>
 </ol>
 <p>Haskell:</p>
 <ol>
-<li><a href="http://cnhaskell.com/chp/7.html" target="_blank" rel="noopener">Real World Haskell 中文版</a></li>
-<li><a href="http://jiyinyiyong.github.io/monads-in-pictures/" target="_blank" rel="noopener">图解 Monad</a></li>
-<li><a href="http://zhuoqiang.me/what-is-monad.html" target="_blank" rel="noopener">Monad 最简介绍</a></li>
-<li><a href="http://yi-programmer.com/2010-04-06_haskell_and_category_translate.html" target="_blank" rel="noopener">Haskell 与范畴轮</a></li>
-<li><a href="https://learnyoua.haskell.sg/content/zh-cn/ch11/functors-applicative-functors-and-monoids.html" target="_blank" rel="noopener">Haskell 趣学指南</a></li>
+<li><a target="_blank" rel="noopener" href="http://cnhaskell.com/chp/7.html">Real World Haskell 中文版</a></li>
+<li><a target="_blank" rel="noopener" href="http://jiyinyiyong.github.io/monads-in-pictures/">图解 Monad</a></li>
+<li><a target="_blank" rel="noopener" href="http://zhuoqiang.me/what-is-monad.html">Monad 最简介绍</a></li>
+<li><a target="_blank" rel="noopener" href="http://yi-programmer.com/2010-04-06_haskell_and_category_translate.html">Haskell 与范畴轮</a></li>
+<li><a target="_blank" rel="noopener" href="https://learnyoua.haskell.sg/content/zh-cn/ch11/functors-applicative-functors-and-monoids.html">Haskell 趣学指南</a></li>
 </ol>
 
-      
     </div>
 
     
-
     
     
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-        <div class="post-tags">
-          
-            <a href="/tags/programing/" rel="tag"># programing</a>
-          
-        </div>
-      
-
-      
-      
-      
-
-      
-        <div class="post-nav">
-          <div class="post-nav-next post-nav-item">
-            
-              <a href="/2018/04/go-pprof/" rel="next" title="go pprof 性能分析">
-                <i class="fa fa-chevron-left"></i> go pprof 性能分析
-              </a>
-            
-          </div>
-
-          <span class="post-nav-divider"></span>
-
-          <div class="post-nav-prev post-nav-item">
-            
-              <a href="/2018/05/react-notes/" rel="prev" title="React - Web中的函数式思维">
-                React - Web中的函数式思维 <i class="fa fa-chevron-right"></i>
-              </a>
-            
-          </div>
-        </div>
-      
-
-      
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-
-    <div class="post-spread">
-      
-    </div>
-  </div>
-
-
-          </div>
-          
-
-  
-    <div class="comments" id="comments">
-    </div>
-  
-
-
-
-        </div>
         
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/05/understand-functional-programing/" title="理解函数式编程">http://wudaijun.com/2018/05/understand-functional-programing/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/programing/" rel="tag"><i class="fa fa-tag"></i> programing</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/04/go-pprof/" rel="prev" title="go pprof 性能分析">
+      <i class="fa fa-chevron-left"></i> go pprof 性能分析
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/05/react-notes/" rel="next" title="React - Web中的函数式思维">
+      React - Web中的函数式思维 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
           
   
-  <div class="sidebar-toggle">
-    <div class="sidebar-toggle-line-wrap">
-      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
-      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
-      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
-    </div>
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
   </div>
 
-  <aside id="sidebar" class="sidebar">
-    
+  <aside class="sidebar">
     <div class="sidebar-inner">
 
-      
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
 
-      
-        <ul class="sidebar-nav motion-element">
-          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
-            文章目录
-          </li>
-          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
-            站点概览
-          </li>
-        </ul>
-      
-
-      <section class="site-overview-wrap sidebar-panel">
-        <div class="site-overview">
-          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-            
-              <img class="site-author-image" itemprop="image"
-                src="/assets/theme/avatar.png"
-                alt="wudaijun" />
-            
-              <p class="site-author-name" itemprop="name">wudaijun</p>
-              <p class="site-description motion-element" itemprop="description"></p>
-          </div>
-
-          
-            <nav class="site-state motion-element">
-              
-                <div class="site-state-item site-state-posts">
-                
-                  <a href="/archives/">
-                
-                    <span class="site-state-item-count">121</span>
-                    <span class="site-state-item-name">日志</span>
-                  </a>
-                </div>
-              
-
-              
-                
-                
-                <div class="site-state-item site-state-categories">
-                  <a href="/categories/index.html">
-                    
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                    <span class="site-state-item-count">21</span>
-                    <span class="site-state-item-name">分类</span>
-                  </a>
-                </div>
-              
-
-              
-                
-                
-                <div class="site-state-item site-state-tags">
-                  <a href="/tags/index.html">
-                    
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                      
-                    
-                    <span class="site-state-item-count">34</span>
-                    <span class="site-state-item-name">标签</span>
-                  </a>
-                </div>
-              
-            </nav>
-          
-
-          
-
-          
-
-          
-          
-
-          
-          
-
-          
-            
-          
-          
-
-        </div>
-      </section>
-
-      
       <!--noindex-->
-        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
-          <div class="post-toc">
-
-            
-              
-            
-
-            
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一-序章-可计算模型"><span class="nav-text">一. 序章: 可计算模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二-什么是函数式编程"><span class="nav-text">二. 什么是函数式编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三-函数式编程概念"><span class="nav-text">三. 函数式编程概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四-函数式编程特性"><span class="nav-text">四. 函数式编程特性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-不可变语义"><span class="nav-text">1. 不可变语义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-纯函数"><span class="nav-text">2. 纯函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-递归与尾递归"><span class="nav-text">3. 递归与尾递归</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-惰性求值-乱序求值"><span class="nav-text">4. 惰性求值/乱序求值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-柯里化-currying"><span class="nav-text">5. 柯里化(currying)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-高阶函数"><span class="nav-text">6. 高阶函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-Monad"><span class="nav-text">7. Monad</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#五-函数式的优缺点"><span class="nav-text">五. 函数式的优缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#六-函数式的实现"><span class="nav-text">六. 函数式的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Erlang"><span class="nav-text">1. Erlang</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#高并发"><span class="nav-text">高并发</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#热更新"><span class="nav-text">热更新</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#容错性"><span class="nav-text">容错性</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Haskell"><span class="nav-text">2. Haskell</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#七-最后"><span class="nav-text">七. 最后</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-为什么函数式没有崛起"><span class="nav-text">1. 为什么函数式没有崛起?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-函数式近几年开始受到更多的关注"><span class="nav-text">2. 函数式近几年开始受到更多的关注</span></a></li></ol></li></ol></li></ol></div>
-            
-
-          </div>
-        </section>
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-%E5%BA%8F%E7%AB%A0-%E5%8F%AF%E8%AE%A1%E7%AE%97%E6%A8%A1%E5%9E%8B"><span class="nav-text">一. 序章: 可计算模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C-%E4%BB%80%E4%B9%88%E6%98%AF%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B"><span class="nav-text">二. 什么是函数式编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B%E6%A6%82%E5%BF%B5"><span class="nav-text">三. 函数式编程概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B%E7%89%B9%E6%80%A7"><span class="nav-text">四. 函数式编程特性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%B8%8D%E5%8F%AF%E5%8F%98%E8%AF%AD%E4%B9%89"><span class="nav-text">1. 不可变语义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%BA%AF%E5%87%BD%E6%95%B0"><span class="nav-text">2. 纯函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E9%80%92%E5%BD%92%E4%B8%8E%E5%B0%BE%E9%80%92%E5%BD%92"><span class="nav-text">3. 递归与尾递归</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E6%83%B0%E6%80%A7%E6%B1%82%E5%80%BC-%E4%B9%B1%E5%BA%8F%E6%B1%82%E5%80%BC"><span class="nav-text">4. 惰性求值&#x2F;乱序求值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E6%9F%AF%E9%87%8C%E5%8C%96-currying"><span class="nav-text">5. 柯里化(currying)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E9%AB%98%E9%98%B6%E5%87%BD%E6%95%B0"><span class="nav-text">6. 高阶函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-Monad"><span class="nav-text">7. Monad</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%9A%84%E4%BC%98%E7%BC%BA%E7%82%B9"><span class="nav-text">五. 函数式的优缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-text">六. 函数式的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Erlang"><span class="nav-text">1. Erlang</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%AB%98%E5%B9%B6%E5%8F%91"><span class="nav-text">高并发</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%83%AD%E6%9B%B4%E6%96%B0"><span class="nav-text">热更新</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%AE%B9%E9%94%99%E6%80%A7"><span class="nav-text">容错性</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Haskell"><span class="nav-text">2. Haskell</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83-%E6%9C%80%E5%90%8E"><span class="nav-text">七. 最后</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E4%B8%BA%E4%BB%80%E4%B9%88%E5%87%BD%E6%95%B0%E5%BC%8F%E6%B2%A1%E6%9C%89%E5%B4%9B%E8%B5%B7"><span class="nav-text">1. 为什么函数式没有崛起?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%87%BD%E6%95%B0%E5%BC%8F%E8%BF%91%E5%87%A0%E5%B9%B4%E5%BC%80%E5%A7%8B%E5%8F%97%E5%88%B0%E6%9B%B4%E5%A4%9A%E7%9A%84%E5%85%B3%E6%B3%A8"><span class="nav-text">2. 函数式近几年开始受到更多的关注</span></a></li></ol></li></ol></li></ol></div>
+      </div>
       <!--/noindex-->
-      
 
-      
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">120</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https://github.com/wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https://blog.csdn.net/wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
 
     </div>
   </aside>
+  <div id="sidebar-dimmer"></div>
 
 
-        
       </div>
     </main>
 
-    <footer id="footer" class="footer">
+    <footer class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
-  <span class="with-love" id="animate">
-    <i class="fa fa-user"></i>
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
   </span>
   <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
 
-  
-
-  
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
 </div>
 
 
 
 
-  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v3.7.1</div>
-
-
-
-  <span class="post-meta-divider">|</span>
-
-
-
-  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://theme-next.org">NexT.Gemini</a> v6.3.0</div>
 
 
 
 
-        
-
-
-
-
-
-
-
-
-        
       </div>
     </footer>
-
-    
-      <div class="back-to-top">
-        <i class="fa fa-arrow-up"></i>
-        
-      </div>
-    
-
-    
-
   </div>
 
   
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
 
-<script type="text/javascript">
-  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
-    window.Promise = null;
-  }
-</script>
+<script src="/js/utils.js"></script>
 
-
-
+<script src="/js/motion.js"></script>
 
 
+<script src="/js/schemes/pisces.js"></script>
 
 
-
-
+<script src="/js/next-boot.js"></script>
 
 
 
 
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
 
 
 
@@ -1064,457 +736,39 @@ main = do
 
 
   
-  
-    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
-  
 
   
-  
-    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
-  
-
-  
-  
-    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
-  
-
 
   
 
 
-  <script type="text/javascript" src="/js/src/utils.js?v=6.3.0"></script>
-
-  <script type="text/javascript" src="/js/src/motion.js?v=6.3.0"></script>
-
-
-
-  
-  
-
-
-  <script type="text/javascript" src="/js/src/affix.js?v=6.3.0"></script>
-
-  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.3.0"></script>
-
-
-
-  
-  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.3.0"></script>
-<script type="text/javascript" src="/js/src/post-details.js?v=6.3.0"></script>
-
-
-
-  
-
-
-  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.3.0"></script>
-
-
-
-  
-
-
-
-	
-
-
-
-
-
-  
-
-
-
-
-
-  
-
-
-
-
-
-
-
-
-  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-  
-  
-  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
-  
-  <script type="text/javascript">
-    var GUEST = ['nick','mail','link'];
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
     var guest = 'nick,mail,link';
-    guest = guest.split(',').filter(function (item) {
-      return GUEST.indexOf(item)>-1;
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
     });
     new Valine({
-        el: '#comments' ,
-        verify: false,
-        notify: false,
-        appId: 'kL7con6xeU88chDAVyUSDSHI-gzGzoHsz',
-        appKey: '9XLxirxDW8NUhHJdu460Uiba',
-        placeholder: 'Just go go',
-        avatar:'mm',
-        guest_info:guest,
-        pageSize:'10' || 10,
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'kL7con6xeU88chDAVyUSDSHI-gzGzoHsz',
+      appKey     : '9XLxirxDW8NUhHJdu460Uiba',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
     });
-  </script>
-
-
-
-  
-
-  <script type="text/javascript">
-    // Popup Window;
-    var isfetched = false;
-    var isXml = true;
-    // Search DB path;
-    var search_path = "search.xml";
-    if (search_path.length === 0) {
-      search_path = "search.xml";
-    } else if (/json$/i.test(search_path)) {
-      isXml = false;
-    }
-    var path = "/" + search_path;
-    // monitor main search box;
-
-    var onPopupClose = function (e) {
-      $('.popup').hide();
-      $('#local-search-input').val('');
-      $('.search-result-list').remove();
-      $('#no-result').remove();
-      $(".local-search-pop-overlay").remove();
-      $('body').css('overflow', '');
-    }
-
-    function proceedsearch() {
-      $("body")
-        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
-        .css('overflow', 'hidden');
-      $('.search-popup-overlay').click(onPopupClose);
-      $('.popup').toggle();
-      var $localSearchInput = $('#local-search-input');
-      $localSearchInput.attr("autocapitalize", "none");
-      $localSearchInput.attr("autocorrect", "off");
-      $localSearchInput.focus();
-    }
-
-    // search function;
-    var searchFunc = function(path, search_id, content_id) {
-      'use strict';
-
-      // start loading animation
-      $("body")
-        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
-          '<div id="search-loading-icon">' +
-          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
-          '</div>' +
-          '</div>')
-        .css('overflow', 'hidden');
-      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
-
-      
-
-      $.ajax({
-        url: path,
-        dataType: isXml ? "xml" : "json",
-        async: true,
-        success: function(res) {
-          // get the contents from search data
-          isfetched = true;
-          $('.popup').detach().appendTo('.header-inner');
-          var datas = isXml ? $("entry", res).map(function() {
-            return {
-              title: $("title", this).text(),
-              content: $("content",this).text(),
-              url: $("url" , this).text()
-            };
-          }).get() : res;
-          var input = document.getElementById(search_id);
-          var resultContent = document.getElementById(content_id);
-          var inputEventFunction = function() {
-            var searchText = input.value.trim().toLowerCase();
-            var keywords = searchText.split(/[\s\-]+/);
-            if (keywords.length > 1) {
-              keywords.push(searchText);
-            }
-            var resultItems = [];
-            if (searchText.length > 0) {
-              // perform local searching
-              datas.forEach(function(data) {
-                var isMatch = false;
-                var hitCount = 0;
-                var searchTextCount = 0;
-                var title = data.title.trim();
-                var titleInLowerCase = title.toLowerCase();
-                var content = data.content.trim().replace(/<[^>]+>/g,"");
-                
-                var contentInLowerCase = content.toLowerCase();
-                var articleUrl = decodeURIComponent(data.url);
-                var indexOfTitle = [];
-                var indexOfContent = [];
-                // only match articles with not empty titles
-                if(title != '') {
-                  keywords.forEach(function(keyword) {
-                    function getIndexByWord(word, text, caseSensitive) {
-                      var wordLen = word.length;
-                      if (wordLen === 0) {
-                        return [];
-                      }
-                      var startPosition = 0, position = [], index = [];
-                      if (!caseSensitive) {
-                        text = text.toLowerCase();
-                        word = word.toLowerCase();
-                      }
-                      while ((position = text.indexOf(word, startPosition)) > -1) {
-                        index.push({position: position, word: word});
-                        startPosition = position + wordLen;
-                      }
-                      return index;
-                    }
-
-                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
-                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
-                  });
-                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
-                    isMatch = true;
-                    hitCount = indexOfTitle.length + indexOfContent.length;
-                  }
-                }
-
-                // show search results
-
-                if (isMatch) {
-                  // sort index by position of keyword
-
-                  [indexOfTitle, indexOfContent].forEach(function (index) {
-                    index.sort(function (itemLeft, itemRight) {
-                      if (itemRight.position !== itemLeft.position) {
-                        return itemRight.position - itemLeft.position;
-                      } else {
-                        return itemLeft.word.length - itemRight.word.length;
-                      }
-                    });
-                  });
-
-                  // merge hits into slices
-
-                  function mergeIntoSlice(text, start, end, index) {
-                    var item = index[index.length - 1];
-                    var position = item.position;
-                    var word = item.word;
-                    var hits = [];
-                    var searchTextCountInSlice = 0;
-                    while (position + word.length <= end && index.length != 0) {
-                      if (word === searchText) {
-                        searchTextCountInSlice++;
-                      }
-                      hits.push({position: position, length: word.length});
-                      var wordEnd = position + word.length;
-
-                      // move to next position of hit
-
-                      index.pop();
-                      while (index.length != 0) {
-                        item = index[index.length - 1];
-                        position = item.position;
-                        word = item.word;
-                        if (wordEnd > position) {
-                          index.pop();
-                        } else {
-                          break;
-                        }
-                      }
-                    }
-                    searchTextCount += searchTextCountInSlice;
-                    return {
-                      hits: hits,
-                      start: start,
-                      end: end,
-                      searchTextCount: searchTextCountInSlice
-                    };
-                  }
-
-                  var slicesOfTitle = [];
-                  if (indexOfTitle.length != 0) {
-                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
-                  }
-
-                  var slicesOfContent = [];
-                  while (indexOfContent.length != 0) {
-                    var item = indexOfContent[indexOfContent.length - 1];
-                    var position = item.position;
-                    var word = item.word;
-                    // cut out 100 characters
-                    var start = position - 20;
-                    var end = position + 80;
-                    if(start < 0){
-                      start = 0;
-                    }
-                    if (end < position + word.length) {
-                      end = position + word.length;
-                    }
-                    if(end > content.length){
-                      end = content.length;
-                    }
-                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
-                  }
-
-                  // sort slices in content by search text's count and hits' count
-
-                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
-                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
-                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
-                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
-                      return sliceRight.hits.length - sliceLeft.hits.length;
-                    } else {
-                      return sliceLeft.start - sliceRight.start;
-                    }
-                  });
-
-                  // select top N slices in content
-
-                  var upperBound = parseInt('1');
-                  if (upperBound >= 0) {
-                    slicesOfContent = slicesOfContent.slice(0, upperBound);
-                  }
-
-                  // highlight title and content
-
-                  function highlightKeyword(text, slice) {
-                    var result = '';
-                    var prevEnd = slice.start;
-                    slice.hits.forEach(function (hit) {
-                      result += text.substring(prevEnd, hit.position);
-                      var end = hit.position + hit.length;
-                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
-                      prevEnd = end;
-                    });
-                    result += text.substring(prevEnd, slice.end);
-                    return result;
-                  }
-
-                  var resultItem = '';
-
-                  if (slicesOfTitle.length != 0) {
-                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
-                  } else {
-                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
-                  }
-
-                  slicesOfContent.forEach(function (slice) {
-                    resultItem += "<a href='" + articleUrl + "'>" +
-                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
-                      "...</p>" + "</a>";
-                  });
-
-                  resultItem += "</li>";
-                  resultItems.push({
-                    item: resultItem,
-                    searchTextCount: searchTextCount,
-                    hitCount: hitCount,
-                    id: resultItems.length
-                  });
-                }
-              })
-            };
-            if (keywords.length === 1 && keywords[0] === "") {
-              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
-            } else if (resultItems.length === 0) {
-              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
-            } else {
-              resultItems.sort(function (resultLeft, resultRight) {
-                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
-                  return resultRight.searchTextCount - resultLeft.searchTextCount;
-                } else if (resultLeft.hitCount !== resultRight.hitCount) {
-                  return resultRight.hitCount - resultLeft.hitCount;
-                } else {
-                  return resultRight.id - resultLeft.id;
-                }
-              });
-              var searchResultList = '<ul class=\"search-result-list\">';
-              resultItems.forEach(function (result) {
-                searchResultList += result.item;
-              })
-              searchResultList += "</ul>";
-              resultContent.innerHTML = searchResultList;
-            }
-          }
-
-          if ('auto' === 'auto') {
-            input.addEventListener('input', inputEventFunction);
-          } else {
-            $('.search-icon').click(inputEventFunction);
-            input.addEventListener('keypress', function (event) {
-              if (event.keyCode === 13) {
-                inputEventFunction();
-              }
-            });
-          }
-
-          // remove loading animation
-          $(".local-search-pop-overlay").remove();
-          $('body').css('overflow', '');
-
-          proceedsearch();
-        }
-      });
-    }
-
-    // handle and trigger popup window;
-    $('.popup-trigger').click(function(e) {
-      e.stopPropagation();
-      if (isfetched === false) {
-        searchFunc(path, 'local-search-input', 'local-search-result');
-      } else {
-        proceedsearch();
-      };
-    });
-
-    $('.popup-btn-close').click(onPopupClose);
-    $('.popup').click(function(e){
-      e.stopPropagation();
-    });
-    $(document).on('keyup', function (event) {
-      var shouldDismissSearchPopup = event.which === 27 &&
-        $('.search-popup').is(':visible');
-      if (shouldDismissSearchPopup) {
-        onPopupClose();
-      }
-    });
-  </script>
-
-
-
-
-
-  
-
-  
-
-  
-
-  
-  
-
-  
-  
-
-  
-
-
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 </body>
 </html>
