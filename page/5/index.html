@@ -192,6 +192,96 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2017/09/ngs-battle/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2017/09/ngs-battle/" class="post-title-link" itemprop="url">探讨服务端回合制战斗系统</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-09-26 00:00:00" itemprop="dateCreated datePublished" datetime="2017-09-26T00:00:00+08:00">2017-09-26</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2017/09/ngs-battle/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2017/09/ngs-battle/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>本文记录最近做战斗系统的一些心得和思考，由于我们的战斗系统是回合制的，与大部分回合制游戏一样，需要服务器计算战斗，客户端以战报的方式回放。这里探讨一下服务端战斗系统的设计思路，实现一个灵活，可配置，扩展性强的战斗系统。</p>
+<h2 id="战斗流程"><a href="#战斗流程" class="headerlink" title="战斗流程"></a>战斗流程</h2><p>战斗地图是一个X*Y的矩阵，每个参与者(Fighter)初始位于其中一个格子上。战斗开始后，按照回合迭代，达到胜负条件或最大回合数则战斗结束。回合内，英雄按照出手顺序先后行动(Action)，英雄的Action包括移动，释放技能和普攻。</p>
+<p>战斗流程是比较简明易懂的，整个战斗系统的难点在于多样的技能实现。每个英雄有N个技能，每个英雄可通过学习其它技能来实现不同的战斗效果，技能的效果和作用比较繁杂，例如：</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2017/09/ngs-battle/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2017/08/go-conetxt-usage/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1054,128 +1144,10 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/11/docker-erlang/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2016/11/docker-erlang/" class="post-title-link" itemprop="url">探索Docker在Erlang集群中的应用</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2016-11-05 00:00:00" itemprop="dateCreated datePublished" datetime="2016-11-05T00:00:00+08:00">2016-11-05</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/tool/" itemprop="url" rel="index"><span itemprop="name">tool</span></a>
-                </span>
-            </span>
-
-          
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/2016/11/docker-erlang/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2016/11/docker-erlang/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>接<a target="_blank" rel="noopener" href="http://0.0.0.0:4444/2016/11/docker-basic/">上篇</a>，结合Erlang，对Docker的实际应用进一步理解。并探索将Docker应用到Erlang集群的方案。</p>
-<h2 id="简单Docker交互"><a href="#简单Docker交互" class="headerlink" title="简单Docker交互"></a>简单Docker交互</h2><p>下面是个简单的echo server：</p>
-<pre><code>-module(server_echo).
--export([start/0]).
-
-start() -&gt;
-     io:format(&quot;SERVER Trying to bind to port 2345\n&quot;),
-     &#123;ok, Listen&#125; = gen_tcp:listen(2345, [ binary
-                                         , &#123;packet, 0&#125;
-                                         , &#123;reuseaddr, true&#125;
-                                         , &#123;active, true&#125;
-                                         ]),
-     io:format(&quot;SERVER Listening on port 2345\n&quot;),
-     accept(Listen).
-
- accept(Listen) -&gt;
-     &#123;ok, Socket&#125; = gen_tcp:accept(Listen),
-     WorkerPid = spawn(fun() -&gt; echo(Socket) end),
-     gen_tcp:controlling_process(Socket, WorkerPid),
-     accept(Listen).
-
- echo(Socket) -&gt;
-     receive
-         &#123;tcp, Socket, Bin&#125; -&gt;
-             io:format(&quot;SERVER Received: ~p\n&quot;, [Bin]),
-             gen_tcp:send(Socket, Bin),
-             echo(Socket);
-         &#123;tcp_closed, Socket&#125; -&gt;
-             io:format(&quot;SERVER: The client closed the connection\n&quot;)
-     end.
-</code></pre><p>简单起见，我们直接用<code>telnet</code>命令对echo server进行测试。现在，考虑如何在Docker容器中运行echo server。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2016/11/docker-erlang/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/4/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><span class="page-number current">5</span><a class="page-number" href="/page/6/">6</a><span class="space">&hellip;</span><a class="page-number" href="/page/12/">12</a><a class="extend next" rel="next" href="/page/6/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/4/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><span class="page-number current">5</span><a class="page-number" href="/page/6/">6</a><span class="space">&hellip;</span><a class="page-number" href="/page/13/">13</a><a class="extend next" rel="next" href="/page/6/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -1243,7 +1215,7 @@ start() -&gt;
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">120</span>
+          <span class="site-state-item-count">121</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>

@@ -192,6 +192,95 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/04/erlang-hotcode/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2015/04/erlang-hotcode/" class="post-title-link" itemprop="url">Erlang 热更新</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-04-21 00:00:00" itemprop="dateCreated datePublished" datetime="2015-04-21T00:00:00+08:00">2015-04-21</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/04/erlang-hotcode/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/04/erlang-hotcode/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>erlang 热更是指在erlang系统不停止运行的情况下，对模块代码进行更新的特性，这也是erlang最神奇的特性之一。特别适用于游戏服务器，做活动更新，漏洞修复等。</p>
+<h2 id="一-简单示例"><a href="#一-简单示例" class="headerlink" title="一. 简单示例"></a>一. 简单示例</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">%% 示例一 </span><br><span class="line">-module(test).</span><br><span class="line"></span><br><span class="line">-export([start&#x2F;0, run&#x2F;0]).</span><br><span class="line"></span><br><span class="line">f() -&gt;</span><br><span class="line">	io:format(&quot;this is old code~n&quot;).</span><br><span class="line"></span><br><span class="line">run() -&gt;</span><br><span class="line">	f(),</span><br><span class="line">	timer:sleep(5000),</span><br><span class="line">	?MODULE:run().</span><br><span class="line"></span><br><span class="line">start() -&gt;</span><br><span class="line">	spawn(fun() -&gt; run() end).</span><br></pre></td></tr></table></figure>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2015/04/erlang-hotcode/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/04/erlang-mnesia/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1015,102 +1104,10 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/01/skynet-c-module/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2015/01/skynet-c-module/" class="post-title-link" itemprop="url">skynet C模块</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2015-01-10 00:00:00" itemprop="dateCreated datePublished" datetime="2015-01-10T00:00:00+08:00">2015-01-10</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
-                </span>
-            </span>
-
-          
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/2015/01/skynet-c-module/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2015/01/skynet-c-module/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>这些天一直在拜读云风的<a target="_blank" rel="noopener" href="https://github.com/cloudwu/skynet" title="skynet on github">skynet</a>，由于对lua不是很熟悉，也花了一些时间来学习lua。这里大概整理一下这些天学习skynet框架的一些东西。</p>
-<p>skynet核心概念为服务，一个服务可以由C或lua实现，服务之间的通信已由底层C框架保证。用户要做的只是注册服务，处理消息。如云风的<a target="_blank" rel="noopener" href="http://blog.codingnow.com/2012/09/the_design_of_skynet.html" title="skynet综述">skynet综述</a>中所说：</p>
-<p><strong>作为核心功能，Skynet 仅解决一个问题：</strong></p>
-<p><strong>把一个符合规范的 C 模块，从动态库（so 文件）中启动起来，绑定一个永不重复（即使模块退出）的数字 id 做为其 handle 。模块被称为服务（Service），服务间可以自由发送消息。每个模块可以向 Skynet 框架注册一个 callback 函数，用来接收发给它的消息。每个服务都是被一个个消息包驱动，当没有包到来的时候，它们就会处于挂起状态，对 CPU 资源零消耗。如果需要自主逻辑，则可以利用 Skynet 系统提供的 timeout 消息，定期触发。</strong></p>
-<p><strong>Skynet 提供了名字服务，还可以给特定的服务起一个易读的名字，而不是用 id 来指代它。id 和运行时态相关，无法保证每次启动服务，都有一致的 id ，但名字可以。</strong></p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2015/01/skynet-c-module/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/10/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/10/">10</a><span class="page-number current">11</span><a class="page-number" href="/page/12/">12</a><a class="extend next" rel="next" href="/page/12/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/10/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/10/">10</a><span class="page-number current">11</span><a class="page-number" href="/page/12/">12</a><a class="page-number" href="/page/13/">13</a><a class="extend next" rel="next" href="/page/12/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -1178,7 +1175,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">120</span>
+          <span class="site-state-item-count">121</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
