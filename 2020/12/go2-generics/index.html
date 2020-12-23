@@ -22,13 +22,13 @@
 
   <meta name="description" content="之前我在编程范式游记中介绍了OOP中的子类化(subtype，也叫子类型多态subtype polymorphism)和泛型(generics，也叫参数多态parametric polymorphism)，关于两者的区别和比较可以参考那篇文章，在其中我吐槽了Go目前对泛型支持的匮乏，随着Go 2提上日程，Go2泛型的设计细节也越来越清晰，我们从最新的Go泛型草案来了解下Go2泛型设计上有哪些考量和">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Go2 泛型速览">
+<meta property="og:title" content="Go2 泛型特性速览">
 <meta property="og:url" content="http://wudaijun.com/2020/12/go2-generics/index.html">
 <meta property="og:site_name" content="wudaijun&#39;s blog">
 <meta property="og:description" content="之前我在编程范式游记中介绍了OOP中的子类化(subtype，也叫子类型多态subtype polymorphism)和泛型(generics，也叫参数多态parametric polymorphism)，关于两者的区别和比较可以参考那篇文章，在其中我吐槽了Go目前对泛型支持的匮乏，随着Go 2提上日程，Go2泛型的设计细节也越来越清晰，我们从最新的Go泛型草案来了解下Go2泛型设计上有哪些考量和">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2020-12-19T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-12-22T11:19:04.486Z">
+<meta property="article:modified_time" content="2020-12-23T02:39:29.067Z">
 <meta property="article:author" content="wudaijun">
 <meta property="article:tag" content="golang">
 <meta name="twitter:card" content="summary">
@@ -46,7 +46,7 @@
   };
 </script>
 
-  <title>Go2 泛型速览 | wudaijun's blog</title>
+  <title>Go2 泛型特性速览 | wudaijun's blog</title>
   
 
 
@@ -211,7 +211,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          Go2 泛型速览
+          Go2 泛型特性速览
         </h1>
 
         <div class="post-meta">
@@ -269,6 +269,7 @@
 <h4 id="1-最简原型"><a href="#1-最简原型" class="headerlink" title="1. 最简原型"></a>1. 最简原型</h4><p>先从最简单的泛型定义开始:</p>
 <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Define</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Print</span>[<span class="title">T</span>] <span class="params">(s []T)</span></span> &#123;</span><br><span class="line">	<span class="keyword">for</span> _, v := <span class="keyword">range</span> s &#123;</span><br><span class="line">		fmt.Println(v)</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// Call</span></span><br><span class="line">Print[<span class="keyword">int</span>]([]<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>&#125;)</span><br></pre></td></tr></table></figure>
 <p>语法上和其它语言泛型大同小异，泛型的本质是将<strong>类型参数化</strong>，Go2中用函数名后的<code>[]</code>定义类型参数。以上声明对C++开发者来说非常亲切的(只是换了一种语法形式)，实际上这在Go2中是错误的泛型函数声明，因为它没有指明类型参数约束(constraints)。</p>
+<a id="more"></a>
 <h4 id="2-类型约束"><a href="#2-类型约束" class="headerlink" title="2. 类型约束"></a>2. 类型约束</h4><p>与C++不同，Go2在一开始就确定要引入泛型的类型参数约束(bounded generic types，subtype与generics的有机结合)，并且借机吐槽了C++的无约束泛型类型参数(模板类型)，因为这会带来非常难调试的编译时报错。在上例中，即使Print内部没有调用T的任何方法，也需要通过新引入的<code>any</code>关键字来表示任意类型约束(考虑下不能未显示指定约束则缺省即为<code>any</code>的原因)。因此正确的Print声明方式为:</p>
 <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Print</span>[<span class="title">T</span> <span class="title">any</span>] <span class="params">(s []T)</span></span> &#123; ...</span><br></pre></td></tr></table></figure>
 <p>PS: 任意类型不代表不能执行任意操作，如声明变量，赋值，取地址(<code>&amp;</code>)，取类型(<code>.(type)</code>)等。</p>
@@ -373,7 +374,7 @@
   </li>
   <li class="post-copyright-link">
     <strong>本文链接：</strong>
-    <a href="http://wudaijun.com/2020/12/go2-generics/" title="Go2 泛型速览">http://wudaijun.com/2020/12/go2-generics/</a>
+    <a href="http://wudaijun.com/2020/12/go2-generics/" title="Go2 泛型特性速览">http://wudaijun.com/2020/12/go2-generics/</a>
   </li>
   <li class="post-copyright-license">
     <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
