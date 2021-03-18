@@ -192,6 +192,102 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/12/unicode-in-erlang/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2016/12/unicode-in-erlang/" class="post-title-link" itemprop="url">Erlang Unicode编码</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-12-17 00:00:00" itemprop="dateCreated datePublished" datetime="2016-12-17T00:00:00+08:00">2016-12-17</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/12/unicode-in-erlang/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/12/unicode-in-erlang/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="Unicode基础"><a href="#Unicode基础" class="headerlink" title="Unicode基础"></a>Unicode基础</h2><h3 id="编码方式"><a href="#编码方式" class="headerlink" title="编码方式"></a>编码方式</h3><p>定义字符集中每个字符的<strong>codepoint(数字编码)</strong></p>
+<ul>
+<li>ASCII: 不用多说，编码空间为7位(0-127)</li>
+<li><a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/ISO/IEC_8859-1">ISO 8859-1</a>: 又称Latin-1，以ASCII为基础，在空置的0xA0-0xFF的范围内，加入96个字母及符号。编码空间为8位(0-255)</li>
+<li>UCS-2: 16位编码空间 又称基本多文种平面或零平面</li>
+<li>UCS-4: 32位编码空间 在UCS-2基本上，加入辅助平面(目前有16个辅助平面，至少需要21位)</li>
+<li>注1: UCS(Universal Character Set, <a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/%E9%80%9A%E7%94%A8%E5%AD%97%E7%AC%A6%E9%9B%86">通用字符集</a>)</li>
+<li>注2: 以上四种编码都是向前兼容的，通常我们所说的Unicode编码指UCS-2和UCS-4，目前广泛运用的是UCS-2</li>
+</ul>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2016/12/unicode-in-erlang/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/11/docker-erlang/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1253,99 +1349,6 @@ const (
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/08/gs-design-concept/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2016/08/gs-design-concept/" class="post-title-link" itemprop="url">一些GS设计理念</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2016-08-15 00:00:00" itemprop="dateCreated datePublished" datetime="2016-08-15T00:00:00+08:00">2016-08-15</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
-                </span>
-            </span>
-
-          
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/2016/08/gs-design-concept/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2016/08/gs-design-concept/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>关于GS设计的一些体会，纯属个人理解。</p>
-<h2 id="一-系统结构"><a href="#一-系统结构" class="headerlink" title="一. 系统结构"></a>一. 系统结构</h2><p>解耦是在做系统设计时，最应该铭记于心的原则，解耦的目的是让<strong>系统组件可以独立变化</strong>，构建易于理解，测试，维护的系统。</p>
-<p>解耦的手段通常有如下几种：</p>
-<h3 id="1-依赖倒置"><a href="#1-依赖倒置" class="headerlink" title="1. 依赖倒置"></a>1. 依赖倒置</h3><p>依赖倒置的原则：上层模块不应该依赖于下层模块，它们共同依赖于一个抽象。抽象不能依赖于具象，具象依赖于抽象。</p>
-<p><a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/%E4%BE%9D%E8%B5%96%E5%8F%8D%E8%BD%AC%E5%8E%9F%E5%88%99">依赖倒置</a>原则的目的是把高层次组件从对低层次组件的依赖中解耦出来，这样使得重用不同层级的组件实现变得可能。如模块A依赖于模块B，那么在A和B之间加一层接口(interface)，A调用(依赖)该接口，B实现(依赖)该接口，这样，只要接口稳定，A，B即可独立变化。</p>
-<p>这种依赖抽象的思想，在GOF的设计模式中，有大量宝贵实践，如策略模式，模板方法模式等。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2016/08/gs-design-concept/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1417,7 +1420,7 @@ const (
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">121</span>
+          <span class="site-state-item-count">122</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -1472,7 +1475,7 @@ const (
 <div class="copyright">
   
   &copy; 2014 – 
-  <span itemprop="copyrightYear">2020</span>
+  <span itemprop="copyrightYear">2021</span>
   <span class="with-love">
     <i class="fa fa-heart"></i>
   </span>
