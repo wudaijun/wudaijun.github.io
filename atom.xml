@@ -6,7 +6,7 @@
   <link href="http://wudaijun.com/atom.xml" rel="self"/>
   
   <link href="http://wudaijun.com/"/>
-  <updated>2021-04-16T09:09:22.202Z</updated>
+  <updated>2021-06-28T12:20:13.246Z</updated>
   <id>http://wudaijun.com/</id>
   
   <author>
@@ -15,6 +15,31 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>软件设计思维导图</title>
+    <link href="http://wudaijun.com/2021/06/software-design-mind/"/>
+    <id>http://wudaijun.com/2021/06/software-design-mind/</id>
+    <published>2021-06-27T16:00:00.000Z</published>
+    <updated>2021-06-28T12:20:13.246Z</updated>
+    
+    <content type="html"><![CDATA[<p>最近几个月一直忙着重构和实践基于MQ的分布式服务器框架，同时借此机会相对系统地学习了一些软件设计知识，将之前在这方面零散的知识点整合起来，按照自己的思考框架整理了一张知识脉络图。</p><p><img src="assets/image/202106/软件设计.png" alt=""></p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;p&gt;最近几个月一直忙着重构和实践基于MQ的分布式服务器框架，同时借此机会相对系统地学习了一些软件设计知识，将之前在这方面零散的知识点整合起来，按照自己的思考框架整理了一张知识脉络图。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;assets/image/202106/软件设计.png&quot; </summary>
+      
+    
+    
+    
+    <category term="mindmap" scheme="http://wudaijun.com/categories/mindmap/"/>
+    
+    
+    <category term="programing" scheme="http://wudaijun.com/tags/programing/"/>
+    
+  </entry>
   
   <entry>
     <title>聊聊GS引入MQ的一些实践</title>
@@ -525,32 +550,6 @@
     
     
     <category term="distributed" scheme="http://wudaijun.com/tags/distributed/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>Go 的一些&quot;坑&quot;</title>
-    <link href="http://wudaijun.com/2018/08/go-is-not-good/"/>
-    <id>http://wudaijun.com/2018/08/go-is-not-good/</id>
-    <published>2018-08-24T16:00:00.000Z</published>
-    <updated>2018-08-25T02:42:02.000Z</updated>
-    
-    <content type="html"><![CDATA[<h4 id="访问控制"><a href="#访问控制" class="headerlink" title="访问控制"></a>访问控制</h4><ol><li>package 内没有任何访问控制</li><li>package 间的访问控制只由大小写区分</li></ol><p>问题1我们可以通过合理拆分 package，来避免代码维护变得越来越困难，为了避免循环依赖，这里有<a href="http://wudaijun.com/2018/07/go-package-goroutine-practice/">一些实践</a>。</p><p>问题2则更难处理一些，因此 Go语言的reflect这类基础设施也受此影响，有时候你为了对象能够序列化或者 DeepCopy，就必须将其字段大写，也就对所有的package都暴露了实现。也就是说，Go 语言的基础设施(如reflect)也受此访问控制的限制(reflect本质上也是个package)。</p><a id="more"></a><p>比如游戏服务器中 Model，为了序列化，没有办法将其结构实现对外隐藏起来，只暴露API，这也就导致没有一种安全的方法来做脏标记这种状态封装(Go也没有类似Lua metatable这种Hook机制)。</p><h4 id="可变语义"><a href="#可变语义" class="headerlink" title="可变语义"></a>可变语义</h4><p>Go语言鼓励你用指针，还帮你做了指针的自动解引用，但是 Go 的大部分数据结构都是引用语义并且goroutine不安全的，如 slice，map等，Go不提供任何不可变语义，比如 const，copy-on-write等，这很符合 Go 的哲学: 简单(实现起来简单)。要想共享数据，要么通过 channel 或 mutex 来实现串行访问，要么就拷贝一份(深拷贝,DeepCopy)。初学者要没搞明白Go的数据结构实现之前，很容易写出并发不安全的代码。</p><h4 id="没有泛型"><a href="#没有泛型" class="headerlink" title="没有泛型"></a>没有泛型</h4><p>泛型本质上就是基于现有类型创造新的类型，达成代码复用。比如<code>map[KeyType]ValueType</code>，Go的reflect可以完成这个任务，你可以反射得到对象的type和value，然后可以通过这个type来创建新的对象或者构建更复杂的类型，比如<code>[]type</code>，<code>chan type</code>，<code>map[int]type</code>，甚至 struct，但是这一切都是运行时的，没有类型安全保证。是的，一门静态语言提供给开发者的泛型机制(reflect)并不提供类型安全保证。开发者只能通过interface来做一些丑陋的代码复用，典型的如sync.Map。</p><h4 id="deepcopy"><a href="#deepcopy" class="headerlink" title="deepcopy"></a>deepcopy</h4><p>前面说了，go不支持不可变语义，如果你要共享，要么加锁，要么拷贝。是的，Go 当然有 deepcopy 函数，但不是 Go 本身提供的，而是<a href="https://github.com/mohae/deepcopy/blob/master/deepcopy.go">第三方基于reflect的</a>。首先，基于 reflect 的 deepcopy 比自己写一个 deepcopy 要慢一个数量级，和直接序列化为 bson/json差不多。其次，前面也提到了，reflect 不能访问小写开头字段，因此基于reflect的deepcopy是不完整的，这可能导致一些问题，比如该对象的某个API访问了小写字段，或者大写字段和小写字段有相互关联。</p><p>解决DeepCopy的方案有两个，一是自己实现一个基于代码生成(<a href="https://golang.org/pkg/text/template/">text/template</a>)的deepcopy，这也是我们最近在尝试的。而是等着哪一天Go 想通了，做了个语言层面的deepcopy :)</p><h4 id="构造函数"><a href="#构造函数" class="headerlink" title="构造函数"></a>构造函数</h4><p>Go没有构造函数，Go”尽量”让零值(var t T)易于使用，比如int默认为0，string默认为””，sync 包的大部分数据结构都可以拿来即用(<code>sync.Mutex</code>,<code>sync.WaitGroup</code>等)。但也有例外，比如map:</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> m1 = <span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">string</span>&#123;&#125; <span class="comment">// empty map</span></span><br><span class="line"><span class="keyword">var</span> m0 <span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">string</span>     <span class="comment">// zero map (nil)</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">println</span>(<span class="built_in">len</span>(m1))   <span class="comment">// outputs &#x27;0&#x27;</span></span><br><span class="line"><span class="built_in">println</span>(<span class="built_in">len</span>(m0))   <span class="comment">// outputs &#x27;0&#x27;</span></span><br><span class="line"><span class="built_in">println</span>(m1[<span class="string">&quot;foo&quot;</span>]) <span class="comment">// outputs &#x27;&#x27;</span></span><br><span class="line"><span class="built_in">println</span>(m0[<span class="string">&quot;foo&quot;</span>]) <span class="comment">// outputs &#x27;&#x27;</span></span><br><span class="line">m1[<span class="string">&quot;foo&quot;</span>] = <span class="string">&quot;bar&quot;</span>  <span class="comment">// ok</span></span><br><span class="line">m0[<span class="string">&quot;foo&quot;</span>] = <span class="string">&quot;bar&quot;</span>  <span class="comment">// panics!</span></span><br></pre></td></tr></table></figure><p>对零值map的读取是ok的，但写入会panic!，我想大家都经历过<code>panic: assignment to entry in nil map</code>这类错误。特别在使用别人的结构体时，如果其内包含指针或map，而你没有显示调用其初始化函数(通常是NewXXX, OpenXXX, InitXXX)，后果通常是panic，毕竟库作者不一定会在每个 API上都检查初始状态，这通常需要使用者去谨慎检查并承担责任。</p><h4 id="切片和动态数组"><a href="#切片和动态数组" class="headerlink" title="切片和动态数组"></a>切片和动态数组</h4><p>Go 的切片用于引用数组的一部分，如<code>s := a[1:3]</code>，切换本身可以访问或修改数组的部分元素，但不会拷贝数组或者对数组大小造成影响。动态数组则是可以不断追加(append)元素的数组，这两个东西本来是两个概念，但是不巧的是，在 Go 中，它们都叫 slice，在一个切片语义的 slice上执行append一个元素将可能导致:</p><ol><li>len&lt;cap时，切片修改了原本不属其引用范围的数组元素</li><li>len==cap 时，切片重新分配，并拷贝原本所指向数组元素，从而丢失切片的引用语义</li></ol><p>因此我们在使用 slice 的一个实践就是一个slice只表达一种语义(要么切片，要么动态数组)，不要混用，关于slice 的更多细节参考<a href="http://wudaijun.com/2016/09/go-notes-1-datastructures/">这里</a>。</p><h4 id="nil-interface"><a href="#nil-interface" class="headerlink" title="nil interface"></a>nil interface</h4><p>我在<a href="http://wudaijun.com/2018/01/go-interface-implement/">这篇博客</a>里谈了下interface的实现，简单来说，interface{}本身就是一个结构体，包含 type/itab, data 两个字段，现在我们来看个有趣的示例:</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> ITester <span class="keyword">interface</span> &#123;</span><br><span class="line">A()</span><br><span class="line">B()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Test <span class="keyword">struct</span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(*Test)</span> <span class="title">A</span><span class="params">()</span></span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(Test)</span> <span class="title">B</span><span class="params">()</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line"><span class="keyword">var</span> t *Test = <span class="literal">nil</span></span><br><span class="line"><span class="keyword">var</span> it ITester = t</span><br><span class="line"><span class="built_in">println</span>(t, it) <span class="comment">// &#x27;0x0 (0x1071e60,0x0)&#x27;</span></span><br><span class="line"><span class="keyword">if</span> it != <span class="literal">nil</span> &#123;</span><br><span class="line"><span class="built_in">println</span>(<span class="string">&quot;Not nil!&quot;</span>) <span class="comment">// 程序会走到这里</span></span><br><span class="line">it.A()     <span class="comment">// ok</span></span><br><span class="line">it.B()     <span class="comment">// panic: value method main.Test.B called using nil *Test pointer</span></span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line"><span class="built_in">println</span>(<span class="string">&quot;nil!&quot;</span>)     <span class="comment">// 对interface&#123;&#125;不了解的同学可能会认为应该走到这里</span></span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>现在我们来大概看看发生了什么，it本身是个itab+data的结构体，其中itab包含了t的类型以及ITester方法定义等，data则指向t，因此it打印出来第二个字段为0x0，但指向nil值的it本身并不为nil，也就是说<code>var it1 ITester = nil</code>和<code>var it2 Itester = (*Test)(nil)</code>，两条语句的性质是完全不一样的。it可以正常调用A()，因为A()的receiver是指针，而调用B()则会panic，因为需要解nil指针。这个示例能够说明interface{}实现的一些非直观性，以及自动解引用和nil receiver结合时引发的一些问题。另外，如果你真的需要判断一个interface{}指向的值是否为nil，还得用到”万能的”反射: <code>if it != nil &amp;&amp; !reflect.ValueOf(it).IsNil()</code>。</p><h4 id="And-More…"><a href="#And-More…" class="headerlink" title="And More…"></a>And More…</h4><p>前面只是列举了部分我在使用中对Go语言设计的反思，还有一些被广为诟病的如GOPATH，依赖管理等，它们有些可能是 Feature(嗯，万能的词汇)，有些则可能有设计上的考量(你我皆凡人)，Go语言目前给我的整体感觉就是”差那么一步”，比如map没有clear接口，没有提供deepcopy函数，没有构造函数等，这一步或难(比如添加 const语义)或不难(比如map clear)，但设计者终究没有为开发者提供这样的选项，这种差一步的好处便是简单(这里当然说的是语言实现简单)，这可能是Go语言最重要的设计哲学之一，也是对”互联网C语言”Slogan的践行。另一个角度来说，开发者对语言的期望是很高的，灵活性/安全性，开发效率/运行效率，命令式/面向对象/函数式/泛型等统统都要。:) 有意思的是，网上有人将对 Go 语言的吐槽收集起来，做成了<a href="https://github.com/ksimka/go-is-not-good">go is not good</a>系列，然后赚了3000多个Star。。。真的是Go社区火了，带动了一堆”副产业”。。。</p>]]></content>
-    
-    
-    <summary type="html">&lt;h4 id=&quot;访问控制&quot;&gt;&lt;a href=&quot;#访问控制&quot; class=&quot;headerlink&quot; title=&quot;访问控制&quot;&gt;&lt;/a&gt;访问控制&lt;/h4&gt;&lt;ol&gt;
-&lt;li&gt;package 内没有任何访问控制&lt;/li&gt;
-&lt;li&gt;package 间的访问控制只由大小写区分&lt;/li&gt;
-&lt;/ol&gt;
-&lt;p&gt;问题1我们可以通过合理拆分 package，来避免代码维护变得越来越困难，为了避免循环依赖，这里有&lt;a href=&quot;http://wudaijun.com/2018/07/go-package-goroutine-practice/&quot;&gt;一些实践&lt;/a&gt;。&lt;/p&gt;
-&lt;p&gt;问题2则更难处理一些，因此 Go语言的reflect这类基础设施也受此影响，有时候你为了对象能够序列化或者 DeepCopy，就必须将其字段大写，也就对所有的package都暴露了实现。也就是说，Go 语言的基础设施(如reflect)也受此访问控制的限制(reflect本质上也是个package)。&lt;/p&gt;</summary>
-    
-    
-    
-    <category term="go" scheme="http://wudaijun.com/categories/go/"/>
-    
-    
-    <category term="go" scheme="http://wudaijun.com/tags/go/"/>
     
   </entry>
   

@@ -20,15 +20,22 @@
     var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="wudaijun&#39;s blog">
-<meta property="og:url" content="http://wudaijun.com/tags/docker/index.html">
+  <meta name="description" content="最近几个月一直忙着重构和实践基于MQ的分布式服务器框架，同时借此机会相对系统地学习了一些软件设计知识，将之前在这方面零散的知识点整合起来，按照自己的思考框架整理了一张知识脉络图。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="软件设计思维导图">
+<meta property="og:url" content="http://wudaijun.com/2021/06/software-design-mind/index.html">
 <meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="最近几个月一直忙着重构和实践基于MQ的分布式服务器框架，同时借此机会相对系统地学习了一些软件设计知识，将之前在这方面零散的知识点整合起来，按照自己的思考框架整理了一张知识脉络图。">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/2021/06/software-design-mind/assets/image/202106/软件设计.png">
+<meta property="article:published_time" content="2021-06-27T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-06-28T12:20:13.246Z">
 <meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="programing">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/2021/06/software-design-mind/assets/image/202106/软件设计.png">
 
-<link rel="canonical" href="http://wudaijun.com/tags/docker/">
+<link rel="canonical" href="http://wudaijun.com/2021/06/software-design-mind/">
 
 
 <script id="page-configurations">
@@ -36,12 +43,12 @@
   CONFIG.page = {
     sidebar: "",
     isHome : false,
-    isPost : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>标签: docker | wudaijun's blog</title>
+  <title>软件设计思维导图 | wudaijun's blog</title>
   
 
 
@@ -186,163 +193,135 @@
         <div class="content-wrap">
           
 
-          <div class="content tag">
+          <div class="content post posts-expand">
             
 
+    
   
   
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2021/06/software-design-mind/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          软件设计思维导图
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-06-28 00:00:00" itemprop="dateCreated datePublished" datetime="2021-06-28T00:00:00+08:00">2021-06-28</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/mindmap/" itemprop="url" rel="index"><span itemprop="name">mindmap</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
   
-  <div class="post-block">
-    <div class="posts-collapse">
-      <div class="collection-title">
-        <h2 class="collection-header">docker
-          <small>标签</small>
-        </h2>
-      </div>
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2021/06/software-design-mind/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2021/06/software-design-mind/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
 
       
-    <div class="collection-year">
-      <span class="collection-header">2018</span>
-    </div>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2018-08-18T00:00:00+08:00"
-              content="2018-08-18">
-          08-18
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2018/08/gs-devops/" itemprop="url">
-            <span itemprop="name">GS DevOps 实践</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2018-03-25T00:00:00+08:00"
-              content="2018-03-25">
-          03-25
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2018/03/docker-container-ops/" itemprop="url">
-            <span itemprop="name">Docker 容器管理</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2018-03-08T00:00:00+08:00"
-              content="2018-03-08">
-          03-08
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2018/03/docker-swarm/" itemprop="url">
-            <span itemprop="name">Docker Swarm - 轻量级容器编排工具</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-    <div class="collection-year">
-      <span class="collection-header">2017</span>
-    </div>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2017-11-21T00:00:00+08:00"
-              content="2017-11-21">
-          11-21
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2017/11/docker-network/" itemprop="url">
-            <span itemprop="name">docker 网络</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-    <div class="collection-year">
-      <span class="collection-header">2016</span>
-    </div>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2016-11-05T00:00:00+08:00"
-              content="2016-11-05">
-          11-05
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2016/11/docker-erlang/" itemprop="url">
-            <span itemprop="name">探索Docker在Erlang集群中的应用</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2016-11-01T00:00:00+08:00"
-              content="2016-11-01">
-          11-01
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2016/11/docker-basic/" itemprop="url">
-            <span itemprop="name">Docker 学习</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
+        <p>最近几个月一直忙着重构和实践基于MQ的分布式服务器框架，同时借此机会相对系统地学习了一些软件设计知识，将之前在这方面零散的知识点整合起来，按照自己的思考框架整理了一张知识脉络图。</p>
+<p><img src="assets/image/202106/软件设计.png" alt=""></p>
 
     </div>
-  </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2021/06/software-design-mind/" title="软件设计思维导图">http://wudaijun.com/2021/06/software-design-mind/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/programing/" rel="tag"><i class="fa fa-tag"></i> programing</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/02/gs-mq-practice/" rel="prev" title="聊聊GS引入MQ的一些实践">
+      <i class="fa fa-chevron-left"></i> 聊聊GS引入MQ的一些实践
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
   
   
-  
-
   
 
 
 
           </div>
           
+    <div class="comments" id="valine-comments"></div>
 
 <script>
   window.addEventListener('tabs:register', () => {
