@@ -10161,4 +10161,17 @@ test.c:12:2: note: previous implicit declaration is here
         <tag>programing</tag>
       </tags>
   </entry>
+  <entry>
+    <title>领域驱动开发思维导图</title>
+    <url>/2021/07/ddd-mind/</url>
+    <content><![CDATA[<p>最近关于领域驱动开发的一些学习和实践心得。</p>
+<p><img src="assets/image/202107/ddd.png" alt=""></p>
+]]></content>
+      <categories>
+        <category>mindmap</category>
+      </categories>
+      <tags>
+        <tag>programing</tag>
+      </tags>
+  </entry>
 </search>

@@ -20,20 +20,22 @@
     var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="PlayerSession类在之前的网络底层设计中，Player和Session之间通过组合实现弱关联，但仍然有个诟病：Player类和Session类在网络连接到来时一并创建了。这样后面在做断线重连的时候，会有两个Player。而事实上LoginService只管登录认证，登录认证的时候并不需要创建Player类，因此可以延迟Player的创建，将其放在MapService中。而这之前Login">
+  <meta name="description" content="最近关于领域驱动开发的一些学习和实践心得。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="NGServer 加入PlayerSession">
-<meta property="og:url" content="http://wudaijun.com/2014/12/ngserver-playersession/index.html">
+<meta property="og:title" content="领域驱动开发思维导图">
+<meta property="og:url" content="http://wudaijun.com/2021/07/ddd-mind/index.html">
 <meta property="og:site_name" content="wudaijun&#39;s blog">
-<meta property="og:description" content="PlayerSession类在之前的网络底层设计中，Player和Session之间通过组合实现弱关联，但仍然有个诟病：Player类和Session类在网络连接到来时一并创建了。这样后面在做断线重连的时候，会有两个Player。而事实上LoginService只管登录认证，登录认证的时候并不需要创建Player类，因此可以延迟Player的创建，将其放在MapService中。而这之前Login">
+<meta property="og:description" content="最近关于领域驱动开发的一些学习和实践心得。">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2014-12-11T16:00:00.000Z">
-<meta property="article:modified_time" content="2018-08-02T05:52:15.000Z">
+<meta property="og:image" content="http://wudaijun.com/2021/07/ddd-mind/assets/image/202107/ddd.png">
+<meta property="article:published_time" content="2021-07-03T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-07-05T08:01:37.644Z">
 <meta property="article:author" content="wudaijun">
-<meta property="article:tag" content="ngserver">
+<meta property="article:tag" content="programing">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/2021/07/ddd-mind/assets/image/202107/ddd.png">
 
-<link rel="canonical" href="http://wudaijun.com/2014/12/ngserver-playersession/">
+<link rel="canonical" href="http://wudaijun.com/2021/07/ddd-mind/">
 
 
 <script id="page-configurations">
@@ -46,7 +48,7 @@
   };
 </script>
 
-  <title>NGServer 加入PlayerSession | wudaijun's blog</title>
+  <title>领域驱动开发思维导图 | wudaijun's blog</title>
   
 
 
@@ -198,7 +200,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/12/ngserver-playersession/">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2021/07/ddd-mind/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/assets/theme/avatar.png">
@@ -211,7 +213,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          NGServer 加入PlayerSession
+          领域驱动开发思维导图
         </h1>
 
         <div class="post-meta">
@@ -221,7 +223,7 @@
               </span>
               <span class="post-meta-item-text">发表于</span>
 
-              <time title="创建时间：2014-12-12 00:00:00" itemprop="dateCreated datePublished" datetime="2014-12-12T00:00:00+08:00">2014-12-12</time>
+              <time title="创建时间：2021-07-04 00:00:00" itemprop="dateCreated datePublished" datetime="2021-07-04T00:00:00+08:00">2021-07-04</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -229,7 +231,7 @@
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                  <a href="/categories/mindmap/" itemprop="url" rel="index"><span itemprop="name">mindmap</span></a>
                 </span>
             </span>
 
@@ -249,8 +251,8 @@
       </span>
       <span class="post-meta-item-text">Valine：</span>
     
-    <a title="valine" href="/2014/12/ngserver-playersession/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2014/12/ngserver-playersession/" itemprop="commentCount"></span>
+    <a title="valine" href="/2021/07/ddd-mind/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2021/07/ddd-mind/" itemprop="commentCount"></span>
     </a>
   </span>
   
@@ -265,13 +267,8 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h2 id="PlayerSession类"><a href="#PlayerSession类" class="headerlink" title="PlayerSession类"></a>PlayerSession类</h2><p>在之前的网络底层设计中，Player和Session之间通过组合实现弱关联，但仍然有个诟病：Player类和Session类在网络连接到来时一并创建了。这样后面在做断线重连的时候，会有两个Player。而事实上LoginService只管登录认证，登录认证的时候并不需要创建Player类，因此可以延迟Player的创建，将其放在MapService中。而这之前LoginService的登录认证也需要用户的一些基本信息。基于这些，实现了PlayerSession类：</p>
-<a id="more"></a>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">class PlayerSession : public Session</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">    PlayerSession(const std::shared_ptr&lt;Socket&gt; socket, int32_t conn_id);</span><br><span class="line">    ~PlayerSession();</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; .....</span><br><span class="line">	</span><br><span class="line">    &#x2F;&#x2F; 网络数据解码</span><br><span class="line">    int32_t Decode(const char* data, int32_t len);</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 发送消息</span><br><span class="line">    template&lt;typename MsgT&gt;</span><br><span class="line">    bool SendMsg(MsgId msgid, MsgT&amp; t);</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; ....</span><br><span class="line">	</span><br><span class="line">private:</span><br><span class="line">    int32_t _sid &#x3D; 0;       &#x2F;&#x2F; 所属服务ID</span><br><span class="line">    std::shared_ptr&lt;Player&gt; _playerToken; &#x2F;&#x2F; 玩家指针</span><br><span class="line">    SessionState _state &#x3D; kSessionState_None;   &#x2F;&#x2F; 会话状态</span><br><span class="line">    std::string _owner;       &#x2F;&#x2F; 登录用户名</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-<p>解码将在PlayerSession而不是Player中完成，在登录完成之前，LoginService通过PlayerSession与玩家交互，在登录验证完成之后，LoginService将玩家登录信息和PlayerSession一并发送到MapService，MapService完成对Player的创建，并于PlayerSession建立关联：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">void MapService::OnPlayerLogin(SS_PlayerLogin&amp; msg)</span><br><span class="line">&#123;</span><br><span class="line">    PlayerSessionPtr session &#x3D; msg.session;</span><br><span class="line">    if (session &#x3D;&#x3D; nullptr)</span><br><span class="line">        return;</span><br><span class="line"></span><br><span class="line">    int64_t playerid &#x3D; msg.login_info.playerid;</span><br><span class="line">    &#x2F;&#x2F; 创建 Player 并与PlayerSession关联</span><br><span class="line">    PlayerPtr player &#x3D; std::make_shared&lt;Player&gt;(playerid, session);</span><br><span class="line">    player-&gt;SetMapService(dynamic_pointer_cast&lt;MapService&gt;(shared_from_this()));</span><br><span class="line">    session-&gt;SetPlayerToken(player);</span><br><span class="line">    session-&gt;SetSid(GetSid()); </span><br><span class="line">    </span><br><span class="line">    AddPlayer(player);</span><br><span class="line">    </span><br><span class="line">    &#x2F;&#x2F; 向数据库加载玩家信息</span><br><span class="line">    &#x2F;&#x2F; ...</span><br><span class="line">    S2D_LoadPlayer loadmsg;</span><br><span class="line">    loadmsg.playerid &#x3D; playerid;</span><br><span class="line">    SendToDB(playerid, kS2D_LoadPlayer, loadmsg);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>之后客户端业务逻辑上与MapService交互，在GameService::Process(UserMessage*)解码时提取出_playerToken，即可通过Player类完成业务逻辑。</p>
-<p>加入了PlayerSession之后，消息注册回调机制也更复杂了一些，为了方便管理，这些注册和回调均放在GameService中。</p>
+        <p>最近关于领域驱动开发的一些学习和实践心得。</p>
+<p><img src="assets/image/202107/ddd.png" alt=""></p>
 
     </div>
 
@@ -287,7 +284,7 @@
   </li>
   <li class="post-copyright-link">
     <strong>本文链接：</strong>
-    <a href="http://wudaijun.com/2014/12/ngserver-playersession/" title="NGServer 加入PlayerSession">http://wudaijun.com/2014/12/ngserver-playersession/</a>
+    <a href="http://wudaijun.com/2021/07/ddd-mind/" title="领域驱动开发思维导图">http://wudaijun.com/2021/07/ddd-mind/</a>
   </li>
   <li class="post-copyright-license">
     <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
@@ -299,7 +296,7 @@
       <footer class="post-footer">
           
           <div class="post-tags">
-              <a href="/tags/ngserver/" rel="tag"><i class="fa fa-tag"></i> ngserver</a>
+              <a href="/tags/programing/" rel="tag"><i class="fa fa-tag"></i> programing</a>
           </div>
 
         
@@ -308,13 +305,10 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2014/12/shared_ptr-reference/" rel="prev" title="shared_ptr的引用链">
-      <i class="fa fa-chevron-left"></i> shared_ptr的引用链
+    <a href="/2021/06/software-design-mind/" rel="prev" title="软件设计思维导图">
+      <i class="fa fa-chevron-left"></i> 软件设计思维导图
     </a></div>
-      <div class="post-nav-item">
-    <a href="/2014/12/lua-C/" rel="next" title="lua 与 C 交互">
-      lua 与 C 交互 <i class="fa fa-chevron-right"></i>
-    </a></div>
+      <div class="post-nav-item"></div>
     </div>
       </footer>
     
@@ -374,7 +368,6 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#PlayerSession%E7%B1%BB"><span class="nav-text">PlayerSession类</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 

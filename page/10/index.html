@@ -192,6 +192,108 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/08/erlang-port/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2015/08/erlang-port/" class="post-title-link" itemprop="url">Erlang Ports</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-08-24 00:00:00" itemprop="dateCreated datePublished" datetime="2015-08-24T00:00:00+08:00">2015-08-24</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/08/erlang-port/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/08/erlang-port/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="OverView"><a href="#OverView" class="headerlink" title="OverView"></a>OverView</h3><p>Erlang外部调用的几种方式：</p>
+<p>外部接入(OS进程级)：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/tutorial/c_port.html">Ports</a>: 用C实现的可执行程序，以Port的方式与Erlang交互。</li>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/tutorial/cnode.html">C Nodes</a>: 用C模拟Erlang Node行为实现的可执行程序。</li>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/apps/jinterface/jinterface_users_guide.html">Jinterface</a>: Java和Erlang的通讯接口。</li>
+<li>Network: 通过自定义序列化格式与Erlang节点网络交互，如<a target="_blank" rel="noopener" href="http://bert-rpc.org/">bert-rpc</a></li>
+</ul>
+<p>内部接入(和虚拟机在同一个OS进程内)：</p>
+<ul>
+<li>BIF: Erlang大部分BIF用C实现，如erlang:now，lists:reverse等</li>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/tutorial/c_portdriver.html)">Port Driver</a>: 以链接库方式将Port嵌入虚拟机，也叫Linkin Driver</li>
+<li><a target="_blank" rel="noopener" href="http://www.erlang.org/doc/tutorial/nif.html">NIF</a>: 虚拟机直接调用C原生代码</li>
+</ul>
+<p>下面主要理解常用的三种：Ports, Port Driver, NIF。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2015/08/erlang-port/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1030,95 +1132,6 @@ Loginapp:reqCreateAccount
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/05/wordpress-setup/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2015/05/wordpress-setup/" class="post-title-link" itemprop="url">WordPress搭建历程</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2015-05-19 00:00:00" itemprop="dateCreated datePublished" datetime="2015-05-19T00:00:00+08:00">2015-05-19</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/tool/" itemprop="url" rel="index"><span itemprop="name">tool</span></a>
-                </span>
-            </span>
-
-          
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/2015/05/wordpress-setup/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2015/05/wordpress-setup/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>记录一下搭建wordpress博客的过程，做备忘之用，仅供参考。</p>
-<h3 id="一-前期准备"><a href="#一-前期准备" class="headerlink" title="一. 前期准备"></a>一. 前期准备</h3><p>一台云服务器和一个域名(可选)。国内的服务器搭建网站需要备案，国外的话推荐linode，目前linode tokyo服务器应该是国内访问最快的，但是已经缺货了，而新开的singapore服务器线路优化又不是很好(ping 300+)，后来又换成了fremont，速度总算稳定了一些，ping值 210 左右。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2015/05/wordpress-setup/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1190,7 +1203,7 @@ Loginapp:reqCreateAccount
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">123</span>
+          <span class="site-state-item-count">124</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
