@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="起意是想梳理下分布式系统的一些基本概念和理论，做一张知识脉络图，后来发现内容太多，图片不适合，因此整理成了文字版本。不过整体框架结构仍然类似思维导图，用作知识联结与发散。 定义什么是分布式系统？系统中有若干独立自治的计算实体，每个实体有自己的内存状态，实体之间通过传递消息相互通信。整个系统对用户提供一致、统一的服务。 为什么要使用分布式系统？使用分布式而不是单机的原因有很多，总的来说大概分为三类:">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式系统理论基础">
+<meta property="og:url" content="http://wudaijun.com/2022/12/distributed-system-basic/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="起意是想梳理下分布式系统的一些基本概念和理论，做一张知识脉络图，后来发现内容太多，图片不适合，因此整理成了文字版本。不过整体框架结构仍然类似思维导图，用作知识联结与发散。 定义什么是分布式系统？系统中有若干独立自治的计算实体，每个实体有自己的内存状态，实体之间通过传递消息相互通信。整个系统对用户提供一致、统一的服务。 为什么要使用分布式系统？使用分布式而不是单机的原因有很多，总的来说大概分为三类:">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-12-24T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.616Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="distributed">
+<meta property="article:tag" content="system">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2022/12/distributed-system-basic/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>分布式系统理论基础 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2022/12/distributed-system-basic/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          分布式系统理论基础
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-12-25 00:00:00" itemprop="dateCreated datePublished" datetime="2022-12-25T00:00:00+08:00">2022-12-25</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/distributed/" itemprop="url" rel="index"><span itemprop="name">distributed</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2022/12/distributed-system-basic/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2022/12/distributed-system-basic/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>起意是想梳理下分布式系统的一些基本概念和理论，做一张知识脉络图，后来发现内容太多，图片不适合，因此整理成了文字版本。不过整体框架结构仍然类似思维导图，用作知识联结与发散。</p>
+<h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><h3 id="什么是分布式系统？"><a href="#什么是分布式系统？" class="headerlink" title="什么是分布式系统？"></a>什么是分布式系统？</h3><p>系统中有若干独立自治的计算实体，每个实体有自己的内存状态，实体之间通过传递消息相互通信。整个系统对用户提供一致、统一的服务。</p>
+<h3 id="为什么要使用分布式系统？"><a href="#为什么要使用分布式系统？" class="headerlink" title="为什么要使用分布式系统？"></a>为什么要使用分布式系统？</h3><p>使用分布式而不是单机的原因有很多，总的来说大概分为三类: </p>
+<ul>
+<li>解决业务问题: 如复杂度瓶颈、系统对接、成本考量等</li>
+<li>解决扩展性问题: 如计算瓶颈、存储瓶颈、延迟优化等</li>
+<li>解决可用性问题: 通过冗余提升可用性</li>
+</ul>
+<h2 id="指标"><a href="#指标" class="headerlink" title="指标"></a>指标</h2><p>分布式系统关注哪些指标？或者说我们通过哪些指标来衡量一个分布式系统？</p>
+<h3 id="可伸缩性"><a href="#可伸缩性" class="headerlink" title="可伸缩性"></a>可伸缩性</h3><p>定义: 系统通过添加资源来应对不断增长(或变更)的工作量的能力。</p>
+<p>伸缩的维度有很多，包括规模伸缩、地理伸缩、功能伸缩、异构伸缩等。</p>
+<p>理想情况下，期望系统处理能力随资源投入线性增长。而实际上，还要权衡通信成本和延迟、可用性、数据一致性等诸多方面。</p>
+<h3 id="可用性"><a href="#可用性" class="headerlink" title="可用性"></a>可用性</h3><p>定义: 系统处于正常工作状态的时间比例。</p>
+<p>这里有两个个相关概念:</p>
+<ul>
+<li>MTBF(Mean Time Between Failure)：平均无故障时间，MTBF越长表示可靠性越高</li>
+<li>MTTR(Mean Time To Repair):平均修复时间，MTTR越短表示易恢复性越好</li>
+</ul>
+<p>可用性 = 正常运行时间/(正常运行时间+故障时间) = MTBF/(MTBF+MTTR)。</p>
+<span id="more"></span>
+<p>注意可用性和可靠性的区别，可用性关注时间比例，可靠性关注时间间隔。假设一个系统每小时崩溃1ms，可用性高达99.9999%，但它仍然高度不可靠。</p>
+<p>在实践中，可用性很难如它定义那般能明确度量，如部分功能可用、部分入口可用等。另外，用户感知的可用性与系统可用性也可能有差异(受用户本地缓存、重试机制、用户使用功能范围等影响)。</p>
+<p>分布式系统可以通过容错来提升可用性，最常见的容错方案就是冗余(并行可用性)。不做额外容错的分布式系统，其可用性上限为其组成部分的可用性(串行可用性)。</p>
+<p>基于不可靠的硬件和网络，打造高可用的系统和服务，是分布式系统的重要目标之一。</p>
+<h3 id="性能"><a href="#性能" class="headerlink" title="性能"></a>性能</h3><p>定义: 有效工作量与所用时间和资源的比值。</p>
+<p>提升性能的方式: 提升吞吐量(如并发)、降低响应延迟(受光速制约)、降低资源占用(性能优化)。</p>
+<p>将响应延迟归入性能是比较有意思的，一方面，响应延迟当然受处理性能的影响，另一方面，响应延迟也受设计(如同步or异步)和架构(如异地多活)的影响。并且站在用户的角度上看，响应延迟是最直观的性能属性。</p>
+<h3 id="一致性"><a href="#一致性" class="headerlink" title="一致性"></a>一致性</h3><p>一致性这个概念用得很广(有点过度重载)，在我的理解中，分布式系统的一致性本质指预期一致性，即由多台计算机组成的分布式系统，能否像一台计算机一样，行为符合预期且容易理解，这是分布式系统的理想目标之一。但现实中，分布式系统与单机系统相比，要额外考虑部分故障、网络最小延迟、网络不可靠、没有全局时钟等因素，想到完全达到单机一样的可理解可预期是不可能的。但是我们可以通过技术手段和不同的一致性模型，增强用户对分布式系统行为的预期。</p>
+<p>我将分布式中的一致性分为读写一致性和事务一致性。而这两者又分别和复制、分片这两个分布式基础技术相关。因此这两种具体的一致性，放到后面的复制与分片中再谈。</p>
+<h2 id="现实"><a href="#现实" class="headerlink" title="现实"></a>现实</h2><p>在实践中，分布式系统受到哪些限制？或者说，哪些因素影响我们获得可伸缩、高可用、高性能、强一致性？</p>
+<h3 id="各个节点独立并行运行"><a href="#各个节点独立并行运行" class="headerlink" title="各个节点独立并行运行"></a>各个节点独立并行运行</h3><p>分布式系统中的程序在独立的节点上并行运行，这里面有两个关键字”独立”和”并行”。</p>
+<p>“独立运行”意味着独立失败，也就意味着分布式系统有比单机系统更高的硬件故障概率，这种部分故障，是分布式系统首先要考虑的问题。如系统如何检测到节点故障？如何在部分故障时仍然保持整个系统的可用性和数据一致性？</p>
+<p>“并行运行”意味着时间、顺序、和一致性的问题，不同于节点内并发可以通过锁来做互斥同步，分布式系统实现锁的代价要大很多，比如使用Redis实现分布式锁，要考虑Redis本身的可用性问题，和Redis的网络通信的稳定性问题，节点故障后的锁释放问题等等。</p>
+<h3 id="节点之间通过不可靠且有速度上限的网络通信"><a href="#节点之间通过不可靠且有速度上限的网络通信" class="headerlink" title="节点之间通过不可靠且有速度上限的网络通信"></a>节点之间通过不可靠且有速度上限的网络通信</h3><p>更多的节点，意味着更复杂的网络拓扑，也就会带来更高的管理和通信成本。这会影响影响分布式系统的性能(包括响应延迟)和扩展性问题。</p>
+<p>更复杂的网络拓扑也意味着网络(部分)故障的概率更高，在不可靠网络下，我们甚至无法区分节点故障和网络分区。这极大增加了分布式系统容错的难度，如网络分区之后脑裂和一致性问题，网络恢复之后的数据冲突问题。</p>
+<p>网络速度受光速限制，意味着每个节只能快速访问局部状态(内存状态)，任何关于全局的状态都是过时的，这对数据一致性也带来了挑战。</p>
+<h3 id="没有全局时钟"><a href="#没有全局时钟" class="headerlink" title="没有全局时钟"></a>没有全局时钟</h3><p>秩序源于顺序，人对分布式一致性的理解离不开对顺序的假设，而最自然的顺序就是时间先后顺序。但分布式系统没有全局时钟，节点本地的时钟是不一致甚至不可靠(可人为篡改的)的，这使得并发分布式系统的行为很难理解，且很难察觉。</p>
+<h2 id="模型"><a href="#模型" class="headerlink" title="模型"></a>模型</h2><p>针对现实中的节点故障、网络不可靠、以及全局时钟问题，有哪些相关的模型或假设？</p>
+<h3 id="故障模型"><a href="#故障模型" class="headerlink" title="故障模型"></a>故障模型</h3><ul>
+<li>node crash-stop failures: 节点崩溃-终止模型，该模型假定节点只会因为崩溃失败，失败后停止发送和接受消息，且不会恢复</li>
+<li>node crash-recover failures: 节点崩溃-恢复模型，在crash-stop的基础上，假定节点可能随后恢复服务。这里还要分健忘和非健忘两种情况，即节点是否持久化了crash前的状态信息</li>
+<li>byzantine failures: 拜占庭故障模型，在crash-recover模型上，进一步放宽约束，假定节点可能因为因为逻辑错误或其他原因导致不可信，即它可能伪造信息或输出错误信息。拜占庭故障基本是分布式系统最难的故障模型，解决它通常需要假设同步网络模型。拜占庭将军问题是拜占庭故障模型下衍生的共识问题</li>
+<li>network partition failures: 网络分区故障模型，即是否假设节点间网络可能无限延迟或者不可达，这种情况和节点崩溃有所区别，因为网络分区下，不可达的节点可能已经崩溃或者仍在接受客户端请求(并且无法区分)。CAP定理中的P就表示网络分区故障容忍度</li>
+</ul>
+<h3 id="网络模型"><a href="#网络模型" class="headerlink" title="网络模型"></a>网络模型</h3><ul>
+<li>Synchrony: 同步网络模型，假定节点消息传输延迟有一个已知的上限值Δ，如此进程可以以锁步(lock-step)的方式执行(类似流水线作业)。同步网络模型易于分析和解决分布式问题，但实践中很难保证该假设的成立</li>
+<li>Asynchrony: 异步网络模型，只保证消息最终会被投递，但消息传输延迟无上限。基于它而设计的分布式算法鲁棒性很强，但解决方案也更复杂，而FLP不可能定理(后面会提到)更是指明了全异步的网络模型下，想要在确定时间内让节点达成共识是不可能的。因此异步网络模型的共识算法，在极限网络状况下，有可能丧失活性</li>
+<li>Partial synchrony: 部分同步/半同步网络模型，介于同步和异步之间，指存在一个网络传输延迟上限Δ，和一个特殊的事件GST(Global Stabilization Time，全局稳定时间)，如果一条消息在时间x被发出，那么它必然在<code>Δ+max(x,GST)</code>内投递。即网络模型在GST前是异步的，在GST后是同步的。但是这个GST何时发生无法预测。这个定义稍微晦涩一些，可以映射到现实中的网络状况，99%的时候传输延迟有上限，但是少数情况出现网络波动，或者对方受到DDos攻击时，传输延迟不可预估，不过最终网络还是会稳定下来，又回到正常有界传输的状态。GST风格的部分同步网络模型，允许构建在大多数情况(网络稳定)表现很好(可以使用比较保守的Δ值)，在少数情况(网络不稳定)时，也保证安全性(但可能丧失活性)的共识算法</li>
+</ul>
+<p>关于半同步网络模型的另一个定义是UL(Unknown Latency)风格: 网络始终是同步的，只是协议设计者不知道消息传输的最大延迟界限。它的核心思路是协议设计者需要动态调整传输上限Δ(按照系统最坏的延迟情况)，以逼近真正的网络延迟。<a target="_blank" rel="noopener" href="https://decentralizedthoughts.github.io/2019-09-14-flavours-of-partial-synchrony/">这篇文章</a>尝试阐述基于GST和UL风格的定义在理论上是等价的。</p>
+<p>目前主流的分布式算法，都是基于部分同步网络模型的，如Paxos，Raft，PBFT等。</p>
+<h3 id="时间和顺序"><a href="#时间和顺序" class="headerlink" title="时间和顺序"></a>时间和顺序</h3><p>对单台计算机系统而言，确定操作的执行时间和顺序是比较容易的，这也使得系统的行为比较容易预测。而对于分布式系统而言，则需要重新理解时钟和顺序。</p>
+<p>分布式系统中的顺序分为偏序和全序，偏序是每个节点看到的操作执行顺序，是对局部操作的局部视角。而全序则是整个系统所有事件的执行顺序，在分布式系统中，想要维护全序是比较困难的，因为网络是异步的，并且没有全局时钟。</p>
+<p>分布式系统中的时钟分为物理时钟和逻辑时钟，物理时钟对应绝对时间，如各个节点的机器时间，想要完全同步各个节点的物理时钟是非常困难的(网络时间协议NTP、原子时钟本质都是减少误差而不能消除误差)。而逻辑时钟则对应相对时间，它关注分布式事件的相对顺序，如Lamport逻辑时钟(vector clock，矢量时间)可以用来维护事件因果关系的偏序，而大部分时候，我们期望的也是就”事件发生顺序”达成一致，而不是就”事件绝对时间”达成一致，换个角度来说，”时间”这个概念本身就没有绝对。在分布式系统中，对时间/顺序的假设和依赖越少，就越能充分发挥分布式系统的优势。</p>
+<h2 id="理论"><a href="#理论" class="headerlink" title="理论"></a>理论</h2><p>分布式系统中有哪些经典的理论和问题？</p>
+<h3 id="CAP定理"><a href="#CAP定理" class="headerlink" title="CAP定理"></a>CAP定理</h3><p>CAP定理主要阐述线性一致性(C)、高可用性(A)、网络分区故障容忍(P)不得兼得(三选二)。理解CAP定理的前提是认识到它作为理论模型的绝对(只考虑了最强的线性一致性和高可用)和局限(只关注了三个指标，其他还有性能、延迟、硬件故障、可读可写等)。不过CAP定理仍是分布式系统最重要的理论之一，它指出了分布式系统中一致性和可用性的权衡参考线，在此之上的分布式系统，要么加强假设(假设没有网络分区)，要么削弱保证(如提供更弱的一致性和可用性，以容忍网络分区，如BASE理论)。</p>
+<p>通常来说，CA和CP系统以严格的仲裁协议来达成一致，区别是CA系统完全无法容忍(没有考虑)任何网络分区，如2PC两段式提交。而CP系统通常可以容忍部分网络分区并为此舍弃(至少少数节点一侧的)可用性。至于AP系统，则通常包含如何解决数据冲突的协议，如DNS系统。</p>
+<p>从另一个角度来看，C、A描述的是系统的行为，而P描述的是系统的假设和工作范围。当我们说一个系统或算法是CA的，本质是说，如果没有网络分区，那么它是一致可用的(典型如2PC)，但是现实中的网络分区往往不可避免，因此当所谓的CA系统遇上不得不考虑的P时，通常就会变成CP、AP甚至P(既不线性一致，也不可用)系统。如2PC，它通常被认为属于CA系统，但当发生网络分区时，它可能是CP(如果参与者一直独占资源等待协调者通知Commit)或者P(如果参与者等待Commit通知超时后，自己会执行Commit避免独占，此时既不可用，也不一致)。</p>
+<p>总之，由于CAP的局限性和系统的可配置性，将很多系统简单以CA、AP、CP来归类和讨论可能是不合适的。</p>
+<h3 id="FLP不可能定理"><a href="#FLP不可能定理" class="headerlink" title="FLP不可能定理"></a>FLP不可能定理</h3><p>FLP不可能定理讨论的是在异步网络模型(不考虑网络分区故障)下，哪怕只有一台机器可能因为Crash出错(Crash-Stop模型)，则没有任何确定性共识算法保证在有限时间内结束。这是一个咋一看比较”悲观”的定理，它定义了异步网络下共识算法的上限，好在现实中的网络大部分时候都比较可靠，系统可以在网络超时时，舍弃一些活性和安全性。</p>
+<h3 id="拜占庭将军问题"><a href="#拜占庭将军问题" class="headerlink" title="拜占庭将军问题"></a>拜占庭将军问题</h3><p>拜占庭将军问题，本质讨论，在有节点作恶的情况下，如何达成共识。拜占庭问题是如此出名，以至于主流共识算法通常被分为支持拜占庭问题(BFT)和不支持拜占庭问题(CFT)两类:</p>
+<ul>
+<li>拜占庭容错(Byzantine Fault Tolerance，BFT): 容忍节点故障和节点作恶，通常用在公网区块链上，经典如 PoW算法(最多容忍1/2作恶节点)，PBFT算法(最多容忍1/3作恶节点)</li>
+<li>宕机容错(Crash Fault Tolerance，CFT):  即容忍节点故障，但是不考虑节点作恶的情况，经典算法有Raft、Paxos等。在实践中的大部分非公网分布式系统，都采用CFT算法，因为其通常具备更好的性能、可理解和可实现性</li>
+</ul>
+<h2 id="方案"><a href="#方案" class="headerlink" title="方案"></a>方案</h2><p>“分”(分割)而”制”(复制)之是分布式系统的最核心最基础的技术方案，前者解决存储、计算、以及业务复杂度瓶颈，后者提升可用性和性能。</p>
+<h3 id="复制"><a href="#复制" class="headerlink" title="复制"></a>复制</h3><p>在多台机器上维护相同的数据副本，为同样一份数据提供更多的处理能力、位置扩展和容错，提升系统的性能和可用性。数据复制的挑战主要在于一致性(读写一致性)和容错。由于分布式系统中，各个节点通常都是相同的确定性状态机，因此大部分场景下，复制问题也称为状态机复制(State-Machine Replication)问题。</p>
+<h4 id="读写一致性"><a href="#读写一致性" class="headerlink" title="读写一致性"></a>读写一致性</h4><p>指多数据副本(复制集)场景下，系统对用户保证的读写预期。如A进程对复制集系统写入一个值，A或其他进程能立即读到这个值吗？理想情况下，用户最容易理解的是最强的线性一致性，因为它实现了如同单节点一般的读写预期，但其需要付出额外的可用性和性能(包括响应时延)取舍，CAP理论就明确指出了线性一致性和高可用性两者的矛盾。除了线性一致性，还有其他更弱的一致性模型，如顺序一致性、会话一致性、因果一致性、最终一致性等。我在<a href="wudaijun.com/2018/09/consistency/">这里</a>重点介绍了线性一致性和顺序一致性。</p>
+<p>除了强一致性(线性一致性和顺序一致性，也有种理解认为只有线性一致性是强一致性)之外的一致性都称为弱一致性，弱一致性模型可以是和用户的任何读写约定，而理论上最弱的一致性就是完全不保证数据一致(即不提供一致性保证)，这显然缺乏实际意义，因此实践中最弱的一致性模型通常为最终一致性，即系统在经过一段时间后最终会达成一致。最终一致性承诺就像“人终有一死”一样，对用户来说仍然缺乏实际的指导意义，用户还需要关心:</p>
+<ul>
+<li>这个“最终”是指多久？或者有多大概率在多久内可以达成一致？(类似响应延迟SLA)</li>
+<li>如何达成一致？是最后写入者成功？还是有其他解决冲突的方案？</li>
+<li>其他保证: 如用户可以读到刚写入的值吗(读你写)？连续读某个键值，后读出的会比先读出的数据更旧吗(单调读)？等</li>
+</ul>
+<p>以DNS为例，我们都知道DNS是最终一致性系统，但知道DNS的最大同步时间(48h)、DNS如何达成一致(最后写入者成功)、以及DNS的单调读一致性等信息，才能让我们更好地使用DNS系统。对系统开发者而言，也需要根据业务场景为用户提供适合的一致性保证。</p>
+<h4 id="共识"><a href="#共识" class="headerlink" title="共识"></a>共识</h4><p>和复制集、读写一致性一起出现的，通常还有共识(Consensus)一词，它是指多个节点如何就同一个提案(如某个键的值、谁是主节点、事件发生顺序等)达成一致。共识算法可以作为复制集多节点数据同步和主从切换的技术方案。共识关注的是复制集内部达成一致的过程，而读写一致性关注复制集对用户提供的读写预期。共识算法有一些基本属性:</p>
+<ul>
+<li>可终止性(Termination): 所有正确的进程最终都会认同某个提案，即保证能正常给出结果，也被称作活性(Liveness)，对应于CAP中的可用性</li>
+<li>约同性(Agreement): 所有正确的进程最终认同的提案是同一个提案，即保证给出的结果是一致的，也被称作安全性(Safety)，对应于CAP中的一致性</li>
+<li>合法性(Validity): 最终认同的提案，必然是某个节点提出的提案</li>
+</ul>
+<p>活性(Liveness)和安全性(Safety)是最常被提及的两个共识算法属性，因为它们在分布式的各种挑战下，往往不得不妥协。</p>
+<p>以下介绍数据复制和共识算法的经典解决思路</p>
+<h4 id="中心化方案"><a href="#中心化方案" class="headerlink" title="中心化方案"></a>中心化方案</h4><p>主从方案是复制算法最经典也是最容易理解的中心化方案，整个复制集由一个主节点(称作Primary或Leader)N个从节点(称作Backup或Follower)组成，由主节点对外提供写服务，并把操作同步给从节点，从而完成复制的目的。主从方案有一些权衡点:</p>
+<ul>
+<li>从节点是否可读: 支持从节点可读的性能更好，但读写一致性可能降低</li>
+<li>主节点是否同步等待从节点确认: 同步等待确认的数据一致性更高，且主从切换时不容易发生数据丢失，但性能、响应延迟和可用性会降低</li>
+<li>数据同步机制: 全量(同步数据快照)和增量(同步操作日志)各有优劣(前者下限高，后者上限高)，需要相互结合</li>
+<li>容错性: 主节点失效时的主从切换(非常容易产生数据丢失或不一致)、从节点失效时的数据追赶(全量同步派上用场)、以及如何解决网络分区导致的脑裂问题(大部分算法不会考虑)</li>
+</ul>
+<p>主从方案的优势是实现相对简单，由于主节点通常需要和所有的从节点交互，因此只适用于小规模集群。</p>
+<h4 id="去中心化"><a href="#去中心化" class="headerlink" title="去中心化"></a>去中心化</h4><p>去中心化是指所有节点地位平等，均可以处理用户请求，最终通过协商合并来达成最终数据一致。</p>
+<p>去中心化的优势在于节点可以任意数量扩展，劣势在于性能和一致性较差。由于去中心化的特性，它通常被用在公网上，因此通常是容忍网络分区和拜占庭容错的。这里以比特币的共识算法PoW为例来了解去中心化的一些难点:</p>
+<ul>
+<li>如何容忍网络分区: 比特币为了可用性而牺牲强一致性(AP系统)，因此它将重心放到如何解决数据合并和冲突上</li>
+<li>如何容忍占庭将军问题: 通过工作量证明来提升提案成本，通过最长链来解决数据冲突，使得作恶所需要的算力要高于总集群算力的50%。但代价是长周期的最终确认(解决分叉)的时间，以及大量的算力浪费</li>
+</ul>
+<h4 id="N段提交"><a href="#N段提交" class="headerlink" title="N段提交"></a>N段提交</h4><p>前面提到的主从数据同步，通常主节点和从节点单次数据同步只需要单次交互(1PC, 1-Phase Commit)，这可能会导致部分从节点提交成功而另一部分提交失败，引发读写一致性问题。两段提交(2PC, 2-Phase Commit)可以改进这个问题:</p>
+<ol>
+<li>协调节点先向参与节点咨询操作是否可执行，参与节点做对应的提前准备，当参与者回复OK时，意味着<strong>承诺操作在该节点一定能成功Commit</strong></li>
+<li>协调节点如果发现有参与者回复失败，则向其他节点发送Rollback通知，否则如果所有参与节点都回复OK，则通知所有参与节点Commit，当协调节点发起Commit时，意味着<strong>承诺该事务一定能完成</strong></li>
+<li>如果Commit/Rollback阶段参与节点宕机或者发生网络分区，协调节点负责重试，直到所有参与节点回复Commit成功</li>
+<li>如果协调节点故障，协调节点通过持久化来容忍自身宕机，并在恢复后读取上一次的决策进度(崩溃-恢复-备忘模型)</li>
+</ol>
+<p>2PC相比1PC，通过第一阶段的Check+Prepare流程减少了第二阶段Commit结果不一致的可能性，也就增强了数据一致性，相应的也增加了响应延迟。2PC主要有如下缺点:</p>
+<ol>
+<li>协调者可能出现单点故障，可能导致参与节点处于阻塞或者临界状态 </li>
+<li>执行过程中，参与节点的相关资源处于独占状态，系统吞吐量会降低 (如果超时释放或提交，就可能产生不一致)</li>
+<li>最后一轮Commit，可能只通知到部分节点，导致数据不一致 (CA系统)</li>
+</ol>
+<p>当然，2PC还有很多细节，如要不要重试，协调者崩溃后，参与者是一直等协调者恢复(通常此时还持有锁或处于阻塞状态)，还是Abort或Commit等等。</p>
+<p>基于2PC的部分缺点，3PC进行了一些改进，它将Check和Prepare分开，并在参与方引入超时机制，但由于更加复杂且响应时延较高，因此实践中仍以2PC为主。可以看到，1PC-&gt;2PC-&gt;3PC，消息交互的轮次越多，不一致或处于临界状态的时间窗口就越小，但响应延迟也会更高。</p>
+<h4 id="多数表决机制"><a href="#多数表决机制" class="headerlink" title="多数表决机制"></a>多数表决机制</h4><p>前面讨论的主从，2PC等方案，都没有考虑网络分区问题。针对网络分区问题最经典的解决方案就是多数表决机制，它能容忍小于半数的节点发生网络分区，并在多数节点一侧继续对外提供一致性保证和服务。多数表决和中心化一样，都适用于较小、可信任的集群，因此它们通常被搭配使用，如经典的Raft/Paxos算法，以Raft为例，在执行写入操作时，和2PC类似，Leader节点会和Follower进行两段提交确认，在获得大于一半的节点同意后，才会执行写入。在Leader宕机或者Leader发生分区后，多数节点侧会通过随机错峰+多数表决的机制选出新的Leader，并通过Leader任期+提案号等机制来解决分区恢复后脑裂恢复。</p>
+<h4 id="读写Quorum"><a href="#读写Quorum" class="headerlink" title="读写Quorum"></a>读写Quorum</h4><p>在中心化方案中，我们假设只有主(Primary/Leader)节点对外提供读写服务，这种方案实现比较简单，也具备较好的一致性，但是不利于性能扩展，因此部分复制系统(如MongoDB，DymanoDB)也为客户端提供读写策略选项，即WRN模型</p>
+<ul>
+<li>N为集群总节点数量</li>
+<li>W代表写入操作需要征得多少节点成功响应</li>
+<li>R代表读操作需要向多少个节点查询</li>
+</ul>
+<p>WRN常见的几种关系</p>
+<ul>
+<li>W+R&gt;N时: 系统能检测到读写冲突(读写必有交集)，是系统可以提供强数据一致性的基础(还有其他因素，如N是否稳定、分区是否脑裂等)，在此基础上，系统/用户可以在写入性能(W更小)和读取性能(R更小)中进行取舍</li>
+<li>W&lt;(N+1)/2时: 系统将出现写分裂(如何检测和解决数据冲突是这类策略的考虑重点)</li>
+<li>让R+W&lt;=N时: 将出现读写不一致(即弱一致性模型，典型如异步主从复制+从节点可读模型)</li>
+</ul>
+<p>读写策略是经典的一致性、可用性、性能的权衡策略，通过部分表决而非多数表决，给设计和使用上更高的灵活性。如MongoDB可以在每次读写操作时，指定WR表决数量。</p>
+<h4 id="如何解决写入冲突"><a href="#如何解决写入冲突" class="headerlink" title="如何解决写入冲突"></a>如何解决写入冲突</h4><p>在容忍网络分区的复制模型中，如何检测和解决数据冲突，使数据最终收敛，也是个比较重要的的领域，尤其对于可用性大于一致性的分布式系统而言。经典的方案是在请求和响应中加入更多的元数据，如: 时间戳、矢量时钟、版本号等。更进一步的方案是无序编程(前面提过，对时间和顺序的依赖越低，越能发挥分布式的优势)，无序编程中的相关理论有CRDTs(Convergent Replicated Data Types，无冲突复制数据类型)以及CALM(Consistency As Logical Monotonicity，逻辑单调的一致性)定理等。MapReduce是典型地声明式的、无序的算法模型。</p>
+<h4 id="拜占庭容错"><a href="#拜占庭容错" class="headerlink" title="拜占庭容错"></a>拜占庭容错</h4><p>前面的几种机制都没有考虑拜占庭容错，解决这个分布式系统最难容错模型的主流算法分两类：</p>
+<p>一类仍然基于中心化+多数表决原理，如PBFT算法，而PBFT算法能容忍小于1/3的节点作恶，它通过三阶段提交(与3PC原理和目的有所不同)来达成共识，PBFT适用于内部的(不能防止女巫攻击)、小规模的(需要节点频繁通信)集群。</p>
+<p>另一类基于去中心化+多数表决原理，如区块链的PoW(工作量证明)算法，不过PoW的”大多数”，不是基于节点数量，而是基于算力，即最长的链。PoW算法优点是开放(自动准入)、安全(拜占庭容错+防女巫攻击)，适用于公网。缺点是有算力浪费、达成共识的时间较长。</p>
+<p>PS: 女巫攻击，指个人试图创建多个账号、节点或IP，来试图成为整个集群的大多数，达成恶意攻击的目的。女巫攻击是拜占庭容错模型的一种升级，通常只有在自由准入的公网集群才考虑。</p>
+<h4 id="其他实现因素"><a href="#其他实现因素" class="headerlink" title="其他实现因素"></a>其他实现因素</h4><p>前面重点关注的是共识算法的一些实现思路(除了读写Quorum)，而非对外表现的读写一致性。读写一致性除了受底层共识算法的限制外，还要考虑应用层的实现。如Raft，它通过主从+2PC+多数表决+选举机制等算法实现了一套理论上可以实现线性一致性语义的共识算法和协议，这套协议在应用层的实现，如Follower节点是否可读、分区之后老的Leader节点是否可读、写入时应用层是否同步执行Raft 2PC+多数表决流程等等，都会影响读写一致性。又如前面讨论的主从同步(它也是一种简单的共识算法)，从节点是否可读、同步还是异步、是否做了主从切换、是否会有分区脑裂问题等，也都取决于应用层(或者用户配置)。</p>
+<p>这里简单列举下可能影响到读写一致性的一些实现因素:</p>
+<ul>
+<li>会话粘性: 即是否将用户的请求绑定到一台服务器上，会话粘性使得会话一致性这类弱一致性比较容易实现，缺点是负载均衡能力和容错性降低，可以一定程度通过会话复制或会话共享来优化</li>
+<li>同步vs异步: 这个前面已经多次提到过，同步的读写一致性更高，异步的吞吐量、可用性以及响应延迟更优</li>
+<li>读写策略: 包括从节点是否可读、以及前面提到的WRN模型等，这些读写策略通常是用户可配置的</li>
+<li>客户端缓存: 客户端(或会话)缓存技术，可以实现如单调读这类一致性</li>
+</ul>
+<h3 id="分片"><a href="#分片" class="headerlink" title="分片"></a>分片</h3><p>分片是指将数据集分为若干更小的数据集，用于避免数据集增长带来存储瓶颈和性能瓶颈。主流理解中的数据分片，主要指Kafka Partition、MongoDB Sharding这种存储中间件提供的分片技术。而我理解的广义上的数据分片，还包含应用层的数据和业务拆分(分表、分节点)。由于分片通常涉及到具体的中间件技术和业务场景，不如复制一般通用和抽象，因此鲜有脱离业务和DBMS的模型讨论。</p>
+<p>数据分割不直接提升可用性，分割+复制才能提升可用性。数据分割主要解决性能(存储)瓶颈，分片主要考虑事务一致性的问题。</p>
+<h4 id="事务一致性"><a href="#事务一致性" class="headerlink" title="事务一致性"></a>事务一致性</h4><p>指多节点场景下，分布式系统对”不变约束”的保证，即ACID中的事务一致性，它保证系统中所有的数据都是符合期望的，且相互关联的数据之间不会产生矛盾，是系统内部的数据状态一致性。</p>
+<p>这里再提一下ACID，传统的理解，将A(原子性)、C(一致性)、I(隔离性)、D(持久性)作为达成事务的四个手段和原则，但如今也另有一种理解，就是将AID(以及DBMS提供的约束、触发器等)作为”因”，应用层事务一致性”C”(不包含DBMS本身提供的约束触发器)作为”果”来理解。这种理解更符合如今分布式大场景下，事务一致性理念的普适性。我个人也比较倾向于这种理解。</p>
+<p>以转账系统为例，转出方和转入方数据可能不在一个分片(节点)上，那么转账前后双方的余额总数应该相等，双方的余额都不会为负数这些就是这个转账事务的”不变约束”，也就是事务一致性。应用层的事务一致性当然主要依赖应用程序本身的正确性，但另一方面，在多线程和分布式等场景下，如何确保应用层事务满足一致性，也是有一些套路和模式的。</p>
+<p>注意，部分复制集中提到的解决方案，如N段提交方案(2PC、3PC)，仍然适用于事务一致性，以下不再复述。</p>
+<h4 id="刚性事务"><a href="#刚性事务" class="headerlink" title="刚性事务"></a>刚性事务</h4><p>满足ACID四个要素的事务，被称为刚性事务，如单个RDBMS中的事务，由于不涉及网络，它们也被称作本地事务。RDBMS中的刚性事务通过Commiting Loging、Shadow Paging等技术来实现原子性和持久性(主要考虑磁盘崩溃和安全回滚问题)，通过锁(读锁/写锁/范围锁)来实现并发事务的不同的隔离级别(从MYSQL读未提交到可串行化)。刚性事务的实现方案很多，也不仅限于RDBMS，不过不属于这里的讨论重点。</p>
+<p>刚性事务的这套实现机制，不适用于分布式场景，但ACID中的原子性、隔离性、持久性仍然可以作为分布式系统，实现事务一致性的重要维度参考。</p>
+<h4 id="柔性事务"><a href="#柔性事务" class="headerlink" title="柔性事务"></a>柔性事务</h4><p>由于ACID不适用于分布式事务，因此BASE理论被提出，它通过牺牲一定的一致性来换取可用性。BASE中的S即Soft State，可理解为柔性状态、软状态或柔性事务。遵循BASE原则的事务被称为柔性事务。</p>
+<p>在分布式事务中，柔性事务是主流思想，柔性事务关注最终一致性。在了解柔性事务的常见方案前，需要再理解下事务模型相较复制模型的区别:</p>
+<ol>
+<li>事务的每个参与者(表/分片/节点)都是整个事务不可缺少的一部分，任何一个参与者失败(事务参与者失败的概率要比复制场景中简单的读写大得多)、故障、分区，都将导致整个事务失败。而复制本身就是冗余换取可用和性能，因此可以容忍部分故障，也可以通过多数表决和仲裁来达成一致。</li>
+<li>复杂事务可能有执行顺序依赖，事务整体的交互复杂度，很大程度取决于事务复杂度。复制模型比较简单，每个节点要做的事情(达成的共识)是一致的。</li>
+<li>事务参与者与参与者之间是平等关系，它们都对外提供服务，不存在主从之分，因此要考虑并发隔离性的问题，典型如超售问题。复制模型中，并发隔离性本质影响的是读写一致性强弱的问题(如读到旧值)，而通常不会造成复制集内部数据不一致(共识算法至少会确保最终一致)，因此复制集中隔离性带来的问题影响相对较小(只要给了用户正确的读写一致性预期)。</li>
+</ol>
+<h5 id="最大努力交付"><a href="#最大努力交付" class="headerlink" title="最大努力交付"></a>最大努力交付</h5><p>最大努力交付方案(Best-Effort Delivery)的核心思路是，通过可靠消息服务、幂等、重试等机制，最大程度地容忍网络分区和节点故障，推进事务达成最终一致性。</p>
+<p>以可靠消息队列方案为例，它的主要参与者有: 事务发起方、事务参与方、消息中间件。整个事务执行流程如下:</p>
+<ol>
+<li>事务发起方执行本地事务</li>
+<li>事务发起方将要发送到其他事务参与方的消息写入自己的数据库，状态为”进行中”</li>
+<li>启动一个消息服务，定时查询消息表，将消息表中的消息发送到事件参与方</li>
+<li>如果3中出现任何网络异常和节点故障，消息服务会不断重试，直接事务参与方执行成功并返回</li>
+<li>所有事务参与者均返回成功后，消息服务更新消息表对应消息状态为已完成，整个事务执行完成</li>
+</ol>
+<p>注意:</p>
+<ul>
+<li>上面流程中的1，2步，是在同一个本地事务中完成的(使用同一个数据库)</li>
+<li>可靠消息队列假设，只要事务发起方本地事务完成，后续就没有失败回滚的概念，事务参与方只能成功，不能失败。因此主要还是适用相对简单的事务，可以让容易出错的操作方(比如扣款服务)，作为事务的发起方，事实上，可靠消息队列最常见的场景，就是第三方支付回调</li>
+<li>可靠消息队列依赖消息幂等，否则出现网络异常，无法安全重试</li>
+</ul>
+<p>可靠消息队列的一种变形是引入消息中间件，事务发起方的消息服务将消息发给消息中间件，消息中间件接收成功后，即标记本地消息表已完成，由消息中间件的QoS来保证持续重试并达成最终一致性(当然，消息中间件本身实现高可用，仍然主要基于前面提到的复制冗余技术)。部分消息中间件如RocketMQ还提供了事务支持，如此就是不再需要本地消息表和消息服务，而是事务发起方通过RocketMQ提供的事务API和本地事务API通过一种比2PC更复杂的带重试的机制来保证执行本地事务和写入MQ消息这两件事情的事务一致性。</p>
+<p>最大努力交付是一种非常普遍的容错思想，可靠消息队列只是其中一种方案，它通过本地事务+最大努力交付达成事务的最终一致性。</p>
+<p>最大努力交付没有考虑事务参与方失败的问题，常见的事务失败处理策略分两种: 回滚和补偿。两种策略的代表分别是TCC和SAGA。</p>
+<h5 id="TCC"><a href="#TCC" class="headerlink" title="TCC"></a>TCC</h5><p>TCC(Try-Confirm-Cancel)的核心思路是悲观预留:</p>
+<ol>
+<li>Try: 事务发起方通知各事务参与方执行业务检查，预留资源(如库存预扣除)</li>
+<li>Confirm: 如果Try阶段所有参与方都返回成功，则事务发起方通知各参与方接入Confirm阶段，即真正提交本地事务。如果此阶段有节点故障或网络异常，事务发起方会不断重试，即最大努力交付</li>
+<li>Cancel: 如果Try阶段任何事务参与方返回失败或者响应超时，则通知(包含重试)所有的参与方进行Cancel阶段，取消之前预留的资源</li>
+</ol>
+<p>注意，事务参与方的Confirm和Cancel接口都需要满足幂等。TCC的主要优势:</p>
+<ul>
+<li>通过预留资源，在业务层支持了回滚</li>
+<li>通过预留资源，让事务具备了隔离性，能够避免超售问题</li>
+<li>通过最大努力交付，使得其有一定的网络分区容忍度</li>
+<li>相比2PC，TCC更偏业务层，预扣除也可以实现得很轻量，有性能优势</li>
+</ul>
+<p>TCC的劣势:</p>
+<ul>
+<li>对业务的侵入性较强，部分已有接口可能并不支持预留操作(如第三方支付接口，不支持预扣除操作)</li>
+<li>业务层的开发成本较高</li>
+</ul>
+<h5 id="SAGA"><a href="#SAGA" class="headerlink" title="SAGA"></a>SAGA</h5><p>针对TCC业务侵入式强的缺点，SAGA的乐观补偿思路可以解决这个问题，SAGA的核心思路:</p>
+<ul>
+<li>将一个大的分布式事务T，分为N个子事务T1,T2,…,Tn</li>
+<li>为每个子事务Ti实现一个对应的补偿操作Ci，即对应有C1,C2,….Cn</li>
+</ul>
+<p>Ti、Ci满足如下条件:</p>
+<ul>
+<li>Ti、Ci都可视为原子行为并且满足幂等</li>
+<li>Ti和Ci满足交换律，即执行先执行Ti再执行Ci或者反过来，执行结果都是一样的(即没有影响)</li>
+<li>Ci必需能成功提交，即不考虑Ci执行失败的情形</li>
+</ul>
+<p>如果T1,T2,…,Tn均成功执行，则事务T成功执行，正常完成。否则如果Ti执行失败，需要根据Ti特性和业务场景考虑两种恢复措施:</p>
+<ul>
+<li>正向恢复(Forward Recovery): 不断重试直至Ti执行成功(最大努力交付)</li>
+<li>反向恢复(Backward Recovery): 尝试执行Ti对应的补偿操作Ci(最大努力交付)，整个执行链变为T1,T2,…,Ti,Ci,…,C2,C1</li>
+</ul>
+<p>SAGA协调者本身也可能崩溃，因此它需要持久化事务进度，并在crash-recover后，恢复对事务的进度跟踪和推进。</p>
+<p>SAGA的优势:</p>
+<ul>
+<li>在某些场景，补偿比预留机制通常更容易实现(如银行扣款)</li>
+<li>更适合长时间事务(Long Lived Transaction)</li>
+</ul>
+<p>SAGA的劣势:</p>
+<ul>
+<li>事务隔离性较差，这也是SAGA的最大痛点</li>
+<li>执行整个事务的耗时较长(串行执行)</li>
+<li>业务层的开发成本仍然较高</li>
+</ul>
+<h2 id="体会"><a href="#体会" class="headerlink" title="体会"></a>体会</h2><p>分布式基本理论是互联网和云计算的基础，它于每个软件工程师而言，都有很多值得学习的地方:</p>
+<ul>
+<li>打破单机的性能、位置、耦合度的局限性</li>
+<li>在不可靠的网络和硬件上打造高可用系统</li>
+<li>知不能完美，但仍在性能、可用性、一致性、扩展性等指标中不断权衡，寻求更优解</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2022/12/distributed-system-basic/" title="分布式系统理论基础">http://wudaijun.com/2022/12/distributed-system-basic/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/distributed/" rel="tag"><i class="fa fa-tag"></i> distributed</a>
+              <a href="/tags/system/" rel="tag"><i class="fa fa-tag"></i> system</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/ddd-suple-design/" rel="prev" title="领域驱动设计之柔性设计">
+      <i class="fa fa-chevron-left"></i> 领域驱动设计之柔性设计
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/03/slg-cross-map-model/" rel="next" title="SLG跨服模型">
+      SLG跨服模型 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9A%E4%B9%89"><span class="nav-text">定义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%EF%BC%9F"><span class="nav-text">什么是分布式系统？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E4%BD%BF%E7%94%A8%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%EF%BC%9F"><span class="nav-text">为什么要使用分布式系统？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8C%87%E6%A0%87"><span class="nav-text">指标</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%AF%E4%BC%B8%E7%BC%A9%E6%80%A7"><span class="nav-text">可伸缩性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%AF%E7%94%A8%E6%80%A7"><span class="nav-text">可用性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%A7%E8%83%BD"><span class="nav-text">性能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E8%87%B4%E6%80%A7"><span class="nav-text">一致性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8E%B0%E5%AE%9E"><span class="nav-text">现实</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%84%E4%B8%AA%E8%8A%82%E7%82%B9%E7%8B%AC%E7%AB%8B%E5%B9%B6%E8%A1%8C%E8%BF%90%E8%A1%8C"><span class="nav-text">各个节点独立并行运行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%8A%82%E7%82%B9%E4%B9%8B%E9%97%B4%E9%80%9A%E8%BF%87%E4%B8%8D%E5%8F%AF%E9%9D%A0%E4%B8%94%E6%9C%89%E9%80%9F%E5%BA%A6%E4%B8%8A%E9%99%90%E7%9A%84%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1"><span class="nav-text">节点之间通过不可靠且有速度上限的网络通信</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B2%A1%E6%9C%89%E5%85%A8%E5%B1%80%E6%97%B6%E9%92%9F"><span class="nav-text">没有全局时钟</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A8%A1%E5%9E%8B"><span class="nav-text">模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%85%E9%9A%9C%E6%A8%A1%E5%9E%8B"><span class="nav-text">故障模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E6%A8%A1%E5%9E%8B"><span class="nav-text">网络模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%B6%E9%97%B4%E5%92%8C%E9%A1%BA%E5%BA%8F"><span class="nav-text">时间和顺序</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%90%86%E8%AE%BA"><span class="nav-text">理论</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CAP%E5%AE%9A%E7%90%86"><span class="nav-text">CAP定理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#FLP%E4%B8%8D%E5%8F%AF%E8%83%BD%E5%AE%9A%E7%90%86"><span class="nav-text">FLP不可能定理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%9C%E5%8D%A0%E5%BA%AD%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98"><span class="nav-text">拜占庭将军问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%B9%E6%A1%88"><span class="nav-text">方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%8D%E5%88%B6"><span class="nav-text">复制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AF%BB%E5%86%99%E4%B8%80%E8%87%B4%E6%80%A7"><span class="nav-text">读写一致性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%B1%E8%AF%86"><span class="nav-text">共识</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%AD%E5%BF%83%E5%8C%96%E6%96%B9%E6%A1%88"><span class="nav-text">中心化方案</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8E%BB%E4%B8%AD%E5%BF%83%E5%8C%96"><span class="nav-text">去中心化</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#N%E6%AE%B5%E6%8F%90%E4%BA%A4"><span class="nav-text">N段提交</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%A4%9A%E6%95%B0%E8%A1%A8%E5%86%B3%E6%9C%BA%E5%88%B6"><span class="nav-text">多数表决机制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AF%BB%E5%86%99Quorum"><span class="nav-text">读写Quorum</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E8%A7%A3%E5%86%B3%E5%86%99%E5%85%A5%E5%86%B2%E7%AA%81"><span class="nav-text">如何解决写入冲突</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%8B%9C%E5%8D%A0%E5%BA%AD%E5%AE%B9%E9%94%99"><span class="nav-text">拜占庭容错</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E5%AE%9E%E7%8E%B0%E5%9B%A0%E7%B4%A0"><span class="nav-text">其他实现因素</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E7%89%87"><span class="nav-text">分片</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1%E4%B8%80%E8%87%B4%E6%80%A7"><span class="nav-text">事务一致性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%9A%E6%80%A7%E4%BA%8B%E5%8A%A1"><span class="nav-text">刚性事务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9F%94%E6%80%A7%E4%BA%8B%E5%8A%A1"><span class="nav-text">柔性事务</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%9C%80%E5%A4%A7%E5%8A%AA%E5%8A%9B%E4%BA%A4%E4%BB%98"><span class="nav-text">最大努力交付</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#TCC"><span class="nav-text">TCC</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#SAGA"><span class="nav-text">SAGA</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%93%E4%BC%9A"><span class="nav-text">体会</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. Go GC 要点先来回顾一下GC的几个重要的阶段: Mark Prepare - STW做标记阶段的准备工作，需要停止所有正在运行的goroutine(即STW)，标记根对象，启用内存屏障，内存屏障有点像内存读写钩子，它用于在后续并发标记的过程中，维护三色标记的完备性(三色不变性)，这个过程通常很快，大概在10-30微秒。 Marking - Concurrent标记阶段会将大概25%(gc">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Golang GC核心要点和度量方法">
+<meta property="og:url" content="http://wudaijun.com/2020/01/go-gc-keypoint-and-monitor/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. Go GC 要点先来回顾一下GC的几个重要的阶段: Mark Prepare - STW做标记阶段的准备工作，需要停止所有正在运行的goroutine(即STW)，标记根对象，启用内存屏障，内存屏障有点像内存读写钩子，它用于在后续并发标记的过程中，维护三色标记的完备性(三色不变性)，这个过程通常很快，大概在10-30微秒。 Marking - Concurrent标记阶段会将大概25%(gc">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/202001/trace-index.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/202001/trace-view.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/202001/trace-goroutines.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/202001/trace-goroutines2.jpg">
+<meta property="article:published_time" content="2019-12-31T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.614Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="golang">
+<meta property="article:tag" content="gc">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/202001/trace-index.jpg">
+
+<link rel="canonical" href="http://wudaijun.com/2020/01/go-gc-keypoint-and-monitor/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Golang GC核心要点和度量方法 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2020/01/go-gc-keypoint-and-monitor/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Golang GC核心要点和度量方法
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-01-01 00:00:00" itemprop="dateCreated datePublished" datetime="2020-01-01T00:00:00+08:00">2020-01-01</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/golang/" itemprop="url" rel="index"><span itemprop="name">golang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2020/01/go-gc-keypoint-and-monitor/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/01/go-gc-keypoint-and-monitor/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="一-Go-GC-要点"><a href="#一-Go-GC-要点" class="headerlink" title="一. Go GC 要点"></a>一. Go GC 要点</h3><p>先来回顾一下GC的几个重要的阶段:</p>
+<h4 id="Mark-Prepare-STW"><a href="#Mark-Prepare-STW" class="headerlink" title="Mark Prepare - STW"></a>Mark Prepare - STW</h4><p>做标记阶段的准备工作，需要停止所有正在运行的goroutine(即STW)，标记根对象，启用内存屏障，内存屏障有点像内存读写钩子，它用于在后续并发标记的过程中，维护三色标记的完备性(三色不变性)，这个过程通常很快，大概在10-30微秒。</p>
+<h4 id="Marking-Concurrent"><a href="#Marking-Concurrent" class="headerlink" title="Marking - Concurrent"></a>Marking - Concurrent</h4><p>标记阶段会将大概25%(gcBackgroundUtilization)的P用于标记对象，逐个扫描所有G的堆栈，执行三色标记，在这个过程中，所有新分配的对象都是黑色，被扫描的G会被暂停，扫描完成后恢复，这部分工作叫后台标记(<a target="_blank" rel="noopener" href="https://github.com/golang/go/blob/dev.boringcrypto.go1.13/src/runtime/mgc.go#L1817">gcBgMarkWorker</a>)。这会降低系统大概25%的吞吐量，比如<code>MAXPROCS=6</code>，那么GC P期望使用率为<code>6*0.25=1.5</code>，这150%P会通过专职(Dedicated)/兼职(Fractional)/懒散(Idle)三种工作模式的Worker共同来完成。</p>
+<span id="more"></span>
+<p>这还没完，为了保证在Marking过程中，其它G分配堆内存太快，导致Mark跟不上Allocate的速度，还需要其它G配合做一部分标记的工作，这部分工作叫辅助标记(mutator assists)。在Marking期间，每次G分配内存都会更新它的”负债指数”(gcAssistBytes)，分配得越快，gcAssistBytes越大，这个指数乘以全局的”负载汇率”(assistWorkPerByte)，就得到这个G需要帮忙Marking的内存大小(这个计算过程叫<a target="_blank" rel="noopener" href="https://github.com/golang/go/blob/dev.boringcrypto.go1.13/src/runtime/mgc.go#L484">revise</a>)，也就是它在本次分配的mutator assists工作量(<a target="_blank" rel="noopener" href="https://github.com/golang/go/blob/dev.boringcrypto.go1.13/src/runtime/mgcmark.go#L363">gcAssistAlloc</a>)。</p>
+<h4 id="Mark-Termination-STW"><a href="#Mark-Termination-STW" class="headerlink" title="Mark Termination - STW"></a>Mark Termination - STW</h4><p>标记阶段的最后工作是Mark Termination，关闭内存屏障，停止后台标记以及辅助标记，做一些清理工作，整个过程也需要STW，大概需要60-90微秒。在此之后，所有的P都能继续为应用程序G服务了。</p>
+<h4 id="Sweeping-Concurrent"><a href="#Sweeping-Concurrent" class="headerlink" title="Sweeping - Concurrent"></a>Sweeping - Concurrent</h4><p>在标记工作完成之后，剩下的就是清理过程了，清理过程的本质是将没有被使用的内存块整理回收给上一个内存管理层级(mcache -&gt; mcentral -&gt; mheap -&gt; OS)，清理回收的开销被平摊到应用程序的每次内存分配操作中，直到所有内存都Sweeping完成。当然每个层级不会全部将待清理内存都归还给上一级，避免下次分配再申请的开销，比如Go1.12对mheap归还OS内存做了<a target="_blank" rel="noopener" href="https://ms2008.github.io/2019/06/30/golang-madvfree/">优化</a>，使用<a target="_blank" rel="noopener" href="https://go-review.googlesource.com/c/go/+/135395/">NADV_FREE</a>延迟归还内存。</p>
+<h4 id="STW"><a href="#STW" class="headerlink" title="STW"></a>STW</h4><p>在<a href="https://wudaijun.com/2018/01/go-scheduler/">Go调度模型</a>中我们已经提到，Go没有真正的实时抢占机制，而是一套协作式抢占(cooperative preemption)，即给G(groutine)打个标记，等待G在调用函数时检查这个标记，以此作为一个安全的抢占点(GC safe-point)。但如果其它P上的G都停了，某个G还在执行如下代码:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">add</span><span class="params">(numbers []<span class="keyword">int</span>)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">     <span class="keyword">var</span> v <span class="keyword">int</span></span><br><span class="line">     <span class="keyword">for</span> _, n := <span class="keyword">range</span> numbers &#123;</span><br><span class="line">         v += n</span><br><span class="line">     &#125;</span><br><span class="line">     <span class="keyword">return</span> v</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>add函数的运行时间取决于切片的长度，并且在函数内部是没有调用其它函数的，也就是没有抢占点。就会导致整个运行时都在等待这个G调用函数(以实现抢占，开始处理GC)，其它P也被挂起。这就是Go GC最大的诟病: GC STW时间会受到G调用函数的时机的影响并被延长，甚至如果某个G在执行无法抢占的死循环(即循环内部没有发生函数调用的死循环)，那么整个Go的runtime都会挂起，CPU 100%，节点无法响应任何消息，连正常停服都做不到。pprof这类调试工具也用不了，只能通过gdb，delve等外部调试工具来找到死循环的goroutine正在执行的堆栈。如此后果比没有被defer的panic更严重，因为那个时候的节点内部状态是无法预期的。</p>
+<p>因此有Gopher开始倡议Go使用非协作式抢占(non-cooperative preemption)，通过堆栈和寄存器来保存抢占上下文，避免对抢占不友好的函数导致GC STW延长(毕竟第三方库代码的质量也是参差不齐的)。相关的Issue在<a target="_blank" rel="noopener" href="https://github.com/golang/go/issues/24543">这里</a>。好消息是，<strong><a target="_blank" rel="noopener" href="https://tip.golang.org/doc/go1.14">Go1.14</a>(目前还是Beta1版本，还未正式发布)已经支持异步抢占</strong>，也就是说:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 简单起见，没用channel协同</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">  <span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">for</span> &#123;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;()</span><br><span class="line"></span><br><span class="line">  time.Sleep(time.Millisecond)</span><br><span class="line">  runtime.GC()</span><br><span class="line">  <span class="built_in">println</span>(<span class="string">&quot;OK&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这段代码在Go1.14中终于能输出<code>OK</code>了。这个提了近五年的Issue: <a target="_blank" rel="noopener" href="https://github.com/golang/go/issues/10958">runtime: tight loops should be preemptible #10958</a>前几天终于关闭了。不得不说，这是Go Runtime的一大进步，它不止避免了单个goroutine死循环导致整个runtime卡死的问题，更重要的是，它为STW提供了最坏预期，避免了GC STW造成了性能抖动隐患。</p>
+<h3 id="二-Go-GC-度量"><a href="#二-Go-GC-度量" class="headerlink" title="二. Go GC 度量"></a>二. Go GC 度量</h3><h4 id="1-go-tool-prof"><a href="#1-go-tool-prof" class="headerlink" title="1. go tool prof"></a>1. go tool prof</h4><p>Go 基础性能分析工具，pprof的用法和启动方式参考<a href="https://wudaijun.com/2018/04/go-pprof/">go pprof性能分析</a>，其中的heap即为内存分配分析，go tool默认是查看正在使用的内存(<code>inuse_heap</code>)，如果要看其它数据，使用<code>go tool pprof --alloc_space|inuse_objects|alloc_objects</code>。</p>
+<p>需要注意的是，go pprof本质是数据采样分析，其中的值并不是精确值，适用于性能热点优化，而非真实数据统计。</p>
+<h4 id="2-go-tool-trace"><a href="#2-go-tool-trace" class="headerlink" title="2. go tool trace"></a>2. go tool trace</h4><p>go tool trace可以将GC统计信息以可视化的方式展现出来。要使用go tool trace，可以通过以下方式生成采样数据:</p>
+<ol>
+<li>API: <code>trace.Start</code></li>
+<li>go test: <code>go test -trace=trace.out pkg</code></li>
+<li>net/http/pprof: <code>curl http://127.0.0.1:6060/debug/pprof/trace?seconds=20</code></li>
+</ol>
+<p>得到采样数据后，之后即可以通过 <code>go tool trace trace.out</code> 启动一个HTTP Server，在浏览器中查看可视化trace数据:</p>
+<p><img src="/assets/image/202001/trace-index.jpg" alt=""></p>
+<p>里面提供了各种trace和prof的可视化入口，点击第一个View trace可以看到追踪总览:</p>
+<p><img src="/assets/image/202001/trace-view.jpg" alt=""></p>
+<p>包含的信息量比较广，横轴为时间线，各行为各种维度的度量，通过A/D左右移动，W/S放大放小。以下是各行的意义:</p>
+<ul>
+<li>Goroutines: 包含GCWaiting，Runnable，Running三种状态的Goroutine数量统计</li>
+<li>Heap: 包含当前堆使用量(Allocated)和下次GC阈值(NextGC)统计</li>
+<li>Threads: 包含正在运行和正在执行系统调用的Threads数量</li>
+<li>GC: 哪个时间段在执行GC</li>
+<li>ProcN: 各个P上面的goroutine调度情况</li>
+</ul>
+<p>除了<strong>View trace</strong>之外，trace目录的第二个<strong>Goroutine analysis</strong>也比较有用，它能够直观统计Goroutine的数量和执行状态:</p>
+<p><img src="/assets/image/202001/trace-goroutines.jpg" alt=""></p>
+<p><img src="/assets/image/202001/trace-goroutines2.jpg" alt=""></p>
+<p>通过它可以对各个goroutine进行健康诊断，各种network,syscall的采样数据下载下来之后可以直接通过<code>go tool pprof</code>分析，因此，实际上pprof和trace两套工具是相辅相成的。</p>
+<h4 id="3-GC-Trace"><a href="#3-GC-Trace" class="headerlink" title="3. GC Trace"></a>3. GC Trace</h4><p>GC Trace是Golang提供的非侵入式查看GC信息的方案，用法很简单，设置<code>GCDEBUG=gctrace=1</code>环境变量即可:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GODEBUG&#x3D;gctrace&#x3D;1 bin&#x2F;game</span><br><span class="line">gc 1 @0.039s 3%: 0.027+4.5+0.015 ms clock, 0.11+2.3&#x2F;4.0&#x2F;5.5+0.063 ms cpu, 4-&gt;4-&gt;2 MB, 5 MB goal, 4 P</span><br><span class="line">gc 2 @0.147s 1%: 0.007+1.2+0.008 ms clock, 0.029+0.15&#x2F;1.1&#x2F;2.0+0.035 ms cpu, 5-&gt;5-&gt;3 MB, 6 MB goal, 4 P</span><br><span class="line">gc 3 @0.295s 0%: 0.010+2.3+0.013 ms clock, 0.040+0.14&#x2F;2.1&#x2F;4.3+0.053 ms cpu, 7-&gt;7-&gt;4 MB, 8 MB goal, 4 P</span><br></pre></td></tr></table></figure>
+<p>下面是各项指标的解释:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">gc 1 @0.039s 3%: 0.027+4.5+0.015 ms clock, 0.11+2.3&#x2F;4.0&#x2F;5.5+0.063 ms cpu, 4-&gt;4-&gt;2 MB, 5 MB goal, 4 P</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 通用参数</span><br><span class="line">gc 2: 程序运行后的第2次GC</span><br><span class="line">@0.147s: 到目前为止程序运行的时间</span><br><span class="line">3%: 到目前为止程序花在GC上的CPU%</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; Wall-Clock 流逝的系统时钟</span><br><span class="line">0.027ms+4.5ms+0.015 ms   : 分别是 STW Mark Prepare，Concurrent Marking，STW Mark Termination 的时钟时间</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; CPU Time 消耗的CPU时间</span><br><span class="line">0.11+2.3&#x2F;4.0&#x2F;5.5+0.063 ms : 以+分隔的阶段同上，不过将Concurrent Marking细分为Mutator Assists Time, Background GC Time(包括Dedicated和Fractional Worker), Idle GC Time三种。其中0.11&#x3D;0.027*4，0.063&#x3D;0.015*4。</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 内存相关统计</span><br><span class="line">4-&gt;4-&gt;2 MB: 分别是开始标记时，标记结束后的堆占用大小，以及标记结束后真正存活的(有效的)堆内存大小</span><br><span class="line">5 MB goal: 下次GC Mark Termination后的目标堆占用大小，该值受GC Percentage影响，并且会影响mutator assist工作量(每次堆大小变更时都动态评估，如果快超出goal了，就需要其它goroutine帮忙干活了, https:&#x2F;&#x2F;github.com&#x2F;golang&#x2F;go&#x2F;blob&#x2F;dev.boringcrypto.go1.13&#x2F;src&#x2F;runtime&#x2F;mgc.go#L484)</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; Processors</span><br><span class="line">4 P : P的数量，也就是GOMAXPROCS大小，可通过runtime.GoMaxProcs设置</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 其它</span><br><span class="line">GC forced: 如果两分钟内没有执行GC，则会强制执行一次GC，此时会换行打印 GC forced</span><br></pre></td></tr></table></figure>
+<h4 id="4-MemStats"><a href="#4-MemStats" class="headerlink" title="4. MemStats"></a>4. MemStats</h4><p><a target="_blank" rel="noopener" href="https://github.com/golang/go/blob/dev.boringcrypto.go1.13/src/runtime/mstats.go#L147">runtime.MemStats</a>记录了内存分配的一些统计信息，通过<code>runtime.ReadMemStats(&amp;ms)</code>获取，它是<a target="_blank" rel="noopener" href="https://github.com/golang/go/blob/dev.boringcrypto.go1.13/src/runtime/mstats.go#L24">runtime.mstats</a>的对外版(再次可见Go单一访问控制的弊端)，MemStats字段比较多，其中比较重要的有:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// HeapSys </span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 以下内存大小字段如无特殊说明单位均为bytes</span></span><br><span class="line"><span class="keyword">type</span> MemStats <span class="keyword">struct</span> &#123;</span><br><span class="line">    <span class="comment">// 从开始运行到现在累计分配的堆内存数</span></span><br><span class="line">    TotalAlloc <span class="keyword">uint64</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 从OS申请的总内存数(包含堆、栈、内部数据结构等)</span></span><br><span class="line">    Sys <span class="keyword">uint64</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 累计分配的堆对象数量 (当前存活的堆对象数量=Mallocs-Frees)</span></span><br><span class="line">    Mallocs <span class="keyword">uint64</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 累计释放的堆对象数量</span></span><br><span class="line">    Frees   <span class="keyword">uint64</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 正在使用的堆内存数，包含可访问对象和暂未被GC回收的不可访问对象</span></span><br><span class="line">    HeapAlloc <span class="keyword">uint64</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 虚拟内存空间为堆保留的大小，包含还没被使用的(还没有映射物理内存，但这部分通常很小)</span></span><br><span class="line">    <span class="comment">// 以及已经将物理内存归还给OS的部分(即HeapReleased)</span></span><br><span class="line">    <span class="comment">// HeapSys = HeapInuse + HeapIdle</span></span><br><span class="line">    HeapSys <span class="keyword">uint64</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 至少包含一个对象的span字节数</span></span><br><span class="line">    <span class="comment">// Go GC是不会整理内存的</span></span><br><span class="line">    <span class="comment">// HeapInuse - HeapAlloc 是为特殊大小保留的内存，但是它们还没有被使用</span></span><br><span class="line">    HeapInuse <span class="keyword">uint64</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 未被使用的span中的字节数</span></span><br><span class="line">    <span class="comment">// 未被使用的span指没有包含任何对象的span，它们可以归还OS，也可以被重用，或者被用于栈内存</span></span><br><span class="line">    <span class="comment">// HeapIdle - HeadReleased 即为可以归还OS但还被保留的内存，这主要用于避免频繁向OS申请内存</span></span><br><span class="line">    HeapIdle <span class="keyword">uint64</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// HeapIdle中已经归还给OS的内存量</span></span><br><span class="line">    HeapReleased <span class="keyword">uint64</span></span><br><span class="line"> </span><br><span class="line">    <span class="comment">// ....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>程序可以通过定期调用<code>runtime.ReadMemStats</code>API来获取内存分配信息发往时序数据库进行监控。另外，该API是会STW的，但是很短，Google内部也在用，用他们的话说:”STW不可怕，长时间STW才可怕”，该API通常一分钟调用一次即可。</p>
+<h4 id="5-ReadGCStats"><a href="#5-ReadGCStats" class="headerlink" title="5. ReadGCStats"></a>5. ReadGCStats</h4><p><code>debug.ReadGCStats</code>用于获取最近的GC统计信息，主要是GC造成的延迟信息:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// GCStats collect information about recent garbage collections.</span></span><br><span class="line"><span class="keyword">type</span> GCStats <span class="keyword">struct</span> &#123;</span><br><span class="line">	LastGC         time.Time       <span class="comment">// 最近一次GC耗费时间</span></span><br><span class="line">	NumGC          <span class="keyword">int64</span>           <span class="comment">// 执行GC的次数</span></span><br><span class="line">	PauseTotal     time.Duration   <span class="comment">// 所有GC暂停时间总和</span></span><br><span class="line">	Pause          []time.Duration <span class="comment">// 每次GC的暂停时间，最近的排在前面</span></span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>和ReadMemStats一样，ReadGCStats也可以定时收集，发送给时序数据库做监控统计。</p>
+<h3 id="三-Go-GC-调优"><a href="#三-Go-GC-调优" class="headerlink" title="三. Go GC 调优"></a>三. Go GC 调优</h3><p>Go GC相关的参数少得可怜，一如既往地精简:</p>
+<h4 id="1-debug-SetGCPercent"><a href="#1-debug-SetGCPercent" class="headerlink" title="1. debug.SetGCPercent"></a>1. debug.SetGCPercent</h4><p>一个百分比数值，决定即本次GC后，下次触发GC的阈值，比如本次GC Sweeping完成后的内存占用为200M，GC Percentage为100(默认值)，那么下次触发GC的内存阈值就是400M。这个值通常不建议修改，因为优化GC开销的方法通常是避免不必要的分配或者内存复用，而非通过调整GC Percent延迟GC触发时机(Go GC本身也会根据当前分配速率来决定是否需要提前开启新一轮GC)。另外，debug.SetGCPercent传入&lt;0的值将关闭GC。</p>
+<h4 id="2-runtime-GC"><a href="#2-runtime-GC" class="headerlink" title="2. runtime.GC"></a>2. runtime.GC</h4><p>强制执行一次GC，如果当前正在执行GC，则帮助当前GC执行完成后，再执行一轮完整的GC。该函数阻塞直到GC完成。</p>
+<h4 id="3-debug-FreeOSMemory"><a href="#3-debug-FreeOSMemory" class="headerlink" title="3. debug.FreeOSMemory"></a>3. debug.FreeOSMemory</h4><p>强制执行一次GC，并且尽可能多地将不再使用的内存归还给OS。</p>
+<p>严格意义上说，以上几个API预期说调优，不如说是补救，它们都只是把Go GC本身就会做的事情提前或者延后了，通常是治标不治本的方法。真正的GC调优主要还是在应用层面。我在<a href="https://wudaijun.com/2019/09/go-performance-optimization/">这篇文章</a>聊了一些Go应用层面的内存优化。</p>
+<p>以上主要从偏应用的角度介绍了Golang GC的几个重要阶段，STW，GC度量/调试，以及相关API等。这些理论和方法能在在必要的时候派上用场，帮助更深入地了解应用程序并定位问题。</p>
+<p>推荐文献:</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://www.ardanlabs.com/blog/2018/12/garbage-collection-in-go-part1-semantics.html">Garbage Collection In Go</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/qcrao/Go-Questions/blob/master/GC/GC.md">GC 20 问</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.learngoprogramming.com/a-visual-guide-to-golang-memory-allocator-from-ground-up-e132258453ed">A visual guide to Go Memory Allocator from scratch</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2020/01/go-gc-keypoint-and-monitor/" title="Golang GC核心要点和度量方法">http://wudaijun.com/2020/01/go-gc-keypoint-and-monitor/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/golang/" rel="tag"><i class="fa fa-tag"></i> golang</a>
+              <a href="/tags/gc/" rel="tag"><i class="fa fa-tag"></i> gc</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/09/go-performance-optimization/" rel="prev" title="聊聊Go内存优化和相关底层机制">
+      <i class="fa fa-chevron-left"></i> 聊聊Go内存优化和相关底层机制
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/02/rust-basic/" rel="next" title="初识 Rust">
+      初识 Rust <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-Go-GC-%E8%A6%81%E7%82%B9"><span class="nav-text">一. Go GC 要点</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Mark-Prepare-STW"><span class="nav-text">Mark Prepare - STW</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Marking-Concurrent"><span class="nav-text">Marking - Concurrent</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Mark-Termination-STW"><span class="nav-text">Mark Termination - STW</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Sweeping-Concurrent"><span class="nav-text">Sweeping - Concurrent</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#STW"><span class="nav-text">STW</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-Go-GC-%E5%BA%A6%E9%87%8F"><span class="nav-text">二. Go GC 度量</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-go-tool-prof"><span class="nav-text">1. go tool prof</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-go-tool-trace"><span class="nav-text">2. go tool trace</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-GC-Trace"><span class="nav-text">3. GC Trace</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-MemStats"><span class="nav-text">4. MemStats</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-ReadGCStats"><span class="nav-text">5. ReadGCStats</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-Go-GC-%E8%B0%83%E4%BC%98"><span class="nav-text">三. Go GC 调优</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-debug-SetGCPercent"><span class="nav-text">1. debug.SetGCPercent</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-runtime-GC"><span class="nav-text">2. runtime.GC</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-debug-FreeOSMemory"><span class="nav-text">3. debug.FreeOSMemory</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

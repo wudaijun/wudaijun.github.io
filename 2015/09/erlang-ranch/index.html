@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. 简介ranch是erlang的一个开源网络库，提供一个高效的监听进程池，并且将数据传输和数据处理分离开来。使用起来非常简单，灵活。关于ranch的更多介绍和使用，参见官方文档。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ranch">
+<meta property="og:url" content="http://wudaijun.com/2015/09/erlang-ranch/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. 简介ranch是erlang的一个开源网络库，提供一个高效的监听进程池，并且将数据传输和数据处理分离开来。使用起来非常简单，灵活。关于ranch的更多介绍和使用，参见官方文档。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201509/erlang_ranch.png">
+<meta property="article:published_time" content="2015-09-22T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.604Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201509/erlang_ranch.png">
+
+<link rel="canonical" href="http://wudaijun.com/2015/09/erlang-ranch/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>ranch | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/09/erlang-ranch/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ranch
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-09-23 00:00:00" itemprop="dateCreated datePublished" datetime="2015-09-23T00:00:00+08:00">2015-09-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/09/erlang-ranch/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/09/erlang-ranch/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="一-简介"><a href="#一-简介" class="headerlink" title="一. 简介"></a>一. 简介</h3><p><a target="_blank" rel="noopener" href="https://github.com/ninenines/ranch">ranch</a>是erlang的一个开源网络库，提供一个高效的监听进程池，并且将数据传输和数据处理分离开来。使用起来非常简单，灵活。关于ranch的更多介绍和使用，参见<a target="_blank" rel="noopener" href="https://github.com/ninenines/ranch/tree/master/doc/src">官方文档</a>。<br><span id="more"></span></p>
+<h3 id="二-功能"><a href="#二-功能" class="headerlink" title="二. 功能"></a>二. 功能</h3><p>ranch将网络连接分为传输层(transport)和协议层(protocol)，传输层是底层数据的传输方式，如tcp, udp, ssl等。协议层负责数据在业务逻辑上的处理，是开发者真正需要关心的部分。而ranch的一个目标就是将传输层和逻辑层很好的分离开来。</p>
+<p>对服务器端来说，传输层需要负责管理监听套接字和连接套接字。ranch提供一个可设置的进程池，用于高效地接受新连接，将新连接套接字交予用户定义的连接进程，进行业务逻辑上的处理。</p>
+<p>ranch做了什么：</p>
+<ul>
+<li>允许多个应用同时使用，即可有多个listener，每个listener通过名字标识</li>
+<li>每个listenr可单独设置acceptor进程池的大小和其它选项</li>
+<li>可设置最大连接数，并且可动态改变其大小</li>
+<li>到达最大连接数时，后续连接(已经accept的连接)进程将被阻塞，待负载降下来或最大连接数变大后被唤醒</li>
+<li>提供安全的网络退出方式</li>
+</ul>
+<h3 id="三-使用"><a href="#三-使用" class="headerlink" title="三. 使用"></a>三. 使用</h3><pre><code>ok = application:start(ranch).
+
+&#123;ok, _&#125; = ranch:start_listener(tcp_echo, 100, % 监听器名字和监听进程池大小
+    ranch_tcp, [&#123;port, 5555&#125;],        % 定义底层transport handler及其选项 ranch_tcp由ranch提供，底层使用gen_tcp
+    echo_protocol, []                % 自定义的protocol handler进程所在模块，及其选项
+).
+</code></pre><p>之后我们需要做的，就是定义echo_protocol，ranch会在每个新连接到达时，调用<code>echo_protocol:start_link/4</code>，生成我们的协议处理进程。参见<a target="_blank" rel="noopener" href="https://github.com/ninenines/ranch/blob/master/examples/tcp_echo/src/echo_protocol.erl">官网示例</a>。使用起来非常简单。</p>
+<h3 id="四-结构"><a href="#四-结构" class="headerlink" title="四. 结构"></a>四. 结构</h3><p>ranch的进程结构如下：</p>
+<p><img src="/assets/image/201509/erlang_ranch.png" alt="" title="ranch进程结构"></p>
+<h4 id="ranch-server"><a href="#ranch-server" class="headerlink" title="ranch_server:"></a>ranch_server:</h4><p>维护全局配置信息，整个ranch_app唯一，由多个listener共享。通过ets维护一些配置信息和核心进程的Pid信息，格式<code>\&#123;\&#123;Opt, Ref\&#125;, OptValue\&#125;</code>，Ref是listener名字。</p>
+<h4 id="ranch-listener-sup"><a href="#ranch-listener-sup" class="headerlink" title="ranch_listener_sup:"></a>ranch_listener_sup:</h4><p>由<code>ranch:start_listener/6</code>启动，其子进程有ranch_conns_sup和ranch_acceptors_sup，以<code>rest_for_one</code>策略启动，亦即一旦ranch_conns_sup挂了，ranch_acceptors_sup也将被终止，然后再依次重启。</p>
+<h4 id="ranch-acceptors-sup"><a href="#ranch-acceptors-sup" class="headerlink" title="ranch_acceptors_sup:"></a>ranch_acceptors_sup:</h4><p>由它创建监听套接字，并启动N个ranch_accepter执行accept操作(<code>gen_tcp:accept</code>本身支持多process执行)。</p>
+<h4 id="ranch-acceptor"><a href="#ranch-acceptor" class="headerlink" title="ranch_acceptor:"></a>ranch_acceptor:</h4><p>执行loop，不断执行accept操作，将新conn socket的所属权交给ranch_conns_sup(<code>gen_tcp:controlling_process</code>)，通知其启动新protocol handle进行处理，并阻塞等待ranch_conns_sup返回。</p>
+<h4 id="ranch-conns-sup"><a href="#ranch-conns-sup" class="headerlink" title="ranch_conns_sup:"></a>ranch_conns_sup:</h4><p>维护当前所有连接，当新连接到达时，调用<code>your_protocol:start_link/4</code>创建新进程，之后将conn socket所属权交给新连接进程。当连接到达上限时，阻塞前来通知开启新连接的Acceptor进程。直到阀值提高，或有其它连接断开，再唤醒这些Acceptor。ranch的实际最大连接数 = max_conns + NAcceptor。</p>
+<h4 id="your-protocol"><a href="#your-protocol" class="headerlink" title="your_protocol"></a>your_protocol</h4><p>开发者定义protocol，当有新连接到达时，将调用<code>your_protocol:start_link/4</code>启动新进程，之后的处理交予开发者。</p>
+<h3 id="五-其它"><a href="#五-其它" class="headerlink" title="五. 其它"></a>五. 其它</h3><ul>
+<li>对于不需要接收其它进程消息的进程，应该定义通过receive清理进程信箱，避免意料之外的消息一直堆积在信箱中。见<a target="_blank" rel="noopener" href="https://github.com/ninenines/ranch/blob/master/src/ranch_acceptor.erl">ranch_accepter.erl</a>。</li>
+<li>rest_for_one，实现更加强大灵活的监督者。</li>
+<li>ranch将网络的退出方式(brutal_kill，Timeout，infinity等)，交给开发者定制，而不放在框架中。</li>
+<li>注意套接字所属权的转移：<code>ranch_acceptor</code> -&gt; <code>ranch_conns_sup</code> -&gt; <code>your_protocol</code>。</li>
+</ul>
+<h4 id="proc-lib"><a href="#proc-lib" class="headerlink" title="proc_lib"></a>proc_lib</h4><p>ranch中多处用到了proc_lib启动进程，proc_lib是OTP进程的基石，所有OTP behaviour进程都通过proc_lib来创建新进程。</p>
+<p>proc_lib的使用方法：</p>
+<ol>
+<li><code>proc_lib:start_link(M, F, A)</code>启动一个符合OTP规范的进程</li>
+<li>在<code>M:F(A)</code>中，通过<code>proc_lib:init_ack(Parent, Ret)</code>来告诉父进程自身已经初始化完成，此时<code>proc_lib:start_link/3</code>方才返回</li>
+<li>如果进程本身为OTP进程，此时可通过<code>gen_server:enter_loop(Module, Opts, State)</code>来进入OTP进程的主循环</li>
+</ol>
+<p>proc_lib使用情形：</p>
+<ol>
+<li>为了让非OTP进程，能够以OTP规范启动，这样才能融入监督树中并被正确重启。如<code>gen_server:start_link</code>最终也通过<code>proc_lib:start_link</code>来启动进程。见<a target="_blank" rel="noopener" href="https://github.com/ninenines/ranch/blob/master/src/ranch_conns_sup.erl">ranch_conns_sup.erl</a>。</li>
+<li>让OTP进程在<code>init()</code>中进行消息处理，本来在init未返回之前，进程还未初始化完成，这个时候进程处理消息，会陷入死锁，但通过<code>proc_lib:init_ack/2</code>可以先让本进程伪初始化完成，然后进行消息处理，最后通过<code>gen_server:enter_loop</code>进入gen_server主循环。</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/09/erlang-ranch/" title="ranch">http://wudaijun.com/2015/09/erlang-ranch/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/09/use-hexo-rebuild-blog/" rel="prev" title="博客开始使用Hexo">
+      <i class="fa fa-chevron-left"></i> 博客开始使用Hexo
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/09/erlang-process-links/" rel="next" title="【译】进程和错误">
+      【译】进程和错误 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E7%AE%80%E4%BB%8B"><span class="nav-text">一. 简介</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E5%8A%9F%E8%83%BD"><span class="nav-text">二. 功能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E4%BD%BF%E7%94%A8"><span class="nav-text">三. 使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-%E7%BB%93%E6%9E%84"><span class="nav-text">四. 结构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ranch-server"><span class="nav-text">ranch_server:</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ranch-listener-sup"><span class="nav-text">ranch_listener_sup:</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ranch-acceptors-sup"><span class="nav-text">ranch_acceptors_sup:</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ranch-acceptor"><span class="nav-text">ranch_acceptor:</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ranch-conns-sup"><span class="nav-text">ranch_conns_sup:</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#your-protocol"><span class="nav-text">your_protocol</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%94-%E5%85%B6%E5%AE%83"><span class="nav-text">五. 其它</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#proc-lib"><span class="nav-text">proc_lib</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

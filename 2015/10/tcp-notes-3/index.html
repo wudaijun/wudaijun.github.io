@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="主要流程服务器端套接字的主要流程：  socket()：创建一个主动套接字 bind()：为套接字绑定一个本地协议地址和端口(这一步不是必须) listen()：将套接字改为被动套接字，如果套接字没有绑定端口，为套接字选择一个临时端口，此时TCP状态机等待SYN包的到达 accept()：从listen backlog队列中取出一个已经建立(已完成三次握手)的连接  而对于客户端来说，只需要知道服">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TCP复习笔记(三) TCP套接字">
+<meta property="og:url" content="http://wudaijun.com/2015/10/tcp-notes-3/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="主要流程服务器端套接字的主要流程：  socket()：创建一个主动套接字 bind()：为套接字绑定一个本地协议地址和端口(这一步不是必须) listen()：将套接字改为被动套接字，如果套接字没有绑定端口，为套接字选择一个临时端口，此时TCP状态机等待SYN包的到达 accept()：从listen backlog队列中取出一个已经建立(已完成三次握手)的连接  而对于客户端来说，只需要知道服">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2015-10-10T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.605Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="tcp&#x2F;ip">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2015/10/tcp-notes-3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>TCP复习笔记(三) TCP套接字 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/10/tcp-notes-3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          TCP复习笔记(三) TCP套接字
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-10-11 00:00:00" itemprop="dateCreated datePublished" datetime="2015-10-11T00:00:00+08:00">2015-10-11</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/network/" itemprop="url" rel="index"><span itemprop="name">network</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/10/tcp-notes-3/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/10/tcp-notes-3/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="主要流程"><a href="#主要流程" class="headerlink" title="主要流程"></a>主要流程</h3><p>服务器端套接字的主要流程：</p>
+<ol>
+<li><code>socket()</code>：创建一个主动套接字</li>
+<li><code>bind()</code>：为套接字绑定一个本地协议地址和端口(这一步不是必须)</li>
+<li><code>listen()</code>：将套接字改为被动套接字，如果套接字没有绑定端口，为套接字选择一个临时端口，此时TCP状态机等待<code>SYN</code>包的到达</li>
+<li><code>accept()</code>：从listen backlog队列中取出一个<code>已经建立</code>(已完成三次握手)的连接</li>
+</ol>
+<p>而对于客户端来说，只需要知道服务器IP,Port，直接<code>connect()</code>即可，客户端一般无需主动调用<code>bind()</code>绑定端口，因为客户端不关心它的本地端口，<code>connect()</code>会为其选择一个临时端口。</p>
+<span id="more"></span>
+<h3 id="套接字API"><a href="#套接字API" class="headerlink" title="套接字API"></a>套接字API</h3><h4 id="socket"><a href="#socket" class="headerlink" title="socket()"></a><code>socket()</code></h4><p>创建一个指定协议簇和套接字类型套接字，对于IPv4 TCP套接字，通常创建方式为<code>socket(AF_INET, SOCKET_STREAM, 0)</code>，该函数创建的TCP套接字默认是主动套接字。</p>
+<h4 id="bind"><a href="#bind" class="headerlink" title="bind()"></a><code>bind()</code></h4><p>为指定套接字分配一个本地协议地址，该地址根据套接字类型而定。对于TCP套接字来说，调用bind()函数可以为套接字指定一个IP地址和本地端口，IP地址必须是本机的一个接口。</p>
+<p>对于服务器套接字来说，绑定一个固定端口一般是必要的，因为客户端需要指定这个端口才能找到对应服务器进程。而对于IP地址，通常服务器可能不止一个IP，而绑定了一个固定IP意味着套接字只能接收那些目的地为此IP的连接。因此一般我们指定绑定地址为INADDR_ANY，意味着让内核来选择IP地址，内核的做法是：将客户端SYN包的目的IP地址，作为服务器的源IP地址。</p>
+<p>如前面所说，客户端一般是不需要调用bind函数的，在调用connect()时，由内核选定一个本地IP地址和临时端口。</p>
+<h4 id="listen"><a href="#listen" class="headerlink" title="listen()"></a><code>listen()</code></h4><p>通过socket()函数创建的套接字为主动套接字，调用listen()将使该套接字变为被动套接字，这意味着内核应接收该套接字上的连接请求(SYN包)，listen()使套接字从CLOSED状态变为LISTEN状态。</p>
+<p>由于TCP三次握手，客户端与服务器建立连接需要两步：</p>
+<ol>
+<li>在客户端SYN包到达时，服务端回复SYN-ACK包，此时套接字处于SYN_RECV状态</li>
+<li>客户端ACK包到达，此时服务器套接字从SYN_RECV变为ESTABLISH状态，之后等待被accept()取出</li>
+</ol>
+<p>因此，针对这两种状态的套接字的管理，有两种方案：</p>
+<ol>
+<li>维护一个队列，里面包括SYN_RECV和ESTABLISH两种状态的套接字，当客户端三次握手最后一个ACK到达时，将对应套接字状态由SYN_RECV改为ESTABLISH。而accept()只会取出ESTABLISH状态的套接字。在这种实现中，listen()的backlog参数就是这个队列的最大长度。</li>
+<li>维护两个队列，一个未完成连接队列(SYN队列)，存放SYN_RECV状态的套接字。一个已完成连接队列(Accept队列)，存放ESTABLISH状态的套接字。当连接完成(收到客户端的三次握手ACK)后，套接字将从SYN队列移到Accept队列尾部。accept()函数每次从已完成连接队列头部取出一个套接字。这种实现中，backlog参数指的是Accept队列最大长度。</li>
+</ol>
+<p>历史上两种方案均被不同的套接字实现版本采取过，而目前Linux2.2以上的版本使用的是第二种方案（参见<a target="_blank" rel="noopener" href="http://linux.die.net/man/2/listen">Linux listen() man page</a>），意味着backlog限制Accept队列的大小，而SYN队列的大小通过tcp_max_syn_backlog内核参数来控制。那么这里我们有几个问题需要讨论：</p>
+<ul>
+<li>当SYN队列满时，新客户端再次尝试连接(发送SYN包)，会发生什么？</li>
+<li>当Accept队列满时，收到了客户端的握手ACK，需要将套接字从SYN队列移至Accept队列，会发生什么？</li>
+<li>客户端发完握手ACK后，对客户端来说，连接已经建立(处于ESTABLISH状态)了，而服务器套接字由于各种原因(如Accept队列满)并未到达ESTABLISH状态，此时客户端向服务器发送数据，会发送什么？</li>
+</ul>
+<p>当SYN队列满时，通常的TCP实现会忽略SYN包(而不是发送RST包重置连接)，这使得客户端connect()会进行超时重传，等待SYN队列有空闲位置。tcp_syn_retries参数可以控制客户端SYN报文的重试次数。</p>
+<p>当Accept队列满时，这通常是由于accept()调用处理不过来，如果这时收到了客户端的握手ACK包，如果内核参数tcp_abort_on_overflow=0，也就是默认情况，Linux实现会忽略该ACK，这将导致服务器会超时重传SYN-ACK包(参数tcp_synack_retries可控制重传次数)，然后客户端收到SYN-ACK包，也会假设之前的ACK包丢失了，仍然会回复ACK，此时服务器再次收到ACK，可能Accept队列就有空闲位置了。而如果tcp_abort_on_overflow=1，服务器在Accept队列满了，处理不过来时，将直接回复一个RST包，这将导致一个客户端connect()错误: ECONNREFUSED。客户端将不会再次重试。在Linux下，当Accept队列满时，内核还会限制SYN包的进入速度，如果太快，有些SYN包将会被丢弃。</p>
+<p>站在客户端的角度来说，当它收到SYN-ACK并回复ACK后，连接就已经建立了。此时如果它立即向服务器发送数据，而服务可能由于Accept队列满，忽略了ACK，也就仍然处于SYN_RECV状态，此时客户端发送的数据仍然将被忽略，并且由客户端重传。TCP的慢启动机制确保了连接刚建立时不会发送太多的数据。</p>
+<p>最后，在Linux下，backlog指定的大小受限于/proc/sys/net/core/somaxconn。另外，不要将backlog设为0，不能的实现可能对此有不同的解释。</p>
+<p>关于listen() backlog更详细的讨论参见：<a target="_blank" rel="noopener" href="http://veithen.github.io/2014/01/01/how-tcp-backlog-works-in-linux.html">http://veithen.github.io/2014/01/01/how-tcp-backlog-works-in-linux.html</a></p>
+<h4 id="accept"><a href="#accept" class="headerlink" title="accept()"></a><code>accept()</code></h4><p>从Accept队列中取出一个已完成连接，若Accept队列为空，则进程睡眠(假设为阻塞方式)。</p>
+<p>accept()返回一个新的连接套接字(内核已经为它已经完成三次握手)，之后与客户端套接字的通信均通过该连接套接字来完成。</p>
+<h4 id="connect"><a href="#connect" class="headerlink" title="connect()"></a><code>connect()</code></h4><p>向指定地址发送SYN报文，尝试建立连接。如果套接字之前没有调用bind()绑定地址端口，内核会选择源IP地址和一个临时端口。</p>
+<p>connect()仅在连接成功或出错时才返回，出错的可能有：</p>
+<ul>
+<li>没有收到SYN包的响应，尝试超时重发，最后仍无响应。返回ETIMEOUT</li>
+<li>如果收到的SYN响应为RST，表明服务器对应端口还没有进程监听(未调用listen并处于LISTEN状态，状态机不能接收SYN报文)，客户端收到RST包立即返回ECONNREFUSED错误</li>
+<li>如果客户端发出的SYN引发了目的地不可达的ICMP错误，那么将按第一种情况重试，重试未果最终返回EHOSTUNREACH或ENETUNREACH</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/10/tcp-notes-3/" title="TCP复习笔记(三) TCP套接字">http://wudaijun.com/2015/10/tcp-notes-3/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/tcp-ip/" rel="tag"><i class="fa fa-tag"></i> tcp/ip</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/10/tcp-notes-2/" rel="prev" title="TCP复习笔记(二) TCP服务器参见问题和参数设置">
+      <i class="fa fa-chevron-left"></i> TCP复习笔记(二) TCP服务器参见问题和参数设置
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/11/erlang-server-design3-mongodb-driver/" rel="next" title="开发笔记(3) mongodb driver">
+      开发笔记(3) mongodb driver <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BB%E8%A6%81%E6%B5%81%E7%A8%8B"><span class="nav-text">主要流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A5%97%E6%8E%A5%E5%AD%97API"><span class="nav-text">套接字API</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#socket"><span class="nav-text">socket()</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#bind"><span class="nav-text">bind()</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#listen"><span class="nav-text">listen()</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#accept"><span class="nav-text">accept()</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#connect"><span class="nav-text">connect()</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="先来看看GC(自动垃圾回收)的主要问题:  额外的开销(内存&#x2F;CPU) 执行GC的时机无法预测，在实时性要求高的场景或事务处理来说可能是不可容忍的 部分GC算法会Stop-the-world  各语言运行时在选取GC算法时，都要从这几个方面进行衡量与取舍，下面是一些常见的GC算法。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="常见GC算法及Golang GC">
+<meta property="og:url" content="http://wudaijun.com/2017/12/gc-study/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="先来看看GC(自动垃圾回收)的主要问题:  额外的开销(内存&#x2F;CPU) 执行GC的时机无法预测，在实时性要求高的场景或事务处理来说可能是不可容忍的 部分GC算法会Stop-the-world  各语言运行时在选取GC算法时，都要从这几个方面进行衡量与取舍，下面是一些常见的GC算法。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201712/mark-and-sweep.gif">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201712/tri-color-marking.gif">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201712/go-gc-phases.png">
+<meta property="article:published_time" content="2017-12-02T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.610Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="go">
+<meta property="article:tag" content="gc">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201712/mark-and-sweep.gif">
+
+<link rel="canonical" href="http://wudaijun.com/2017/12/gc-study/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>常见GC算法及Golang GC | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2017/12/gc-study/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          常见GC算法及Golang GC
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-12-03 00:00:00" itemprop="dateCreated datePublished" datetime="2017-12-03T00:00:00+08:00">2017-12-03</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/go/" itemprop="url" rel="index"><span itemprop="name">go</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2017/12/gc-study/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2017/12/gc-study/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>先来看看GC(自动垃圾回收)的主要问题:</p>
+<ol>
+<li>额外的开销(内存/CPU)</li>
+<li>执行GC的时机无法预测，在实时性要求高的场景或事务处理来说可能是不可容忍的</li>
+<li>部分GC算法会Stop-the-world</li>
+</ol>
+<p>各语言运行时在选取GC算法时，都要从这几个方面进行衡量与取舍，下面是一些常见的GC算法。</p>
+<span id="more"></span>
+<h3 id="引用计数-Reference-counting"><a href="#引用计数-Reference-counting" class="headerlink" title="引用计数(Reference counting):"></a>引用计数(Reference counting):</h3><p>为每个对象维护一个计数，保存其它对象指向它的引用数量。当一个引用被覆盖或销毁，该引用对象的引用计数-1，当一个引用被建立或拷贝，引用对象的引用计数+1，如果对象的引用计数为0，则表明该对象不再被访问(inaccessible)，将被回收。引用计数有如下优缺点:</p>
+<p>优点:</p>
+<ol>
+<li>GC开销将被均摊到程序运行期，不会有长时间的回收周期。</li>
+<li>每个对象的生命周期被明确定义，可用于某些编译器的runtime优化。</li>
+<li>算法简单，易于实现。</li>
+<li>即时回收，不会等内存状态到达某个阀值再执行回收。</li>
+</ol>
+<p>缺点:</p>
+<ol>
+<li>引用计数会频繁更新，带来效率开销</li>
+<li>原生的引用计数算法无法回收循环引用的对象链(如<a href="http://wudaijun.com/2014/12/shared_ptr-reference/">C++ shared_ptr引用链</a>)</li>
+</ol>
+<p>针对第一个频繁更新的缺点，可以使用延迟更新和合并更新等技术，这通常能够很好优化局部频繁的引用更新(如for循环)，虽然这也增加了算法实现复杂度。</p>
+<p>针对循环引用的问题，一种解决方案是弱引用(<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Weak_reference">weak reference</a>)，弱引用不影响GC，通常的实践是owner持有child的强引用，child持有owner的弱引用，在事件注册器或其它容器中，如果你只希望保存这个引用，但不希望这个引用影响GC时，也可弱引用。弱引用在使用时，需要先判断对象是否还存在，如C++的weak_ptr需要先转换为shared_ptr。但这不能完全避免无意的循环墙引用，一些GC算法可以检测循环引用，例如以追踪式GC的思路，从根出发，回收那些不可达的对象。</p>
+<h3 id="标记-清扫-Mark-and-Sweep"><a href="#标记-清扫-Mark-and-Sweep" class="headerlink" title="标记-清扫(Mark-and-Sweep):"></a>标记-清扫(Mark-and-Sweep):</h3><p>标记-清扫算法为每个对象预留一个Flag位，分为两个阶段，标记阶段会从Root向下递归遍历所有对象，并将所有可达对象的Flag位设为”正在使用”。第二阶段，清扫阶段，遍历所有内存，回收那些所有未被标记为”正在使用”的对象。整个算法的思路很简单，也基本上避免了引用计数法的缺点，但最大的缺点在于回收期间整个系统必须暂停(Stop-the-world)。</p>
+<p><img src="/assets/image/201712/mark-and-sweep.gif" alt=""></p>
+<h3 id="三色标记法-Tri-color-marking"><a href="#三色标记法-Tri-color-marking" class="headerlink" title="三色标记法(Tri-color marking):"></a>三色标记法(Tri-color marking):</h3><p>针对原生标记-清扫算法标记过程会STW的缺点，三色标记法改进了标记方案。三色标记法将所有对象分为三类:</p>
+<ul>
+<li>白色: GC的候选对象集合(待处理)</li>
+<li>灰色: 可从根访问，并且还未扫描对白色集合对象的引用(处理中,不会被GC,但引用待确认)</li>
+<li>黑色: 可从根访问，并且不存在对白色集合的引用(处理完成)</li>
+</ul>
+<p>步骤如下:</p>
+<ol>
+<li>初始化，所有对象都是白色</li>
+<li>从根遍历，所有可达对象标记为灰色</li>
+<li>从灰色对象队列中取出对象，将其引用的对象标记为灰色，并将自己标记为黑色</li>
+<li>重复第三步，直到灰色队列为空，此时白色对象即为孤儿对象，进行回收</li>
+</ol>
+<p>三色标记法有个重要的不变量: <strong>黑色对象不会引用任何白色对象</strong>，因此白色对象可以在灰色对象处理完成之后立即回收。此算法最大的特点在于将标记过程拆分和量化，使得用户程序和标记过程可并行执行(需要其它技术追踪标记过程中的对象引用变更)，不用Stop-the-world，算法可按照各个集合的大小阶段性执行GC，并且不用遍历整个内存空间。</p>
+<p><img src="/assets/image/201712/tri-color-marking.gif" alt=""></p>
+<h3 id="半空间回收器-semi-space-collector"><a href="#半空间回收器-semi-space-collector" class="headerlink" title="半空间回收器(semi-space collector)"></a>半空间回收器(semi-space collector)</h3><p>半空间收集器将内存分为两半，分别叫<strong>from space</strong>和<strong>to space</strong>，初始时，所有的对象都在<strong>to space</strong>中分配直到空间用完，触发一次回收周期，此时<strong>to space</strong>和<strong>from space</strong>互换，然后将所有根可访问的对象从<strong>from space</strong>拷贝到<strong>to space</strong>，之后程序可以继续执行。新的对象继续在新的<strong>to space</strong>中分配，直到再次空间用完触发回收。该算法的优点是所有存活的数据结构都紧凑排列在<strong>to space</strong>，内存分配也可通过简单的分配指针自增来实现，缺点是浪费了一半的内存空间。这种GC方案也叫<strong>stop-and-copy</strong>。</p>
+<h3 id="三色标记法的一些变形"><a href="#三色标记法的一些变形" class="headerlink" title="三色标记法的一些变形"></a>三色标记法的一些变形</h3><h4 id="moving-or-non-moving"><a href="#moving-or-non-moving" class="headerlink" title="moving or non-moving"></a>moving or non-moving</h4><p>三色标记法执行标记流程后(灰色队列为空)，所有的白色对象可被回收，那么这些白色对象是直接被回收，其它不变还是执行内存拷贝(non-moving)，将黑色对象移动并覆盖不再使用的白色对象内存(moving)。相当于执行内存块调整(compact)，可以让内存结构更有序，下次分配更快。这部分算法独立于三色标记，可以由GC算法在运行时选择。</p>
+<h4 id="mark-and-non-sweep"><a href="#mark-and-non-sweep" class="headerlink" title="mark and non-sweep"></a>mark and non-sweep</h4><p>基于半空间收集器的copy思路，可以运用到三色标记法中，通过颜色互换来模拟space互换，该算法对三色标记的颜色定义有所不同，步骤如下:</p>
+<ol>
+<li>对象只有黑色与白色两种颜色，并且黑色与白色是可以互换的(可通过修改黑白的位映射来实现，无需修改对象)</li>
+<li>所有可被访问的对象都是黑色，所有可被回收的对象为白色</li>
+<li>对象从白色对象空间分配，被分配后即标记为黑色</li>
+<li>当内存空间不足(不再有白色对象)，触发GC，此时所有黑色对象变为白色对象，从根遍历所有可访问的对象，将其由白色变为黑色，此时剩下的白色即为可被回收对象，程序可继续运行</li>
+<li>程序继续从白色空间分配，直到白色空间用完，再次触发GC</li>
+</ol>
+<h3 id="分代GC-Generational-GC"><a href="#分代GC-Generational-GC" class="headerlink" title="分代GC(Generational GC)"></a>分代GC(Generational GC)</h3><p>前面的各种标记扫描算法，都有一个缺点，每次需要遍历标记所有可达对象，包括一些长期存活的对象，或者说，GC也具有局部性: 最近被分配的对象越容易不再使用。分代GC即基于这一启发，它将内存空间按”代(Generation)”分为几个部分(通常是两代，即Young Generation和Old Generation)，并尽可能频繁地在年轻的一代执行GC，当年轻一代的内存空间不够时，将可达对象全部移到上一代，此时年轻代的内存全部闲置，可用于分配新对象，这样更快并且通常也更有效率。当老一代GC不够用时，才执行Full Sweep。</p>
+<p>通常大部分语言的运行时都会混合多种GC算法，比如Erlang的GC(参考<a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000003758525">1</a>,<a target="_blank" rel="noopener" href="http://blog.csdn.net/mycwq/article/details/26613275">2</a>)就混合了分代GC和引用计数(高效)，在进程堆内使用分代GC，对全局数据使用引用计数(即时释放内存)。</p>
+<h3 id="Golang-GC"><a href="#Golang-GC" class="headerlink" title="Golang GC"></a>Golang GC</h3><p>简单学习了一下Golang GC，Golang使用的是三色标记法方案，并且支持并行GC，即用户代码何以和GC代码同时运行。具体来讲，Golang GC分为以下阶段:</p>
+<ol>
+<li>Mark: 包含两部分:<ul>
+<li>Mark Prepare: 初始化GC任务，包括开启写屏障(write barrier)和辅助GC(mutator assist)，统计root对象的任务数量等，这个过程需要STW</li>
+<li>GC Drains: 扫描所有root对象，包括全局指针和goroutine(G)栈上的指针（扫描对应G栈时需停止该G)，将其加入标记队列(灰色队列)，并循环处理灰色队列的对象，直到灰色队列为空。该过程后台并行执行</li>
+</ul>
+</li>
+<li>Mark Termination: 完成标记工作，重新扫描(re-scan)全局指针和栈。因为Mark和用户程序是并行的，所以在Mark过程中可能会有新的对象分配和指针赋值，这个时候就需要通过写屏障（write barrier）记录下来，re-scan 再检查一下，这个过程也是会STW的。</li>
+<li>Sweep: 按照标记结果回收所有的白色对象，该过程后台并行执行</li>
+<li>Sweep Termination: 对未清扫的span进行清扫, 只有上一轮的GC的清扫工作完成才可以开始新一轮的GC。</li>
+</ol>
+<p>Golang GC流程图:</p>
+<p><img src="/assets/image/201712/go-gc-phases.png" alt=""></p>
+<p><a target="_blank" rel="noopener" href="http://www.cnblogs.com/zkweb/p/7880099.html">图片出处</a></p>
+<h4 id="1-STW-Stop-The-World"><a href="#1-STW-Stop-The-World" class="headerlink" title="1. STW(Stop The World)"></a>1. STW(Stop The World)</h4><p>Golang的GC过程有两次STW:</p>
+<p>第一次STW会准备根对象的扫描, 启动写屏障(Write Barrier)和辅助GC(mutator assist).</p>
+<p>第二次STW会重新扫描部分根对象, 禁用写屏障(Write Barrier)和辅助GC(mutator assist).</p>
+<h4 id="2-Write-Barrier"><a href="#2-Write-Barrier" class="headerlink" title="2. Write Barrier"></a>2. Write Barrier</h4><p>写屏障用于在编译器在写操作时插入一段代码，对应的还有读屏障。在三色标记法的标记过程中，我们需要保证黑色对象只能引用黑色对象或者灰色对象，不能引用白色对象，否则该白色对象可能无法被标记到从而被回收。因此需要写屏障对写操作插入代码来做对应的记录，以用于re-scan。</p>
+<p>在Go1.8之前，Go使用Dijkstra-style insertion write barrier [Dijkstra ‘78]来完成在Mark过程中，用户程序对指针的赋值和覆盖追踪，该方案的优点是无需读屏障(read barrier)，但保守地将有变更的栈标记为灰色，这样在第一遍Mark之后，还需要re-scan所有灰色的栈。</p>
+<p>Go1.8及之后采用另一种混合屏障(hybrid write barrier that combines a Yuasa-style deletion write barrier [Yuasa ‘90] and a Dijkstra-style insertion write barrier [Dijkstra ‘78]. )，大幅度减少了第二次STW的时间，详细参考<a target="_blank" rel="noopener" href="https://github.com/golang/proposal/blob/master/design/17503-eliminate-rescan.md">17503-eliminate-rescan</a>。</p>
+<p>参考:</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Reference_counting">Reference counting - wikipedia</a></li>
+<li><a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Tracing_garbage_collection">Tracing garbage collection - wikipedia</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.cnblogs.com/zkweb/p/7880099.html">Golang源码探索(三) GC的实现原理</a></li>
+<li><a target="_blank" rel="noopener" href="http://legendtkl.com/2017/04/28/golang-gc/">Golang 垃圾回收剖析</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2017/12/gc-study/" title="常见GC算法及Golang GC">http://wudaijun.com/2017/12/gc-study/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/go/" rel="tag"><i class="fa fa-tag"></i> go</a>
+              <a href="/tags/gc/" rel="tag"><i class="fa fa-tag"></i> gc</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017/12/hexo-with-mathjax/" rel="prev" title="Hexo使用mathjax渲染公式">
+      <i class="fa fa-chevron-left"></i> Hexo使用mathjax渲染公式
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2017/12/deep-learning/" rel="next" title="Coursera 《Neural Networks and Deep Learning》 笔记">
+      Coursera 《Neural Networks and Deep Learning》 笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0-Reference-counting"><span class="nav-text">引用计数(Reference counting):</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%87%E8%AE%B0-%E6%B8%85%E6%89%AB-Mark-and-Sweep"><span class="nav-text">标记-清扫(Mark-and-Sweep):</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E8%89%B2%E6%A0%87%E8%AE%B0%E6%B3%95-Tri-color-marking"><span class="nav-text">三色标记法(Tri-color marking):</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8D%8A%E7%A9%BA%E9%97%B4%E5%9B%9E%E6%94%B6%E5%99%A8-semi-space-collector"><span class="nav-text">半空间回收器(semi-space collector)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E8%89%B2%E6%A0%87%E8%AE%B0%E6%B3%95%E7%9A%84%E4%B8%80%E4%BA%9B%E5%8F%98%E5%BD%A2"><span class="nav-text">三色标记法的一些变形</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#moving-or-non-moving"><span class="nav-text">moving or non-moving</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#mark-and-non-sweep"><span class="nav-text">mark and non-sweep</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E4%BB%A3GC-Generational-GC"><span class="nav-text">分代GC(Generational GC)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Golang-GC"><span class="nav-text">Golang GC</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-STW-Stop-The-World"><span class="nav-text">1. STW(Stop The World)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Write-Barrier"><span class="nav-text">2. Write Barrier</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

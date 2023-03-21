@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="从Erlang过渡到Golang以来，一直陆续会有同学问: “Golang能不能做代码热更呢？”，”游戏服务器不能热更会不会经常停服？”之类的问题，我的一贯看法是，抛开成本和风险谈收益的意义是不大的，所以在回答以上问题之前，先聊聊主流的Golang热更方案，它们都是基于Go Plugin机制的，这里讨论其中的两种，这里我将其称为plugin package swap方案和plugin functi">
+<meta property="og:type" content="article">
+<meta property="og:title" content="聊聊Golang游戏服务器的热更">
+<meta property="og:url" content="http://wudaijun.com/2022/08/golang-gameserver-hotfix/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="从Erlang过渡到Golang以来，一直陆续会有同学问: “Golang能不能做代码热更呢？”，”游戏服务器不能热更会不会经常停服？”之类的问题，我的一贯看法是，抛开成本和风险谈收益的意义是不大的，所以在回答以上问题之前，先聊聊主流的Golang热更方案，它们都是基于Go Plugin机制的，这里讨论其中的两种，这里我将其称为plugin package swap方案和plugin functi">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-08-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.616Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="gameserver">
+<meta property="article:tag" content="golang">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2022/08/golang-gameserver-hotfix/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>聊聊Golang游戏服务器的热更 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2022/08/golang-gameserver-hotfix/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          聊聊Golang游戏服务器的热更
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-08-20 00:00:00" itemprop="dateCreated datePublished" datetime="2022-08-20T00:00:00+08:00">2022-08-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2022/08/golang-gameserver-hotfix/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2022/08/golang-gameserver-hotfix/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>从Erlang过渡到Golang以来，一直陆续会有同学问: “Golang能不能做代码热更呢？”，”游戏服务器不能热更会不会经常停服？”之类的问题，我的一贯看法是，抛开成本和风险谈收益的意义是不大的，所以在回答以上问题之前，先聊聊主流的Golang热更方案，它们都是基于<a target="_blank" rel="noopener" href="https://pkg.go.dev/plugin">Go Plugin</a>机制的，这里讨论其中的两种，这里我将其称为plugin package swap方案和plugin function patch方案。</p>
+<h4 id="plugin-package-swap"><a href="#plugin-package-swap" class="headerlink" title="plugin package swap"></a>plugin package swap</h4><p>该方案的思路是，将业务package编译为plugin，动态加载和替换，再通过<code>plugin.Lookup</code>来动态查找和使用函数。这也是最主流的Go Plugin应用方案，不过该方案有以下缺点:</p>
+<ol>
+<li>受 Go Plugin 本身的限制，如第三方依赖需要一致、不能引用插件package、插件内数据类型共享、插件无法释放、调试相对困难、跨平台问题等</li>
+<li>对业务代码侵入式较强，包括 plugin main package限制、Lookup调用方式、发布流程等</li>
+</ol>
+<p>Go Plugin从2016年发布以来一直不温不火，Go官方对Plugin的维护升级更谈不上上心(两者互为因果)，对于大部分开发者而言，面临Plugin的诸多限制，还是要花一些时间踩坑的。因此，有一套弱侵入性的热更方案，减少对已有框架代码的影响，减轻对开发者的理解负担(比如不要为热更单独写业务代码)，并且提供快速切换静态编译和热更版本的支持，在我看来对线上服务是比较重要的。有一些开源库能解决部分问题，如<a target="_blank" rel="noopener" href="https://github.com/edwingeng/hotswap">hotswap</a>能解决 main package 限制(通过正则临时替换)、不同版本plugin数据类型问题、Plugin生命周期管理问题等，并且也提供了动态链接(走plugin Lookup)和静态链接(对外暴露相同的接口，不过底层不走plugin Lookup，而是package函数调用)两种集成方式，一定程度降低了热更的侵入性。</p>
+<span id="more"></span>
+<p>更进一步降低侵入式的方案是使用条件编译来区分静态编译版本和热更版本，对静态编译版本而言，它除了多个几个no-op hook外，不耦合任何热更相关的东西。将插件相关代码对框架的侵入式降到最低。每次发布主体或插件，基于同一套代码同时构建热更主体、热更插件以及静态编译版本，如此在需要时，可以很方面地切换或者对照。</p>
+<p>另一种较为Geek的方案是不使用条件编译对静态编译和热更版本做编译期区分，而是做运行时区分。服务器每次都以静态编译启动(无需so插件)，但是开启插件热更机制，一旦自动检测或手动启动热加载，就用so插件的代码替换掉原本的package实现，从而实现热更。这种方案的优点是在服务器没有BUG无需热更的情况下，它的运行时表现和静态编译版本基本一致。缺点是代码层面对热更机制有一定的耦合。</p>
+<p>另外，Go Plugin 的诸多限制也影响了该方案的应用范围，对游戏服务器而言，首要就是得有合理的package拆分，这方面可以借助DDD和洋葱架构对业务领域进行拆分和隔离，理想中的plugin package需要满足:</p>
+<ol>
+<li>无全局变量</li>
+<li>不被其他package依赖</li>
+<li>所有数据和接口依赖，都通过外部依赖注入</li>
+<li>无后台goroutine</li>
+<li>尽量不要暴露plugin内的数据类型</li>
+<li>…</li>
+</ol>
+<p>满足如上条件的package其实更偏向提供类似纯函数的Handler实现，这较大程度限制了Plugin代码热修复的覆盖度和能力。</p>
+<h4 id="plugin-function-patch"><a href="#plugin-function-patch" class="headerlink" title="plugin function patch"></a>plugin function patch</h4><p>另一种在其他项目应用过的方案也是基于Plugin，但不是将Plugin作为整个package的可替换实现，而是只通过Plugin实现要替换的函数补丁:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">func GetPatchFuncs() map[string]string &#123;</span><br><span class="line">	&#x2F;&#x2F;map的key是新函数在本补丁文件中的名称(以便通过plugin.Lookup找到该函数地址)</span><br><span class="line">	&#x2F;&#x2F;map的value是旧函数在旧可执行文件中的名称(应该用nm来查，以便通过CGO dlsym找到该函数地址) </span><br><span class="line">	list :&#x3D; map[string]string&#123;</span><br><span class="line">		&quot;TestHandlerHotFix&quot;: &quot;main.TestHandler&quot;,</span><br><span class="line">	&#125;</span><br><span class="line">	return list</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在加载Plugin后，借助<code>plugin.Lookup(&quot;GetPatchFuncs&quot;)</code>拿到Patch映射，再通过<code>plugin.Lookup</code>和<code>CGO dlsym</code>分别找到新旧函数地址，最后借助<code>mprotect</code>+<code>memcpy</code>+<code>hardcode asm</code>修改旧函数地址入口内容为: <code>jmpq 新函数地址</code>。</p>
+<p>这套方案借鉴经典的C函数补丁热更方案，它的好处是，业务代码不需要大的调整，缺点也有不少:</p>
+<ol>
+<li>相较package swap，函数补丁灵活性没有那么高</li>
+<li>需要为了热更，暴露package过多的类型和函数</li>
+<li>Patch函数修复后，还需要在业务逻辑中再修复一次</li>
+<li>由于是函数地址替换，因此还会受到编译器内联优化的影响</li>
+<li>由于用了C和汇编，与底层耦合过重，跨平台和跨系统可移植性只能自己保证</li>
+</ol>
+<h4 id="代码热更的价值"><a href="#代码热更的价值" class="headerlink" title="代码热更的价值"></a>代码热更的价值</h4><p>在大概了解Go热更的两种实现方式和相对应的成本和风险之后，现在来聊聊代码热更的价值和收益。首要仍然要强调的是，代码热更如同设计模式中的适配器，本质都是一种补救措施。如果一个线上服务器频繁使用代码热更来修复BUG，这不能说明代码热更很有用，反倒是说明服务器的线上交付质量有问题，工作重心应该更多地考虑保障线上交付质量。同时，为热更付出的开发成本以及带来的风险性都要谨慎评估，否则就会有点舍本逐末了(提升可用性的措施，引入了新的风险或花了过高的成本反而降低了可用性)。这也是我前面提到非侵入性和共存方案的初衷之一。</p>
+<p>现在回到最开始的两个问题:</p>
+<ol>
+<li>“Golang能否做代码热更?”: 能支持一定程度的代码热更，但目前已知的代码热更方案，都有一定的技术风险(坑)，限制也比较多，并且只能覆盖部分业务代码，可能还需要做前置代码重构</li>
+<li>“没有热更会不会经常停服？”: 在我们近年的Golang服务器实践经验中，能否代码热更还不算是服务器的可用性瓶颈，服务器停服的原因包括版本更新、意外故障以及紧急修复等，代码热更只能解决紧急修复中的一部分BUG，这个”部分”取决于BUG复杂程度、是否需要停服止损、修复数据、是否被热更覆盖等</li>
+</ol>
+<p>综上，代码热更是否值得做，最终还是取决于对各项目对这一块的成本风险和收益的权衡，而每个项目在这一块上面临的技术挑战和风险是不一样的。对我们而言，由于之前借助一些DDD思想对业务领域进行了拆分和重组(基于可维护、可测试、可扩展性考量)，目前的业务package粒度和组织方式，都比较适合hotswap方案，因此目前我们开始尝试 hotswap + domain package + 条件编译 + 并存构建的热更方案，其前置业务重构成本、侵入性、风险性都很低，目前的想法是小范围逐步推进，比如先用在活动这类最常出问题的系统上。</p>
+<h4 id="非代码热修复"><a href="#非代码热修复" class="headerlink" title="非代码热修复"></a>非代码热修复</h4><p>一个完整的有状态游戏服务器主要包含三部分: 代码、数据和配置，因此除了代码热更之外，这里顺便提一下配置热更和数据热修复。</p>
+<p>配置问题是游戏服务器线上问题的主要来源之一，大部分的游戏服务器都会提供一定的配置热更能力，这个实现起来不难，由于我们使用全容器部署，为了做到宿主机隔离，配置热更是通过将配置导入到DB然后Reload来实现的，并借助<code>atomic.Value</code>保证配置的并发读写安全性。对于逻辑层而言，尽可能不要缓存配置，而是每次都从配置中读取最新值。</p>
+<p>至于数据热修复，SLG游戏服务器基于性能、响应延迟、逻辑耦合强等各种原因，通常都是有状态+定时落地的，尽管我们尽可能从防御性编程、架构可靠性、线上监控、快速部署恢复等手段来尽可能提升服务器可用性，但各种预期之外的错误和故障仍然可能导致处理流程中断，引发各种数据不一致性问题。而按照经验，处理这些故障导致的数据修复，往往比服务恢复更可能成为”可用性瓶颈”。因此，为了最大程度提升玩家体验，一种或多种不停服修复数据方案是需要被考虑并长期维护的。按照我们的经验，大概可以从以下几个维度来考虑:</p>
+<ul>
+<li>Normal Fix: 对于常见的数据不一致，做一套Fix流程，并且手动(如通过GM)或者自动(如服务器启动、玩家上线时)开启</li>
+<li>Lua Fix: 接入Lua(如<a target="_blank" rel="noopener" href="https://github.com/yuin/gopher-lua">gopher-lua</a>)并暴露核心的数据API以便通过Lua做一些临时的数据诊断和修复</li>
+<li>Reflect Fix: 基于Go Reflect实现一套简单的DSL，支持结构体嵌套字段的读取和赋值</li>
+<li>DB Fix: 强制带LRU的数据刷盘，修改DB，最后Reload</li>
+</ul>
+<p>由于这一块和业务框架耦合较重，不再展开，仅仅提供一些思路。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2022/08/golang-gameserver-hotfix/" title="聊聊Golang游戏服务器的热更">http://wudaijun.com/2022/08/golang-gameserver-hotfix/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/gameserver/" rel="tag"><i class="fa fa-tag"></i> gameserver</a>
+              <a href="/tags/golang/" rel="tag"><i class="fa fa-tag"></i> golang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/04/golang-performance-analysis/" rel="prev" title="Golang性能分析">
+      <i class="fa fa-chevron-left"></i> Golang性能分析
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/ddd-suple-design/" rel="next" title="领域驱动设计之柔性设计">
+      领域驱动设计之柔性设计 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#plugin-package-swap"><span class="nav-text">plugin package swap</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#plugin-function-patch"><span class="nav-text">plugin function patch</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E7%83%AD%E6%9B%B4%E7%9A%84%E4%BB%B7%E5%80%BC"><span class="nav-text">代码热更的价值</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%9D%9E%E4%BB%A3%E7%A0%81%E7%83%AD%E4%BF%AE%E5%A4%8D"><span class="nav-text">非代码热修复</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

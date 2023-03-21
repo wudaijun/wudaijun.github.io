@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="消息编解码(或序列化)主要是将消息体由一些标准库容器或自定义的类型，转化成二进制流，方便网络传输。为了减少网络IO，编解码中也可能在存在数据”压缩和解压”，但这种压缩是针对于特定的数据类型，并不是针对于二进制流的。在NGServer的消息编解码中，并不涉及数据压缩。 一. 消息编码格式NGServer的消息分为首部和消息体，首部共四个字节，包括消息长度(包括首部)和消息ID，各占两个字节。消息体为">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NGServer 消息的编解码">
+<meta property="og:url" content="http://wudaijun.com/2014/11/ngserver-message-encoder/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="消息编解码(或序列化)主要是将消息体由一些标准库容器或自定义的类型，转化成二进制流，方便网络传输。为了减少网络IO，编解码中也可能在存在数据”压缩和解压”，但这种压缩是针对于特定的数据类型，并不是针对于二进制流的。在NGServer的消息编解码中，并不涉及数据压缩。 一. 消息编码格式NGServer的消息分为首部和消息体，首部共四个字节，包括消息长度(包括首部)和消息ID，各占两个字节。消息体为">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2014-11-04T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.601Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="ngserver">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2014/11/ngserver-message-encoder/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>NGServer 消息的编解码 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/11/ngserver-message-encoder/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          NGServer 消息的编解码
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2014-11-05 00:00:00" itemprop="dateCreated datePublished" datetime="2014-11-05T00:00:00+08:00">2014-11-05</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2014/11/ngserver-message-encoder/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2014/11/ngserver-message-encoder/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>消息编解码(或序列化)主要是将消息体由一些标准库容器或自定义的类型，转化成二进制流，方便网络传输。为了减少网络IO，编解码中也可能在存在数据”压缩和解压”，但这种压缩是针对于特定的数据类型，并不是针对于二进制流的。在NGServer的消息编解码中，并不涉及数据压缩。</p>
+<h3 id="一-消息编码格式"><a href="#一-消息编码格式" class="headerlink" title="一. 消息编码格式"></a>一. 消息编码格式</h3><p>NGServer的消息分为首部和消息体，首部共四个字节，包括消息长度(包括首部)和消息ID，各占两个字节。消息体为消息编码后的二进制数据。</p>
+<p>在消息体中，针对于不同的数据类型而不同编码。对于POD类型，直接进行内存拷贝，对于非POD类型，如标准库容器，则需要自定义编码格式，以下是几种最常见的数据类型编码：</p>
+<p>std::string 先写入字符串长度，占两个字节，再写入字符串内容。<br>std::vector 先写入vector的元素个数(占两个字节)，在对其元素逐个递归编码(如果元素类型为string，则使用string的编码方式)。<br>std::list    编码方式与vector类似<br>T arr[N]    对于这种类型，不需要写入元素个数，因为在消息结构体中指出了固定长度N，因此可以通过模板推导得到N。所以递归写入N个元素T即可。对于简单数据类型T，如T为char时，可以通过模板特例化对其优化。</p>
+<span id="more"></span>
+<h3 id="二-ProtocolStream"><a href="#二-ProtocolStream" class="headerlink" title="二. ProtocolStream"></a>二. ProtocolStream</h3><p>NGServer的消息编解码依靠两个类：ProtocolReader和ProtocolWriter。这两个类派生于ProtocolStream，ProtocolStream简单维护一个用于编码或解码的线性缓冲区，并记录缓冲区的当前状态，如总大小，当前偏移，等等。一个ProtocolStream的缓冲区即代表一条消息，因此它ProtocolReader/ProtocolWriter总是在缓冲区头四个字节中读出或写入消息长度和消息ID。</p>
+<p>ProtocolReader从缓冲区中读出消息，也就是解码，由于缓冲区的数据是二进制的，因此我们需要提供需要读出的数据类型。因此ProtocolReader提供的接口如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">template&lt;typename T&gt;</span><br><span class="line">bool ProtocolReader::AutoDecode(T&amp; t);</span><br></pre></td></tr></table></figure>
+<p>Decode在缓冲区的当前偏移处，读出数据t，并返回操作结果。而根据T的类型不同，读取方式也不一样，这需要通过模板推导来完成。</p>
+<h3 id="三-数据类型"><a href="#三-数据类型" class="headerlink" title="三. 数据类型"></a>三. 数据类型</h3><p>T的类型概括有四种：</p>
+<ul>
+<li>基本POD类型，如 int, double, char 等  </li>
+<li>标准库非POD类型，如 std::string, std::vector, std::list 等</li>
+<li>自定义POD类型，如:</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">struct A1</span><br><span class="line">&#123;</span><br><span class="line">	char name[36];</span><br><span class="line">	char pwd[36];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>自定义非POD类型，如：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">struct A2</span><br><span class="line">&#123;</span><br><span class="line">	string name;</span><br><span class="line">	vector&lt;int&gt; data;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>C数组类型 由于其推导方式不同 因此单独归为一类</li>
+</ul>
+<p>关于c++ POD类型和std::is_pod，std::is_standard_layout，std::is_trivial等函数，可参见下面两篇博客：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="http://m.oschina.net/blog/156796">http://m.oschina.net/blog/156796</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.cnblogs.com/hancm/p/3665998.html">http://www.cnblogs.com/hancm/p/3665998.html</a></li>
+</ol>
+<p>这里说的POD指的是 std::is_trivial<T\>::value &amp;&amp; std::is_standard_layout<T\>::value</p>
+<h3 id="四-ProtocolReader解码推导流程"><a href="#四-ProtocolReader解码推导流程" class="headerlink" title="四. ProtocolReader解码推导流程"></a>四. ProtocolReader解码推导流程</h3><p>推导流程如下：</p>
+<p><strong>1.如果T是C数组类型 (std::is_array<T>::value == true)</strong>，那么下一个推导模型应该为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">template&lt;typename T, size_t arraySize&gt;</span><br><span class="line">bool ProtocolReader::DecodeArray(const T (&amp;arr)[arraySize]);</span><br></pre></td></tr></table></figure>
+<p>如此便能推导出数组的元素类型，以及数组的大小</p>
+<p>注：std::is_array<T\>用于判别一个类型是否为<strong>C风格数组类型</strong>，对于c++的容器vector，std::is_array<vector<int\>&gt;::value的值为false，因为vector本身也是一个类。</p>
+<p>根据我们对C数组的编码方式，下一步我们需要递归通过ProtocolReader::AutoDecode(arr[i])来依次递归对数组元素进行解码。</p>
+<p><strong>2.如果T不是C型数组</strong>，那么T是一个类(或基本类型)。此时通过Decode来对该类进行编解码，Decode读取缓冲区数据，对POD类型和预定义的特例化类型(一般是标准库容器)进行读取并解码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">template&lt;typename T&gt;</span><br><span class="line">bool ProtocolReader::Decode(T&amp; t);</span><br></pre></td></tr></table></figure>
+<p>对于POD类型，无论是基本数据类型或者自定义类型，均无需特例化，直接内存拷贝即可。这也是Decode()的默认实现。而对于标准库中的容器，则可以针对性的模板特例化：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">template&lt;typename T&gt;</span><br><span class="line">bool ProtocolReader::Decode(std::vector&lt;T&gt;&amp; vec);</span><br></pre></td></tr></table></figure>
+<p>而对于最后一种类型，自定义非POD类型，模板自动推导则爱莫能助了，比如对于结构体A2，它的推导流程是: AutoDecode(A2&amp;) -&gt; Decode(A2&amp;) 到了这里，框架无法再推导出A2内部的乾坤了。这就需要A2的定义者提供一个特例化的解码函数AutoDecode(A2&amp;)，为什么不特例化Decode(A2&amp;)呢？因为AutoDecode()是解码的最外层接口，使用者通过自定义的AutoDecode能够获得最大的灵活性。</p>
+<p>那么问题来了，由于上面提到的AutoDecode Decode等函数均是ProtocolReader的成员函数，那么AutoDecode(A2&amp;)也应该定义在ProtocolReader中，这样做有两点不足之处：</p>
+<ol>
+<li>大量的模板特例化会使ProtocolReader变得异常臃肿难读，并且消息的定义和特例化在不同的文件。容易在定义之后忘记特例化。</li>
+<li>编译依赖性增大，添加任意一条非POD消息，都需要重新编译整个ProtocolReader.h以及包含它的所有模块。</li>
+</ol>
+<p>而解决方案就是将类中的模板推导转为全局模板推导AutoDecode，然后自定义类的特例化均在全局中，最后再通过Decode调用ProtocolReader接口进行已知类型的推导。</p>
+<p>具体流程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;******************* STEP 1 内部自动解码接口 转向全局自动模板推导 **************************&#x2F; </span><br><span class="line">template&lt;typename T&gt;</span><br><span class="line">bool ProtocolReader::Decode(T&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	&#x2F;&#x2F; 转向全局推导</span><br><span class="line">	return AutoDecode(*this, t);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;****************** STEP 2 通过是否是C数组分发到不同推导接口 ******************************&#x2F;</span><br><span class="line">&#x2F;&#x2F; 全局自动推导 这是全局入口 也是自定义的非POD消息的重载入口</span><br><span class="line">template&lt;typename S, typename T&gt;</span><br><span class="line">bool AutoDecode(S&amp; s, T&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	&#x2F;* </span><br><span class="line">	*	Serializer是辅助类 它通过 std::is_array&lt;T&gt;::value 的不同值来转调到不同的模板推导接口</span><br><span class="line">   	*	即 Serializer&lt;true&gt;::DeSerialize(s,t) 和 Serializer&lt;false&gt;::DeSerialize(s,t)</span><br><span class="line">	*&#x2F;</span><br><span class="line">	return Serializer&lt;std::is_array&lt;T&gt;::value&gt;::DeSerialize(s, t);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;***************** STEP 3 Serializer 完成对C数组和非C数组的分发 *************************&#x2F;</span><br><span class="line">&#x2F;* Serializer对C数组的分发接口</span><br><span class="line">*	推导出数组元素类型和元素个数</span><br><span class="line">*	通过DecodeArray进行解码</span><br><span class="line">*&#x2F;</span><br><span class="line">template&lt;typename S, typename T, size_t arraySize&gt;</span><br><span class="line">bool Serializer&lt;true&gt;::DeSerialize(S&amp; s, T (&amp;t)[arraySize])</span><br><span class="line">&#123;</span><br><span class="line">	return DecodeArray(s, t, arraySize);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;* Serializer对非C数组的分发接口</span><br><span class="line">*  通过Decode尝试直接解码</span><br><span class="line">*&#x2F;</span><br><span class="line">template&lt;typename S, typename T&gt;</span><br><span class="line">bool Serializer&lt;false&gt;::DeSerialize(S&amp; s, T&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	return Decode(s, t);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;****************** STEP 4.A 对C数组 T[arraySize] 进行解码 *****************************&#x2F;</span><br><span class="line">&#x2F;*</span><br><span class="line">*	DecodeArray </span><br><span class="line">*	对固定长度的数组进行解码</span><br><span class="line">*&#x2F;</span><br><span class="line">template&lt;typename S, typename T&gt;</span><br><span class="line">bool DecodeArray(S&amp; s, T* t, size_t arraySize)</span><br><span class="line">&#123;</span><br><span class="line">	uint16_t size &#x3D; static_cast&lt;uint16_t&gt;(arraySize);</span><br><span class="line">	for(uint16_t i&#x3D;0; i&lt;size; i++)</span><br><span class="line">	&#123;</span><br><span class="line">		&#x2F;&#x2F; 递归对元素进行自动解码</span><br><span class="line">		if(!AutoDecode(s, t[i]))</span><br><span class="line">			return false;</span><br><span class="line">	&#125;</span><br><span class="line">	return true;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 对基本类型的C数组特例化 直接内存拷贝</span><br><span class="line">template&lt;typename S&gt;</span><br><span class="line">bool DecodeArray(S&amp; s, int* arr, size_t arraySize)&#123; return s.Read((void*)arr, arraySize*sizeof(int)); &#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename S&gt;</span><br><span class="line">bool DecodeArray(S&amp; s, float* arr, size_t arraySize)&#123; return s.Read((void*)arr, arraySize*sizeof(float)); &#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename S&gt;</span><br><span class="line">bool DecodeArray(S&amp; s, double* arr, size_t arraySize)&#123; return s.Read((void*)arr, arraySize*sizeof(double)); &#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename S&gt;</span><br><span class="line">bool DecodeArray(S&amp; s, int64_t* arr, size_t arraySize)&#123; return s.Read((void*)arr, arraySize*sizeof(int64_t)); &#125;</span><br><span class="line"></span><br><span class="line">&#x2F;*********************** STEP 4.B 对非C数组 进行直接解码 *******************************&#x2F;</span><br><span class="line">&#x2F;&#x2F; 默认解码 对于POD类型 直接内存拷贝</span><br><span class="line">template&lt;typename S, typename T&gt;</span><br><span class="line">bool Decode(S&amp; s, T&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">    static_assert(std::is_trivial&lt;T&gt;::value, &quot;is not trivial. need to customize&quot;);</span><br><span class="line">    static_assert(std::is_standard_layout&lt;T&gt;::value, &quot;is not standard_layout. need to customize&quot;);</span><br><span class="line">    return s.Read((void*)&amp;t, sizeof(t));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 预定义特例化</span><br><span class="line">&#x2F;&#x2F; 对string的解码 在ProtocolReader中完成 此时类型已确定</span><br><span class="line">template&lt;typename S&gt;</span><br><span class="line">bool Decode(S&amp; s, std::string&amp; t)&#123; return s.Read(t);  &#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename S&gt;</span><br><span class="line">bool Decode(S&amp; s, std::wstring&amp; t)&#123; return s.Read(t);	&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 对标准库容器的解码 由于标准容器元素类型可能仍为自定义类型，因此需要继续递归解码</span><br><span class="line">template&lt;typename S, typename T&gt;</span><br><span class="line">bool Decode(S&amp; s, std::vector&lt;T&gt;&amp; t)&#123; return DecodeArray(s, t); &#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename S, typename T&gt;</span><br><span class="line">bool Decode(S&amp; s, std::list&lt;T&gt;&amp; t)&#123; return DecodeArray(s, t); &#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 解码动态长度容器 </span><br><span class="line">template&lt;typename S, typename T&gt;</span><br><span class="line">bool DecodeArray(S&amp; s, T&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">    uint16_t size;</span><br><span class="line">    if (s.Read(size))</span><br><span class="line">    &#123;</span><br><span class="line">        for (uint16_t i &#x3D; 0; i &lt; size; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            T::value_type v;</span><br><span class="line">			&#x2F;&#x2F; 逐个对元素进行自动解码</span><br><span class="line">            if (!AutoDecode(s, v))</span><br><span class="line">                return false;</span><br><span class="line">            t.push_back(v);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return true;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注意，对数组元素或标准库容器元素解码时，都调用AutoDecode，这是因为如果容器元素是用户自定义的非POD类型，那么可以通过用户重载的AutoDecode进行正确解码。总之，对于未知类型，都应该通过AutoDecode确保用户自定义类型得到正确解码。而Decode只针对于两种类型：POD类型和标准库容器类型，对于前者默认内存拷贝，对于后者通过AutoDecode对元素逐个解码。如果用户没有提供自定义类型的AutoDecode特例化，那么Decode判断其POD类型并执行内存拷贝，如果该类型不是POD类型，那么static_assert将在编译器给出错误：”is not trivial. need to customize” 或 “is not standard layout. need to customize”。<br>而C数组通过在AutoDecode转向分支DecodeArray，DecodeArray完成元素个数解析之后，也通过AutoDecode对元素递归解码。</p>
+<h3 id="五-自定义消息类型的特例化"><a href="#五-自定义消息类型的特例化" class="headerlink" title="五. 自定义消息类型的特例化"></a>五. 自定义消息类型的特例化</h3><p>自定义的非POD消息类型A2的特例化如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">bool AutoDecode(ProtocolReader&amp; s, A2&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	return AutoDecode(s, t.name) &amp;&amp; AutoDecode(s, t.data);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这是全部特例化，它特例化了解码类ProtocolReader和解码类型A2。而自动化模板推导中使用typename S来模板化编解码类，这是为了提高灵活性，让全局自动模板推导框架可以用于多种编解码类。</p>
+<p>如果自定义消息类更复杂一些：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">struct A3</span><br><span class="line">&#123;</span><br><span class="line">	std::string str;</span><br><span class="line">	A2 a2;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>此时A3为复合的自定义非POD类型，如果只为A3提供特例化而忘了给A2特例化：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">bool AutoDecode(ProtocolReader&amp; s, A3&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	return AutoDecode(s, t.str) &amp;&amp; AutoDecode(s, t.a2);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>那么 <code>AutoDecode(s, t.str)</code>能够解码成功，而<code>AutoDecode(s, t.a2)</code>，则会失败。因此最好在定义任何一个与客户端交互的非POD结构体时，都需要提供对应编解码规则。而不是在特例化消息的时候才去注意其成员有无非POD类型需要特例化。</p>
+<h3 id="六-特例化宏"><a href="#六-特例化宏" class="headerlink" title="六. 特例化宏"></a>六. 特例化宏</h3><p>编码的推导过程和解码大同小异，只不过最终是写入缓冲区而不是读取缓冲区。NGServer还有一个ProtocolSize类，用于获取消息编码之后的大小，推导流程也和编解码流程一致。目前没有什么太大的作用。因此实际上在特例化自定义类的编解码规则时，需要同时提供AutoEncode，AutoDecode，AutoMsgSize三个全局函数。这样在消息比较多时，编写对应编解码规则是一件比较麻烦的事情，并且容易出错。</p>
+<p>因此可以对这些编解码特例化提供一个宏，方便定义其编解码规则：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">#define AUTOCUSTOMMSG1(T, v1) \</span><br><span class="line">    bool Encode(ProtocolWriter&amp; s, const T&amp; t)&#123; \</span><br><span class="line">        return AutoEncode(s, t.v1); &#125; \</span><br><span class="line">    \</span><br><span class="line">    bool Decode(ProtocolReader&amp; s,  T&amp; t)&#123; \</span><br><span class="line">        return AutoDecode(s, t.v1); &#125; \</span><br><span class="line">    \</span><br><span class="line">    uint32_t GetMsgSize(ProtocolSize&amp; s, const T&amp; t )&#123; \</span><br><span class="line">        return AutoMsgSize(s, t.v1); &#125; </span><br><span class="line"></span><br><span class="line">#define AUTOCUSTOMMSG2(T, v1, v2) \</span><br><span class="line">    bool Encode(ProtocolWriter&amp; s, const T&amp; t)&#123; \</span><br><span class="line">        return AutoEncode(s, t.v1) &amp;&amp; AutoEncode(s, t.v2); &#125; \</span><br><span class="line">    \</span><br><span class="line">    bool Decode(ProtocolReader&amp; s,  T&amp; t)&#123; \</span><br><span class="line">        return AutoDecode(s, t.v1) &amp;&amp; AutoDecode(s, t.v2); &#125; \</span><br><span class="line">    \</span><br><span class="line">    uint32_t GetMsgSize(ProtocolSize&amp; s, const T&amp; t )&#123; \</span><br><span class="line">        return AutoMsgSize(s, t.v1) + AutoMsgSize(s, t.v2); &#125; </span><br><span class="line"></span><br><span class="line">#define AUTOCUSTOMMSG3(T, v1, v2, v3) \ </span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+<p>如此，对于A2，我们只需在协议cpp文件添加：</p>
+<pre><code>AUTOCUSTOMMSG2(A2, name, data);
+</code></pre><p>即可。</p>
+<h3 id="七-回到ProtocolReader"><a href="#七-回到ProtocolReader" class="headerlink" title="七. 回到ProtocolReader"></a>七. 回到ProtocolReader</h3><p>ProtocolReader通过Decode函数转向全局模板推导，最后再回到ProtocolReader进行缓冲读取，由于ProtocolReader缓冲区对应于一条消息，因此解码的缓冲区offset偏移初始化为4(前四个字节为消息头部)。它提供基本类型和string的读取，最后附上主要代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line">class ProtocolReader : public ProtocolStream</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">    ProtocolReader(char* buf, uint32_t len) :</span><br><span class="line">        ProtocolStream(buf, len)&#123;&#125;</span><br><span class="line"></span><br><span class="line">    template&lt;typename T&gt;</span><br><span class="line">    bool Decode(T&amp; t)</span><br><span class="line">    &#123;</span><br><span class="line">        return AutoDecode(*this, t);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 读取二进制数据</span><br><span class="line">    bool Read(void* ptr, uint32_t len)</span><br><span class="line">    &#123;</span><br><span class="line">        if (Remain() &gt;&#x3D; len)</span><br><span class="line">        &#123;</span><br><span class="line">            memcpy(ptr, _buf + _offset, len);</span><br><span class="line">            _offset +&#x3D; len;</span><br><span class="line">            return true;</span><br><span class="line">        &#125;</span><br><span class="line">        return false;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 读取基本类型的数据</span><br><span class="line">    inline bool Read(char&amp; v)    &#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(int8_t&amp; v)  &#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(uint8_t&amp; v) &#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(int16_t&amp; v) &#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(uint16_t&amp; v)&#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(int32_t&amp; v) &#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(uint32_t&amp; v)&#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(int64_t&amp; v) &#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(uint64_t&amp; v)&#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(float&amp; v)   &#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line">    inline bool Read(double&amp; v)  &#123; return Read((void*)(&amp;v), sizeof(v)); &#125;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 对string解码</span><br><span class="line">    inline bool Read(std::string&amp; v)     &#123; return ReadString(v); &#125;</span><br><span class="line">    inline bool Read(std::wstring&amp; v)    &#123; return ReadString(v); &#125;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 读取头部和消息ID</span><br><span class="line">    inline uint16_t ReadHead()</span><br><span class="line">    &#123;</span><br><span class="line">        uint16_t* h &#x3D; (uint16_t*)_buf;</span><br><span class="line">        return *h;</span><br><span class="line">    &#125;</span><br><span class="line">    inline uint16_t ReadMsgId()</span><br><span class="line">    &#123;</span><br><span class="line">        uint16_t* h &#x3D; (uint16_t*)_buf;</span><br><span class="line">        return *(h + 1);</span><br><span class="line">    &#125;</span><br><span class="line">private:</span><br><span class="line">    bool ReadString(std::string&amp; v)</span><br><span class="line">    &#123;</span><br><span class="line">        uint16_t len;</span><br><span class="line">        if (Read(len))</span><br><span class="line">        &#123;</span><br><span class="line">            v.clear();</span><br><span class="line">            if (len &gt; 0)</span><br><span class="line">            &#123;</span><br><span class="line">                assert(Remain() &gt;&#x3D; len*sizeof(char));</span><br><span class="line">                v.append((const char*)(_buf + _offset), len);</span><br><span class="line">                _offset +&#x3D; len;</span><br><span class="line">            &#125;</span><br><span class="line">            return true;</span><br><span class="line">        &#125;</span><br><span class="line">        return false;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    bool ReadString(std::wstring&amp; v)</span><br><span class="line">    &#123;</span><br><span class="line">        uint16_t len;</span><br><span class="line">        if (Read(len))</span><br><span class="line">        &#123;</span><br><span class="line">            v.clear();</span><br><span class="line">            if (len &gt; 0)</span><br><span class="line">            &#123;</span><br><span class="line">                assert(Remain() &gt;&#x3D; len*sizeof(wchar_t));</span><br><span class="line">                v.append((const wchar_t*)(_buf + _offset), len);</span><br><span class="line">                _offset +&#x3D; len*sizeof(wchar_t);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2014/11/ngserver-message-encoder/" title="NGServer 消息的编解码">http://wudaijun.com/2014/11/ngserver-message-encoder/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/ngserver/" rel="tag"><i class="fa fa-tag"></i> ngserver</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2014/10/ngserver-player/" rel="prev" title="NGServer Session -> Player">
+      <i class="fa fa-chevron-left"></i> NGServer Session -> Player
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2014/11/ngserver-message-callback/" rel="next" title="NGServer 消息的注册与回调">
+      NGServer 消息的注册与回调 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E6%B6%88%E6%81%AF%E7%BC%96%E7%A0%81%E6%A0%BC%E5%BC%8F"><span class="nav-text">一. 消息编码格式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-ProtocolStream"><span class="nav-text">二. ProtocolStream</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-text">三. 数据类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-ProtocolReader%E8%A7%A3%E7%A0%81%E6%8E%A8%E5%AF%BC%E6%B5%81%E7%A8%8B"><span class="nav-text">四. ProtocolReader解码推导流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%94-%E8%87%AA%E5%AE%9A%E4%B9%89%E6%B6%88%E6%81%AF%E7%B1%BB%E5%9E%8B%E7%9A%84%E7%89%B9%E4%BE%8B%E5%8C%96"><span class="nav-text">五. 自定义消息类型的特例化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%AD-%E7%89%B9%E4%BE%8B%E5%8C%96%E5%AE%8F"><span class="nav-text">六. 特例化宏</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%83-%E5%9B%9E%E5%88%B0ProtocolReader"><span class="nav-text">七. 回到ProtocolReader</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

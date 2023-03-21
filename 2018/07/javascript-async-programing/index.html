@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="简单聊聊Web前端(主要是JS)中的几种异步编程机制和范式，由于JS是单线程的(事实上，几乎所有的前端或GUI框架都是单线程的，如Unity，WPF等)，因此要提高效率，要么新建线程(如Web Worker)，要么就只能异步。由于UI框架的大部分数据都不是线程安全的，如JS中的DOM对象便不支持并发访问，因此新建线程能分担的事情比较有限(如CPU密集运算或IO)，因此单线程异步编程模型成为了JS中">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Javascript 中的异步编程">
+<meta property="og:url" content="http://wudaijun.com/2018/07/javascript-async-programing/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="简单聊聊Web前端(主要是JS)中的几种异步编程机制和范式，由于JS是单线程的(事实上，几乎所有的前端或GUI框架都是单线程的，如Unity，WPF等)，因此要提高效率，要么新建线程(如Web Worker)，要么就只能异步。由于UI框架的大部分数据都不是线程安全的，如JS中的DOM对象便不支持并发访问，因此新建线程能分担的事情比较有限(如CPU密集运算或IO)，因此单线程异步编程模型成为了JS中">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-07-20T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.612Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="coroutine">
+<meta property="article:tag" content="async programing">
+<meta property="article:tag" content="js">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2018/07/javascript-async-programing/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Javascript 中的异步编程 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/07/javascript-async-programing/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Javascript 中的异步编程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-07-21 00:00:00" itemprop="dateCreated datePublished" datetime="2018-07-21T00:00:00+08:00">2018-07-21</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/js/" itemprop="url" rel="index"><span itemprop="name">js</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/07/javascript-async-programing/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/07/javascript-async-programing/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>简单聊聊Web前端(主要是JS)中的几种异步编程机制和范式，由于JS是单线程的(事实上，几乎所有的前端或GUI框架都是单线程的，如Unity，WPF等)，因此要提高效率，要么新建线程(如Web Worker)，要么就只能异步。由于UI框架的大部分数据都不是线程安全的，如JS中的DOM对象便不支持并发访问，因此新建线程能分担的事情比较有限(如CPU密集运算或IO)，因此单线程异步编程模型成为了JS中的核心编程模型。下面来聊聊JS中异步编程模型演进史。</p>
+<h4 id="Callback"><a href="#Callback" class="headerlink" title="Callback"></a>Callback</h4><p>Callback 在 JS 中无处不在，Ajax，XMLHttpRequest 等很多前端技术都围绕回调展开，比如创建一个 Button: <code>&lt;button onclick=&quot;myFunction()&quot;&gt;Click me&lt;/button&gt;</code>。回调的优点是简单易于理解和实现，其最大的缺点是调层数过深时，代码会变得非常难维护(所谓回调地狱，Callback Hell):</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 为了便于测试，通过setTimeout模拟  fs.readFile(file, cb) 读取文件操作</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">MyReadFile</span>(<span class="params">file, cb</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">setTimeout</span>(<span class="function">()=&gt;</span>&#123;</span><br><span class="line">          cb(<span class="literal">null</span>, <span class="string">&quot;filecontent: &quot;</span>+file) <span class="comment">// 将err设为null，模拟读取到文件内容为 filecontent + filename</span></span><br><span class="line">          &#125;, <span class="number">100</span>) <span class="comment">// 模拟读取文件需要100ms</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">MyReadFile(<span class="string">&quot;abc.txt&quot;</span>, <span class="function">(<span class="params">err1, filedata1</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="built_in">console</span>.log(filedata1);</span><br><span class="line">  MyReadFile(<span class="string">&quot;xyz.txt&quot;</span>, <span class="function">(<span class="params">err2, filedata2</span>) =&gt;</span> &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(filedata2)</span><br><span class="line">    <span class="comment">// MyReadFile( ... )</span></span><br><span class="line">  &#125;)</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>使用Callback需要注意的一个问题是闭包引用可变上下文的问题: 当执行异步回调(闭包)时，闭包引用的外部局部变量可能已经失效了(典型地，比如对应的对象在容器中已经被删除了)，此时闭包会读写无效的数据，产生非预期的结果，且较难调试:</p>
+<span id="more"></span>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> objs = &#123;<span class="number">123</span>: &#123;<span class="attr">name</span>: <span class="string">&quot;abc&quot;</span>&#125;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">test</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  	<span class="keyword">var</span> obj = objs[<span class="number">123</span>];</span><br><span class="line">	<span class="built_in">setTimeout</span>(<span class="function">()=&gt;</span>&#123;</span><br><span class="line">      obj[<span class="string">&quot;name&quot;</span>] = <span class="string">&quot;xyz&quot;</span>;	<span class="comment">// 这个时候obj已经从objs中移除了，对它的读写没有意义，并且可能导致非预期后果</span></span><br><span class="line">    &#125;, <span class="number">1000</span>);</span><br><span class="line">  	<span class="keyword">delete</span> objs[<span class="number">123</span>];</span><br><span class="line">  	<span class="built_in">console</span>.log(objs);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">test();</span><br></pre></td></tr></table></figure>
+<p>闭包引用可变上下文的问题对JS而言，不是很明显，毕竟前端的业务和数据模型相对简单，造成的后果也通常只是显示层的。但对后端而言，由于涉及到数据存储和强状态性，对这类问题需要更谨慎细致，比如尽可能只在回调上下文中使用值语义对象(如上例中的ObjID 123)，在回调中重新获取引用对象，确保操作结果如预期。</p>
+<p>Callback是一种非常简单直观的异步编程模型，不过要在JS中充分发挥作用，还需要JS框架底层的支持，如对Timer、Network、File这种重CPU或IO的模块的封装和集成(到主线程消息泵)。Callback到目前仍然是异步编程模型最主流的方案。</p>
+<h4 id="Generator-Thunk-异步"><a href="#Generator-Thunk-异步" class="headerlink" title="Generator + Thunk 异步"></a>Generator + Thunk 异步</h4><p>在JS中，通过迭代器(Iterator)和(Generator)可以实现类似协程的执行权转移和值交换逻辑:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Generator 生成器</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> *<span class="title">numberGenerator</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">let</span> a = <span class="keyword">yield</span> <span class="number">1</span>; <span class="comment">// a = 4</span></span><br><span class="line">    <span class="keyword">let</span> b = <span class="keyword">yield</span> <span class="number">3</span>; <span class="comment">// b = 6</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">5</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Iterator 迭代器</span></span><br><span class="line"><span class="keyword">const</span> g = numberGenerator() <span class="comment">// Generator创建之后默认是暂停的，需要手动调用next让其开始执行</span></span><br><span class="line"><span class="keyword">const</span> iter1 = g.next(<span class="number">2</span>)   <span class="comment">// iter1 = &#123;value: 1, done: false&#125;</span></span><br><span class="line"><span class="keyword">const</span> iter2 = g.next(<span class="number">4</span>)   <span class="comment">// iter2 = &#123;value: 3, done: false&#125;</span></span><br><span class="line"><span class="keyword">const</span> iter3 = g.next(<span class="number">6</span>)   <span class="comment">// iter3 = &#123;value: 5, done: true&#125;</span></span><br></pre></td></tr></table></figure>
+<p>我在<a href="https://wudaijun.com/2015/01/lua-coroutine/">Lua协程</a>中简单介绍了协程的基本概念和Lua中的协程，JS的Generator和Lua协程的概念看起来类似，其JS yield对应Lua yield，JS <code>g.next()</code>对应Lua <code>resume(g)</code>，且都具备双向传值的能力。但通过Generator+Iterator方式实现的协程，与Lua这种支持运行时堆栈保存的协程，还是有一定的区别的，典型地，Lua协程可以跨越函数堆栈，从yield方直接返回到resume方(yield可以在函数嵌套很深的地方)，而JS中，yield只代表当前函数立即返回，即只能返回到持有当前函数的迭代器方(每一层Generator调用都需要单独处理迭代)。因此，个人认为，JS还不能称为支持协程，只能说支持Generator或生成器，以和Lua这种运行时支持的协程做区分。</p>
+<p>在JS中，Generator通常和异步联系在一起，而前面说了，Generator还不能算作完全体协程，它是怎么与异步联系在一起的呢，先看个例子:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 为了便于测试，通过setTimeout模拟  fs.readFile(file, cb) 读取文件操作</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">MyReadFile</span>(<span class="params">file, cb</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">setTimeout</span>(<span class="function">()=&gt;</span>&#123;</span><br><span class="line">          cb(<span class="literal">null</span>, <span class="string">&quot;filecontent: &quot;</span>+file) <span class="comment">// 将err设为null，模拟读取到文件内容为 filecontent + filename</span></span><br><span class="line">          &#125;, <span class="number">100</span>) <span class="comment">// 模拟读取文件需要100ms</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Thunk</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">MyReadFileThunk</span>(<span class="params">file</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="function">(<span class="params">cb</span>) =&gt;</span> &#123;</span><br><span class="line">    MyReadFile(file, cb);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> gen = <span class="function"><span class="keyword">function</span>* (<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">const</span> fileData1 = <span class="keyword">yield</span> MyReadFileThunk(<span class="string">&quot;abc.txt&quot;</span>);</span><br><span class="line">    <span class="built_in">console</span>.log(fileData1);</span><br><span class="line">    <span class="keyword">const</span> fileData2 = <span class="keyword">yield</span> MyReadFileThunk(<span class="string">&quot;xyz.txt&quot;</span>);</span><br><span class="line">    <span class="built_in">console</span>.log(fileData2);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// --- 手动单步迭代</span></span><br><span class="line"><span class="comment">// function run(g) &#123;</span></span><br><span class="line"><span class="comment">//   g.next().value((err1, filedata1)=&gt;&#123;</span></span><br><span class="line"><span class="comment">//    g.next(filedata1).value((err2, filedata2)=&gt;&#123;</span></span><br><span class="line"><span class="comment">//        g.next(filedata2);</span></span><br><span class="line"><span class="comment">//      &#125;);</span></span><br><span class="line"><span class="comment">//   &#125;)</span></span><br><span class="line"><span class="comment">// &#125; </span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 循环自动迭代，与前面手动单步迭代得到的结果一样</span></span><br><span class="line"><span class="comment">// 但自动迭代，依赖于每个yield后的异步回调格式是一样的，在本例中，异步结果都是(err, string)=&gt;&#123;...&#125;</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">run</span>(<span class="params">g</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> next = <span class="function">(<span class="params">err, filedata</span>) =&gt;</span> &#123;   <span class="comment">// 这里暂不考虑err错误处理</span></span><br><span class="line">    <span class="keyword">let</span> iter = g.next(filedata); <span class="comment">// 首次调用: 启动Generator 非首次调用: 异步文件读取完成，将执行权和filedata交还给yield</span></span><br><span class="line">    <span class="keyword">if</span> (iter.done) <span class="keyword">return</span>;       <span class="comment">// 如果generator迭代完成，即gen()函数执行完所有的yield语句，则终止流程，这里首次调用时为false</span></span><br><span class="line">    iter.value(next);            <span class="comment">// 这里iter.value本身是MyReadFileThunk函数返回的MyReadFile单回调参数版本(filename参数已经被偏特化了)，本例中，类似于MyReadFile_abc，MyReadFile_xyz，将next作为异步文件读取的callback传给MyReadFile_abc，开始真正的异步文件读取操作</span></span><br><span class="line">  &#125;</span><br><span class="line">  next();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">run(gen());</span><br><span class="line"></span><br><span class="line"><span class="comment">// 输出结果:</span></span><br><span class="line"><span class="comment">// &quot;filecontent: abc.txt&quot;</span></span><br><span class="line"><span class="comment">// &quot;filecontent: xyz.txt&quot;</span></span><br></pre></td></tr></table></figure>
+<p>如此对于gen函数而言，异步操作的结果会作为yield的返回值传回，yield之后的语句可以直接使用它，而无需再写回调函数(避免了回调地狱)，达成了<strong>像写同步代码一样写异步代码</strong>的目的。从实现的角度来说，这套方案依赖于四个要素:</p>
+<ol>
+<li>Generator: 支持多段式函数返回，并具备双向传值能力</li>
+<li>AsyncOp: 底层的异步操作支持 (如上面的setTimeout，JS会保证超时时间到了后，回调会在主线程触发)</li>
+<li>Thunk: Thunk的本质是偏函数，它将注入回调的职责从原本的异步操作中剥离出来，作为yield的返回值传给迭代器方</li>
+<li>Iterator: 也就是本例中的run函数，它为Thunk后的函数注入回调函数并执行真正的异步操作，在异步操作完成后，将异步结果传回yield</li>
+</ol>
+<p>其中Generator和AsyncOp由JS框架提供，Thunk可以使用<a target="_blank" rel="noopener" href="https://www.npmjs.com/package/thunkify">thunkify</a>，Iterator可以使用<a target="_blank" rel="noopener" href="https://www.npmjs.com/package/co">co</a>，都有现成的轮子，使用thunkify和co之后的MyReadFile如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">var co &#x3D; require(&#39;co&#39;);</span><br><span class="line">var thunkify &#x3D; require(&#39;thunkify&#39;);</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 使用thunkify库替换掉上例手写的Thunk函数</span><br><span class="line">&#x2F;&#x2F; 注: thunkify要求MyReadFile的最后一个参数为callback</span><br><span class="line">var MyReadFileThunk &#x3D; thunkify(MyReadFile);</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; ... MyReadFile + gen 定义</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 使用co库替换掉上例手写的run函数，一键执行</span><br><span class="line">&#x2F;&#x2F; 注: co库规范要求异步操作Callback的第一个参数为err，这也是上例中保留 callback(err, fileData) 中的 err 的原因</span><br><span class="line">co(gen);</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>thunkify和co的实现和上例手写的Thunk和Iterator类似，它们进一步提升了基于JS Generator的异步编程能力。</p>
+<h4 id="Promise"><a href="#Promise" class="headerlink" title="Promise"></a>Promise</h4><p>Promise 是 JS 异步编程中，比回调函数更高级的解决方案。简单来说，Promise 是一个对象，保存着某个异步操作的状态(进行中 pending, 已成功 fulfilled，已失败 rejected)以及回调函数信息(成功回调，错误回调)，Promise旨在以统一，灵活，更易于维护的方式来处理所有的异步操作。仍然以MyReadFile为例，我们可以将Thunk版本的gen函数，用Promise的方式重写:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">function MyReadFilePromise(file) &#123;</span><br><span class="line">  return new Promise(function(resolve, reject)&#123;</span><br><span class="line">    &#x2F;&#x2F; resolve 和 reject 由JS引擎提供，用于(也只有它们能)更改 Promise 对象状态</span><br><span class="line">    &#x2F;&#x2F;当异步代码执行成功时，我们才会调用resolve(...), 当异步代码失败时就会调用reject(...)</span><br><span class="line">    &#x2F;&#x2F;在本例中，我们使用setTimeout(...)来模拟异步代码，实际编码时可能是XHR请求或是HTML5的一些API方法.</span><br><span class="line">    MyReadFile(file, (err, data)&#x3D;&gt;&#123;</span><br><span class="line">      if (err !&#x3D; null) &#123;reject(err)&#125;;</span><br><span class="line">      resolve(data)</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; then()函数第一个参数是异步操作成功(通过resolve返回)时的回调</span><br><span class="line">&#x2F;&#x2F; 第二个参数(可选)是异步操作失败(通过reject返回)时的回调</span><br><span class="line">MyReadFilePromise(&quot;abc.txt&quot;).then((filedata1)&#x3D;&gt;&#123;</span><br><span class="line">  console.log(filedata1)</span><br><span class="line">  return MyReadFilePromise(&quot;xyz.txt&quot;);</span><br><span class="line">&#125;).then((filedata2)&#x3D;&gt;&#123;</span><br><span class="line">  console.log(filedata2)</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>Promise详细介绍可以参考<a target="_blank" rel="noopener" href="http://es6.ruanyifeng.com/#docs/promise">ES6教程</a>。简单归纳，Promise 对象有如下特性:</p>
+<ol>
+<li>Promise 对象中的状态只受异步操作结果影响，并且状态只会变化一次(pending-&gt;fulfilled 或 pending-&gt;rejected)</li>
+<li>允许延迟挂接回调函数，即在Promise 状态变更之后挂上去的回调函数，也会立即执行(当然得状态匹配)</li>
+<li>能将嵌套回调(又名: 回调地狱)优化为链式回调</li>
+<li>尝试用统一的语义和接口来使用异步回调，甚至可以用到同步函数上</li>
+</ol>
+<p>Promise 的出现对JS异步编程的重要性不言而喻，它在之前单一的Callback模式上，尝试对异步操作进行更高层次的抽象(如异步状态管理、错误处理规范、将异步调用和挂载回调解耦等，让异步代码的书写简洁易读。Promise将回调嵌套升级为回调链(<code>a.then(xxx).then(yyy)</code>)之后，虽然可读性提高了，但你可能还是觉得好像没有上一节Thunk+yield+co来得直接，没关系，Promise也可以yield+co配套:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> co = <span class="built_in">require</span>(<span class="string">&#x27;co&#x27;</span>);</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span>* <span class="title">gen</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  filedata1 = <span class="keyword">yield</span> MyReadFilePromise(<span class="string">&quot;abc.txt&quot;</span>);</span><br><span class="line">  <span class="built_in">console</span>.log(filedata1);</span><br><span class="line">  filedata2 = <span class="keyword">yield</span> MyReadFilePromise(<span class="string">&quot;xyz.txt&quot;</span>);</span><br><span class="line">  <span class="built_in">console</span>.log(filedata2);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 手写模拟co(gen)流程，仍然忽略错误处理</span></span><br><span class="line"><span class="comment">// function run(g) &#123;</span></span><br><span class="line"><span class="comment">//   const next = (err, filedata) =&gt; &#123;  </span></span><br><span class="line"><span class="comment">//     let iter = g.next(filedata); </span></span><br><span class="line"><span class="comment">//     if (iter.done) return;      </span></span><br><span class="line"><span class="comment">//     iter.value.then((data)=&gt;&#123; // 主要的区别: 这里的iter.value是Promise，通过.then挂载回调，而再是Thunk版本的iter.value(next)</span></span><br><span class="line"><span class="comment">//       next(null, data);</span></span><br><span class="line"><span class="comment">//     &#125;); </span></span><br><span class="line"><span class="comment">//   &#125;</span></span><br><span class="line"><span class="comment">//   next();</span></span><br><span class="line"><span class="comment">// &#125;</span></span><br><span class="line"><span class="comment">// run(gen());</span></span><br><span class="line"></span><br><span class="line">co(gen);</span><br></pre></td></tr></table></figure>
+<p>在这个例子中，co扮演Iterator，Promise同时作为AsyncOp和Thunk，这也是Promise作为异步操作统一规范的好处。</p>
+<h4 id="async-await"><a href="#async-await" class="headerlink" title="async/await"></a>async/await</h4><p>前面提到的Generator异步编程四要素: Generator、Thunk、AsyncOp、Iterator，其中前三个都被JS Generator + Promise原生支持了，虽然Iterator也有co这种简单又好用的库，但终究还不够完美，因此async/await诞生了，它被称为JS异步编程的终极方案:</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// async 声明异步函数 (类似前面的gen函数)</span></span><br><span class="line"><span class="comment">// 声明 async 的函数才可以使用 await，并且async函数会隐式返回一个Promise(因为await本质是yield，会让出所有权，所以调用方只能异步等待async函数执行结束)，因此async函数本身也可以被await</span></span><br><span class="line"><span class="keyword">async</span> <span class="function"><span class="keyword">function</span> <span class="title">test</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">	<span class="comment">// 使用 await 替代 yield</span></span><br><span class="line">    <span class="keyword">const</span> filedata = <span class="keyword">await</span> MyReadFilePromise(<span class="string">&#x27;abc.txt&#x27;</span>);</span><br><span class="line">    <span class="built_in">console</span>.log(filedata);</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&#x27;OK&#x27;</span>; <span class="comment">// /本质返回的是: Promise &#123;&lt;resolved&gt;: &#x27;OK&#x27;&#125;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 无需再单独手写或者使用co库作为Iterator，当调用test()方法时，整个Iterator将由JS框架托管执行。</span></span><br></pre></td></tr></table></figure>
+<p>在理解前面的<code>Generator+Thunk+AsyncOp+Iterator</code>以及<code>Generator+Promise+Iterator</code>异步编程方案之后，其实你应该能想到，async/await 并不算是新技术，而是基于<code>Generator+Promise+Iterator</code>方案的语法糖，其中async对应Generator的*函数声明，await对应yield，然后在框架底层帮你实现了Iterator(当然要比我们前面手写的版本复杂一些，比如错误处理机制)。如此Generator异步四要素，都在框架原生支持了。</p>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>总结，本文从初学者角度对JS中异步编程模型演变史进行了大致梳理，按照个人的理解，大概可以分为以下四个阶段:</p>
+<ul>
+<li>Callback + AsyncOp</li>
+<li>Generator + Thunk + AsyncOp + Iterator</li>
+<li>Generator + Promise(=Thunk+AsyncOp) + Iterator</li>
+<li>async/await(=Generator+Iterator) + Promise(=Thunk+AsyncOp)</li>
+</ul>
+<p>在理解和学习异步的时候，将异步和并发两个概念区分开是尤其重要的，异步并不一定意味着并发(如JS setTimeout)，反之亦然。如Web前端、Unity、WPF这类前框框架基本都是单线程的(UI层的东西，想要并发太难)，因此通过异步提升单线程的性能是框架和开发者首选解决方案，而让异步编程模型更易用易读，也是前端框架演变的一个方向。</p>
+<p>除了 JS 外，Python3.5, .NET4.5 也引入了 asyc/await 特性，不出意外，这会成为 Web 中的主流异步开发模型。比如 Python twisted 框架示例:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> json</span><br><span class="line"><span class="keyword">from</span> twisted.internet.defer <span class="keyword">import</span> ensureDeferred</span><br><span class="line"><span class="keyword">from</span> twisted.logger <span class="keyword">import</span> Logger</span><br><span class="line">log = Logger()</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="function"><span class="keyword">def</span> <span class="title">getUsers</span>():</span></span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        <span class="keyword">return</span> json.loads(<span class="keyword">await</span> makeRequest(<span class="string">&quot;GET&quot;</span>, <span class="string">&quot;/users&quot;</span>))</span><br><span class="line">    <span class="keyword">except</span> ConnectionError:</span><br><span class="line">        log.failure(<span class="string">&quot;makeRequest failed due to connection error&quot;</span>)</span><br><span class="line">        <span class="keyword">return</span> []</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">do</span>():</span></span><br><span class="line">    d = ensureDeferred(getUsers())</span><br><span class="line">    d.addCallback(<span class="built_in">print</span>)</span><br><span class="line">    <span class="keyword">return</span> d</span><br></pre></td></tr></table></figure>
+<p>这里的 async/await 关键字的意义与 JS 中的类似，<a target="_blank" rel="noopener" href="https://twistedmatrix.com/documents/current/core/howto/defer-intro.html">Defer 对象</a>则是类似 JS Promise 的东西，用于保存异步执行结果，挂载回调。同样，C#的也有类似JS Promise的概念，叫Task。语言和框架总是有很多共性，识别和理解这类共性(通常也叫做模型/范式)，是一个非常好的提升技术认知，构建知识体系的机会。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/07/javascript-async-programing/" title="Javascript 中的异步编程">http://wudaijun.com/2018/07/javascript-async-programing/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/coroutine/" rel="tag"><i class="fa fa-tag"></i> coroutine</a>
+              <a href="/tags/async-programing/" rel="tag"><i class="fa fa-tag"></i> async programing</a>
+              <a href="/tags/js/" rel="tag"><i class="fa fa-tag"></i> js</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/07/go-package-goroutine-practice/" rel="prev" title="Go package和goroutine的一些理解和实践">
+      <i class="fa fa-chevron-left"></i> Go package和goroutine的一些理解和实践
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/07/gameserver-communication-model/" rel="next" title="游戏服务器中的通信模型">
+      游戏服务器中的通信模型 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#Callback"><span class="nav-text">Callback</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Generator-Thunk-%E5%BC%82%E6%AD%A5"><span class="nav-text">Generator + Thunk 异步</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Promise"><span class="nav-text">Promise</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#async-await"><span class="nav-text">async&#x2F;await</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-text">小结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

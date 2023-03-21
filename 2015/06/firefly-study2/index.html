@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. GlobalObject每个节点(即一个FFServer)对应一个GlobalObject，存放该节点的节点信息和分布式信息。GlobalObject中包含多种组件，FFServer根据节点配置信息决定为节点创建哪些组件。这样分布式配置更为灵活，一个节点可以单一职责，也可以多种职责。GlobalObject包含的组件主要有：  netfactory: 前端节点，对应netport字段，监听和">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Firefly 学习(二)">
+<meta property="og:url" content="http://wudaijun.com/2015/06/firefly-study2/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. GlobalObject每个节点(即一个FFServer)对应一个GlobalObject，存放该节点的节点信息和分布式信息。GlobalObject中包含多种组件，FFServer根据节点配置信息决定为节点创建哪些组件。这样分布式配置更为灵活，一个节点可以单一职责，也可以多种职责。GlobalObject包含的组件主要有：  netfactory: 前端节点，对应netport字段，监听和">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2015-06-02T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.603Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="firefly">
+<meta property="article:tag" content="python">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2015/06/firefly-study2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Firefly 学习(二) | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/06/firefly-study2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Firefly 学习(二)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-06-03 00:00:00" itemprop="dateCreated datePublished" datetime="2015-06-03T00:00:00+08:00">2015-06-03</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/06/firefly-study2/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/06/firefly-study2/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一-GlobalObject"><a href="#一-GlobalObject" class="headerlink" title="一. GlobalObject"></a>一. GlobalObject</h2><p>每个节点(即一个FFServer)对应一个GlobalObject，存放该节点的节点信息和分布式信息。GlobalObject中包含多种组件，FFServer根据节点配置信息决定为节点创建哪些组件。这样分布式配置更为灵活，一个节点可以单一职责，也可以多种职责。GlobalObject包含的组件主要有：</p>
+<ul>
+<li>netfactory: 前端节点，对应netport字段，监听和管理客户端连接。</li>
+<li>root: 分布式根节点，对应字段rootport</li>
+<li>remote: 分布式子节点，对应字段remoteport</li>
+<li>db: 数据库节点</li>
+</ul>
+<p>简单介绍一下netfactory, root, remote 这三个组件，已经远程调用的实现机制。</p>
+<span id="more"></span>
+<h3 id="1-前端节点netfactory："><a href="#1-前端节点netfactory：" class="headerlink" title="1. 前端节点netfactory："></a>1. 前端节点netfactory：</h3><p>前端节点netfactory为LibrateFactory(netconnect/protoc.py)，firefly网络层使用twisted，LibrateFactory即为twisted的协议工厂，同时也是网络层到逻辑层的纽带。LibrateFactory有如下成员：</p>
+<ul>
+<li>connmanager: <ul>
+<li>功能: 管理所有Connection，建立ConnID(transport.sessionno)到Conn的映射。</li>
+<li>实现: ConnectionManager(netconnection/manager.py)</li>
+</ul>
+</li>
+<li>dataprotocl: <ul>
+<li>功能: 消息编解码器，完成消息的编解码，提供pack/unpack/getHeadlength等接口。</li>
+<li>实现: DataPackProtoc(netconnection/datapack.py)</li>
+</ul>
+</li>
+<li>protocol: <ul>
+<li>功能: 负责处理收到的字节数据，解决粘包半包问题等，通过DataPackProtoc拿到消息ID(command)和消息数据(request)，调用<code>factory.doDataReceived(self, command, requeset)</code>将消息传给netfactory统一处理。</li>
+<li>实现: LibrateProtocol(netconnection/protoc.py)</li>
+</ul>
+</li>
+<li>service:<ul>
+<li>功能: netfactory上挂载的Service，也就是从网络层到逻辑层的入口，逻辑层在这个Service通道中注册响应函数，netfactory会在收到消息(<code>doDataReceived</code>)时，通过<code>service.callTarget(commandID, conn, data)</code>将消息交由service处理。 </li>
+<li>实现: 目前的netfactory上挂载的是netservice，netservice默认为CommandService(utils/services.py)</li>
+</ul>
+</li>
+</ul>
+<p>值得一提的是，LibrateProtocol在处理收到的字节流时(<code>dataHandleCoroutine</code>)，利用yield机制非常简洁高效地完成消息解码工作，使解码函数看起来只是在一个<code>while True</code>循环中，无需多次调用，也自然无需保存状态。当外部数据到达时，通过<code>send(data)</code>即可将数据送入dataHandleCoroutine，后者yield返回即可拿到data继续工作了。</p>
+<p>另外，LibrateProtocol解析完一条消息后，通过调用<code>factory.doDataReceived</code>将消息交给netfactory，也就是交给逻辑层，由于LibrateProtocol并不知道逻辑层何时返回，因此<code>factory.doDataReceived</code>是一个异步调用，它返回一个Deffer对象，LibrateProtocol注册callback为写回函数<code>safeToWriteData</code>，当逻辑层返回处理结果时，即可将数据线程安全地响应给客户端。这个Deffer对象可以是响应函数(如netservice:handle_100)返回的，如果响应函数没有返回Deffer而是直接返回的响应数据response，将由<code>service.callTarget</code>创建一个Deffer，并且回调deffer.callback(response)，如果响应函数返回None，那么表示这个请求消息没有响应，<code>service.callTarget</code>直接返回None，LibrateProtocol也无需再为其注册<code>safeToWriteData</code>函数了。</p>
+<p>注意，整个过程都是在单线程中跑的(reactor)，firefly中的每个节点都使用一个reactor，netfactory在FFServer(server/server.py)中传给reactor（如果该节点配置了netport），在FFServer启动时会启动reactor。</p>
+<h3 id="2-分布式根节点root"><a href="#2-分布式根节点root" class="headerlink" title="2. 分布式根节点root"></a>2. 分布式根节点root</h3><p>firefly使用twisted透明代理(Perspective Broker, 简称PB, 参见<a href="1">twisted官方文档</a>)，屏蔽了分布式节点之间的通信机制和细节。在FFServer中，firefly为每一个根节点(具备rootport字段)创建一个PBRoot对象，PBRoot代表分布式根节点，它包含两个构件:</p>
+<ul>
+<li><p>childmanager:</p>
+<ul>
+<li>功能: 管理该根节点下面的所有子节点对象(Child对象)，Child主要包含子节点名和子节点的远程调用对象的引用(通过它调用<code>callRemote(函数名，参数)</code>即可调用子节点函数，剩下的细节将由twisted透明代理来完成)。</li>
+<li>实现: ChildManager(distributed/manager.py)</li>
+</ul>
+</li>
+<li><p>service:</p>
+<ul>
+<li>功能: 和netfactory一样，service用于挂载本节点提供的接口(用于其它节点调用)，firefly所有的节点都抽象出一个service用于管理本节点的接口，除了netfactory的netservice以外，其它节点的service均为Service对象，Service对象根据函数名而不是commandID来调用接口。</li>
+<li>实现: Service(utils/services.py) </li>
+</ul>
+</li>
+</ul>
+<p>子节点在连接到根节点时，由子节点发起一个takeProxy的远程调用，参数为子节点名和其远程调用对象(继承自twisted.spread.pb.Referenceble)，触发PBRoot的remote_takeProxy，该函数记录该子节点和其远程调用对象)。之后根节点PBRoot可通过<code>callChild(子节点名，函数名，参数)</code>调用子节点函数。关键代码如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">class PBRoot(pb.Root):</span><br><span class="line">    </span><br><span class="line">    def __init__(self,dnsmanager &#x3D; ChildsManager()):</span><br><span class="line">        self.service &#x3D; None</span><br><span class="line">        self.childsmanager &#x3D; dnsmanager</span><br><span class="line">    </span><br><span class="line">    # 远程调用: 初始化子节点</span><br><span class="line">    def remote_takeProxy(self,name,transport):</span><br><span class="line">        log.msg(&#39;node [%s] takeProxy ready&#39;%name)</span><br><span class="line">        child &#x3D; Child(name,name)</span><br><span class="line">        self.childsmanager.addChild(child)</span><br><span class="line">        child.setTransport(transport)</span><br><span class="line">        self.doChildConnect(name, transport)</span><br><span class="line">        </span><br><span class="line">    # 远程调用: 调用本节点上实现的响应函数    </span><br><span class="line">    def remote_callTarget(self,command,*args,**kw):</span><br><span class="line">        data &#x3D; self.service.callTarget(command,*args,**kw)</span><br><span class="line">        return data</span><br><span class="line">        </span><br><span class="line">    # 调用子节点方法</span><br><span class="line">    def callChild(self,key,*args,**kw):</span><br><span class="line">        return self.childsmanager.callChild(key,*args,**kw)</span><br><span class="line">        </span><br></pre></td></tr></table></figure>
+<h4 id="3-分布式子节点remote"><a href="#3-分布式子节点remote" class="headerlink" title="3. 分布式子节点remote"></a>3. 分布式子节点remote</h4><p>FFServer为每一个子节点(具备remoteport字段)创建N个RemoteObject对象(N为其根节点个数，即remoteport字段的元素个数)，globalobject.remote是一个map，通过remote[根节点名]可以得到连接到指定根节点的RemoteObject。为每一个根节点都创建一个RemoteObject的好处是：同样一个子节点，可以对不同的根节点提供不同的接口。</p>
+<p>RemoteObject包含如下构件:</p>
+<ul>
+<li>_reference:<ul>
+<li>功能: 这就是前面提到的远程调用对象，继承自<code>twisted.spread.pb.Referenceble</code>，因此它支持远程调用，即callRemote方法。前提是要将该对象传给根节点。</li>
+<li>实现: ProxyReference(distributed/reference.py)</li>
+</ul>
+</li>
+<li>_factory: PBClientFactory实例，用于获取跟节点的远程调用对象(getRootOBject)</li>
+<li>_name: 节点名字</li>
+</ul>
+<p>在<code>RemoteObject.connect(self, addr)</code>中，子节点连接到根节点时，需要先远程调用根节点的takeProxy函数，并将_reference和_name传给该函数作为参数，如此根节点的childmanager会记下该子节点及其远程调用对象。关键代码如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">class RemoteObject(object):</span><br><span class="line">    &#39;&#39;&#39;远程调用对象&#39;&#39;&#39;</span><br><span class="line">    </span><br><span class="line">    def __init__(self,name):</span><br><span class="line">        self._name &#x3D; name</span><br><span class="line">        self._factory &#x3D; pb.PBClientFactory()</span><br><span class="line">        self._reference &#x3D; ProxyReference()</span><br><span class="line">        self._addr &#x3D; None</span><br><span class="line">        </span><br><span class="line">    def connect(self,addr):</span><br><span class="line">        &#39;&#39;&#39;初始化远程调用对象&#39;&#39;&#39;</span><br><span class="line">        self._addr &#x3D; addr</span><br><span class="line">        reactor.connectTCP(addr[0], addr[1], self._factory)</span><br><span class="line">        self.takeProxy()</span><br><span class="line">        </span><br><span class="line">    def reconnect(self):</span><br><span class="line">        &#39;&#39;&#39;重新连接&#39;&#39;&#39;</span><br><span class="line">        self.connect(self._addr)</span><br><span class="line">        </span><br><span class="line">    def addServiceChannel(self,service):</span><br><span class="line">        &#39;&#39;&#39;设置引用对象&#39;&#39;&#39;</span><br><span class="line">        self._reference.addService(service)</span><br><span class="line">        </span><br><span class="line">    def takeProxy(self):</span><br><span class="line">        &#39;&#39;&#39;向远程服务端发送代理通道对象</span><br><span class="line">        &#39;&#39;&#39;</span><br><span class="line">        deferedRemote &#x3D; self._factory.getRootObject()</span><br><span class="line">        deferedRemote.addCallback(callRemote,&#39;takeProxy&#39;,self._name,self._reference)</span><br><span class="line">    </span><br><span class="line">    def callRemote(self,commandId,*args,**kw):</span><br><span class="line">        &#39;&#39;&#39;远程调用&#39;&#39;&#39;</span><br><span class="line">        deferedRemote &#x3D; self._factory.getRootObject()</span><br><span class="line">        return deferedRemote.addCallback(callRemote,&#39;callTarget&#39;,commandId,*args,**kw)</span><br></pre></td></tr></table></figure>
+<h2 id="二-Service装饰器"><a href="#二-Service装饰器" class="headerlink" title="二. Service装饰器"></a>二. Service装饰器</h2><p>至此，除了db和master节点之外，普通分布式节点已经能够正常通讯并且实现远程调用，由于netfactory, root, remote每个组件都抽离出了service用于挂载响应函数，因此firefly在server/globalobject.py中，实现了几个简单的装饰器：netserviceHandle remoteserviceHandle rootserviceHandle，分别用于挂载netfactory，root，remote的响应函数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">def netserviceHandle(target):</span><br><span class="line">    GlobalObject().netfactory.service.mapTarget(target)</span><br><span class="line">        </span><br><span class="line">def rootserviceHandle(target):</span><br><span class="line">    GlobalObject().root.service.mapTarget(target)</span><br><span class="line"></span><br><span class="line">class remoteserviceHandle:</span><br><span class="line">	&#39;&#39;&#39; remoteserviceHandle装饰器需要一个参数，指出该接口提供给哪一个根节点使用</span><br><span class="line">    def __init__(self,remotename):</span><br><span class="line">        self.remotename &#x3D; remotename</span><br><span class="line">        </span><br><span class="line">   	def __call__(self,target):</span><br><span class="line">       GlobalObject().remote[self.remotename]._reference._service.mapTarget(target)</span><br></pre></td></tr></table></figure>
+<p>这样客户端不用再知道关于globalobject的实现细节，用起来就像上一篇博客中的例子一样简单，暴露给用户globalobject组件只有root和remote，用于实现子节点和父节点之间的远程调用。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/06/firefly-study2/" title="Firefly 学习(二)">http://wudaijun.com/2015/06/firefly-study2/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/firefly/" rel="tag"><i class="fa fa-tag"></i> firefly</a>
+              <a href="/tags/python/" rel="tag"><i class="fa fa-tag"></i> python</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/05/twisted/" rel="prev" title="Twisted">
+      <i class="fa fa-chevron-left"></i> Twisted
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/07/erlang-superviosr/" rel="next" title="Erlang supervisor">
+      Erlang supervisor <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-GlobalObject"><span class="nav-text">一. GlobalObject</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%89%8D%E7%AB%AF%E8%8A%82%E7%82%B9netfactory%EF%BC%9A"><span class="nav-text">1. 前端节点netfactory：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%88%86%E5%B8%83%E5%BC%8F%E6%A0%B9%E8%8A%82%E7%82%B9root"><span class="nav-text">2. 分布式根节点root</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%90%E8%8A%82%E7%82%B9remote"><span class="nav-text">3. 分布式子节点remote</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C-Service%E8%A3%85%E9%A5%B0%E5%99%A8"><span class="nav-text">二. Service装饰器</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

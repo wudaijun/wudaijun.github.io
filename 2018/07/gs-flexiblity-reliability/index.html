@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="如果给你一个服务器框架，你如何评估这个框架？不同的人可能有不同的维度和优先级，比如性能，可维护性，可扩展性，可用性，可靠性等等等等，目前已经有相对成熟的几种软件质量评估方案。其中McCall软件评估模型(1977)比较有意思:  产品修正: 开发视角，反映系统应对变更的能力产品运行: 用户视角，产品稳定性，效率，易用性等产品转移: 运维视角，可移植性，组件复用性等">
+<meta property="og:type" content="article">
+<meta property="og:title" content="谈谈架构灵活性和可靠性">
+<meta property="og:url" content="http://wudaijun.com/2018/07/gs-flexiblity-reliability/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="如果给你一个服务器框架，你如何评估这个框架？不同的人可能有不同的维度和优先级，比如性能，可维护性，可扩展性，可用性，可靠性等等等等，目前已经有相对成熟的几种软件质量评估方案。其中McCall软件评估模型(1977)比较有意思:  产品修正: 开发视角，反映系统应对变更的能力产品运行: 用户视角，产品稳定性，效率，易用性等产品转移: 运维视角，可移植性，组件复用性等">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201807/McCall.png">
+<meta property="article:published_time" content="2018-07-02T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.612Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="gameserver">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201807/McCall.png">
+
+<link rel="canonical" href="http://wudaijun.com/2018/07/gs-flexiblity-reliability/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>谈谈架构灵活性和可靠性 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/07/gs-flexiblity-reliability/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          谈谈架构灵活性和可靠性
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-07-03 00:00:00" itemprop="dateCreated datePublished" datetime="2018-07-03T00:00:00+08:00">2018-07-03</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/07/gs-flexiblity-reliability/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/07/gs-flexiblity-reliability/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>如果给你一个服务器框架，你如何评估这个框架？不同的人可能有不同的维度和优先级，比如性能，可维护性，可扩展性，可用性，可靠性等等等等，目前已经有相对成熟的几种<a target="_blank" rel="noopener" href="http://xhrong.github.io/2017/10/08/%E8%BD%AF%E4%BB%B6%E8%B4%A8%E9%87%8F%E6%A8%A1%E5%9E%8B/">软件质量评估方案</a>。其中McCall软件评估模型(1977)比较有意思:</p>
+<p><img src="/assets/image/201807/McCall.png" alt=""></p>
+<p>产品修正: 开发视角，反映系统应对变更的能力<br>产品运行: 用户视角，产品稳定性，效率，易用性等<br>产品转移: 运维视角，可移植性，组件复用性等</p>
+<span id="more"></span>
+<p>对于服务器而言，有跨平台语言和Docker等技术的加持，产品转移已经变得非常容易，我这里主要结合项目实践以及对Go和Erlang的一些理解，谈谈产品修正中的可扩展性/可维护性以及产品运行中的可靠性。</p>
+<h3 id="一-可维护性-可扩展性"><a href="#一-可维护性-可扩展性" class="headerlink" title="一. 可维护性/可扩展性"></a>一. 可维护性/可扩展性</h3><p>反映软件适应“变化”的能力。调整、修改或改进正在运行的软件系统以适应新需求或者需求变更的难易程度。</p>
+<h4 id="正交设计"><a href="#正交设计" class="headerlink" title="正交设计"></a>正交设计</h4><p>要达成可扩展性，正交是一个非常重要的概念，一个可扩展性好的系统必定是正交的。关于正交，我找到一个很好的例子来帮助理解:</p>
+<p>非正交代码：</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>客户需求</th>
+<th>代码实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(1 2 3)</td>
+<td>(1 2 3)</td>
+</tr>
+<tr>
+<td>(6 5 4)</td>
+<td>(1 2 3)+(5 3 1)=(6 5 4)</td>
+</tr>
+<tr>
+<td>(3 6 9)</td>
+<td>(6 5 4)+(-3 1 5)=(3 6 9)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>正交代码：</p>
+<p>x = (1 0 0)<br>y = (0 1 0)<br>z = (0 0 1)</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>客户需求</th>
+<th>代码实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(1 2 3)</td>
+<td>x+2y+3z</td>
+</tr>
+<tr>
+<td>(6 5 4)</td>
+<td>6x+5y+4z</td>
+</tr>
+<tr>
+<td>(3 6 9)</td>
+<td>3x+6y+9z</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>正交是软件工程中非常重要的一个概念，它将一个系统拆分为多个互不依赖的维度，每个维度可以独立变化，整个系统变得更容易理解。正交的优点很多，比如易于测试，维护，可复用程度高，更能够适应变化等等。在我看来，绝大部分软件设计理念都是围绕如何更好地拆分系统，达成正交而产生的，比如面向对象的设计模式，MVC，消息中间件，微服务架构等等，都是从不同的角度来达成软件的正交性。</p>
+<p>正交的基本手段仍然是封装和解耦，复用，只是说封装角度(功能模块，公用流程，变化程度等)，解耦方式(组合，中间件，RPC等)，以及复用粒度(函数，类，组件，节点等)的区别，比如设计模式，重点讲的是在类级别上，如何封装变化和解耦依赖，MVC侧重封装的角度(按照变更特性)，消息中间件侧重解耦的方式，微服务则侧重解耦(服务发现)和复用粒度(服务)。</p>
+<h4 id="正交实践"><a href="#正交实践" class="headerlink" title="正交实践"></a>正交实践</h4><p>以下是一些项目中的正交实践:</p>
+<ul>
+<li>正交支持: Func，Package，Actor，Node，后两者由框架提供</li>
+<li>正交复用: 复用基本流程，如Actor, DB序列化，Gate等</li>
+<li>正交解耦: 解耦组件依赖，如EventMgr，RabbitMQ，Etcd等</li>
+<li>正交变化: 以变化特性进行拆分，如Controller/Model，以及<a href="http://wudaijun.com/2017/09/ngs-battle/">战斗配置</a>等</li>
+<li>持续重构: 开发中对重复敏感，对变化敏感，适当运用设计模式，常用的如观察者模式，控制反转，策略模式等等</li>
+</ul>
+<p>正交不只是一个设计目标，也是一个重构目标，它会随着系统功能和需求的迭代而变更，就像微服务一样，粒度过细则可能过犹不及。</p>
+<h3 id="二-可靠性"><a href="#二-可靠性" class="headerlink" title="二. 可靠性"></a>二. 可靠性</h3><p>可靠性通常分为两个方面：健壮性(鲁棒性)和容错性。</p>
+<ul>
+<li>健壮性: 是指一个计算机系统在执行过程中处理错误，以及算法在遭遇输入、运算等异常时继续正常运行的能力。</li>
+<li>容错性: 是使系统在部分组件（一个或多个）发生故障时仍能正常运作的能力。</li>
+</ul>
+<p>健壮性是指系统是对外部输入的处理能力，你按照我的调用规范来使用系统，系统会正常返回，如果你不按照我的调用规范来使用系统，系统返回给你错误，但是系统本身不会Down掉。因此健壮性更多地是强调错误预防，而容错性是指当系统内部错误发生之后，如何处理错误和进行错误恢复。</p>
+<h4 id="1-健壮性"><a href="#1-健壮性" class="headerlink" title="1. 健壮性"></a>1. 健壮性</h4><h5 id="防御式编程"><a href="#防御式编程" class="headerlink" title="防御式编程"></a>防御式编程</h5><p>提到错误，不得不提一下防御式编程:</p>
+<blockquote>
+<blockquote>
+<p>你写的代码，应该考虑到所有可能发生的错误，让你的程序不会因为他人的错误而发生错误。</p>
+</blockquote>
+</blockquote>
+<p>我认为部分同学对防御式编程是有误解的，将其简单理解成了不让服务器崩溃，在实践中，有些同学为了方便，可能会忽略对错误的处理(反正有defer)，或者简单打个Log，而不去认真思考这个错误意味着什么，后续逻辑应该怎么处理，这个错误如何反馈给调用方等等，这往往会给系统带来更多的不确定性，并且在错误发生时难以调试。</p>
+<p>举个简单的例子，我们的Pf模块，负责和平台进行交互，屏蔽HTTP通信，Token管理，服务地址等细节，我们有个API，用于向平台获取角色列表，这个API在获取到角色列表对其进行解析时，其中一个角色元信息Json解析出错了(简单认为不可能出错)，如果你忽略了这个错误，或者只是简单打个日志，然后跳过这个角色解析，最终逻辑模块将以为一切正常，然后交给客户端，客户端就找不到这个角色了，甚至再发起创建角色流程。</p>
+<p>防御式编程强调的是尽可能地考虑并且处理能够预料到的错误，而不是说隐藏或者忽略意料之外的错误，对于不能Handle的错误，该传给调用方传给调用方，该终止服务器就终止。</p>
+<p>在实践中，需要设计和使用API时，重视error规范，认真考虑各种异常输入和错误返回等。</p>
+<h5 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h5><p>关于测试的问题，我们之前有过探讨了，关于测试的好处和难点这里不再赘述。在项目实践中，我比较推崇API测试和测试用例，前者是白盒测试，结合go test规范，用于底层不常变的基础设施测试，后者是黑盒测试，用于功能性测试，其它更详尽的测试个人认为是不适用于游戏的。</p>
+<p>另外为了更好地测试，可以结合开发环境的特性，特例化开发环境配置，比如适当调小模块Channel大小(让错误更早暴露出来)，对一些关键性错误直接Panic(比如消息未注册)，另外，也可以结合一些语言提供的工具，比如通过<code>-race</code>参数来检查竞态(非常吃内存和性能，不建议线上使用)，通过常驻的http pprof工具提供实时地内存，性能和死锁分析等。</p>
+<h4 id="2-容错能力"><a href="#2-容错能力" class="headerlink" title="2. 容错能力"></a>2. 容错能力</h4><p>容错能力分为三个层面：错误隔离，错误处理，错误恢复。</p>
+<p>谈到容错，我想不得不提的就是Erlang，Erlang提供了错误隔离，处理，恢复一条龙服务，进程出错(不会影响到其它进程，错误隔离)，进入terminal函数(错误处理)，监督者监控到子进程Crash，尝试重启(错误恢复)。</p>
+<p>和防御式编程一样，Erlang的Let it Crash，也是个容易误解的概念，它不是说鼓励崩溃，而是说不怕崩溃，Erlang认为你不可能提前预知到所有错误，因此它对错误做最坏的打算，得益于Erlang的Actor模型和错误隔离机制，能够最大程度地控制崩溃的影响范围，因此它可以基于自己的轻量化，帮你尝试做错误恢复。因此反过来讲，正因为其它语言没有像Erlang这样强大的容错能力，因此他们在错误处理上面如履薄冰，鼓励你更多地从错误预防的角度考虑，而Erlang允许你偷懒，写更少的防御代码，它的错误处理和恢复帮你擦屁股。另外，Erlang并不是无脑帮你重启进程，Erlang的错误恢复基于如下三点背景:</p>
+<ol>
+<li>良好的Actor模型实践，保证Crash的影响范围小，比如单个玩家</li>
+<li>大部分的错误可以通过重启恢复(没有什么是重启不能解决的?)</li>
+<li>进程监督者会设置重启上限</li>
+</ol>
+<p>Go语言只给开发者错误捕获机制，错误隔离都需要捕获错误才能够完成。但我们仍然可以从Erlang Actor模型中借鉴学习到一些东西，具体到实践中:</p>
+<ul>
+<li>Go in Actor: 原生goroutine的使用是比较有风险的(mem leak，deadlock，panic等)，框架上应该封装逻辑goroutine(相当于actor)，统一管理actor的消息队列/交互/顺序依赖等，避免逻辑层对原生goroutine的使用(比如提供一个worker pool，毕竟逻辑层大部分时候只是想要个可以异步执行任务的地方)</li>
+<li>defer但不是无限制defer actor error，特别对于逻辑模块，defer打印堆栈信息，但要对错误进行阈值设定，一个进一步的尝试是通过actor当前上下文对错误进行分类统计(主要针对大粒度的Actor)</li>
+<li>异步思维是构建高容错系统的必备思维，一个通用的实践是，将所有的外部IO封装成模块，IO模块对所有同步IO操作设置超时(context, deadline)，其它模块与IO模块间异步交互。此外，逻辑模块之间也应该限制对同步调用的使用，防止死锁和并发瓶颈</li>
+</ul>
+<h4 id="3-可调试能力"><a href="#3-可调试能力" class="headerlink" title="3. 可调试能力"></a>3. 可调试能力</h4><p>可调试能力本身不是可靠性的一部分，这里我把它作为一种错误诊断手段，一并补在这里，Go语言没有像Erlang那种强大的动态调试能力(无痛DEBUG)，也没有热更，因此框架方面需要考虑到这方面的支持，方面快速定位BUG&amp;修复数据。</p>
+<p>实践:</p>
+<ol>
+<li>模拟机器人: 提供一个客户端的Console模拟，用于灵活地向服务器构建&amp;发送消息，用于黑盒测试。</li>
+<li>后台Console: 一些状态Debug和GM命令，比如查看各个模块的异步调用状态，PProf数据，刷新大地图NPC等等。</li>
+<li>Lua脚本: 可以拉取一些服务器内部数据状态，比如玩家数据，并对其进行简单修改。</li>
+<li>PProf: 通过http pprof或者配合Console拿到pprof数据，也能对当前系统状态有一份不错的参考，特别针对与死锁或者性能问题，具体使用<a href="http://wudaijun.com/2018/04/go-pprof/">参考</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/07/gs-flexiblity-reliability/" title="谈谈架构灵活性和可靠性">http://wudaijun.com/2018/07/gs-flexiblity-reliability/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/gameserver/" rel="tag"><i class="fa fa-tag"></i> gameserver</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/06/gs-model-save/" rel="prev" title="谈谈GS对象的落地">
+      <i class="fa fa-chevron-left"></i> 谈谈GS对象的落地
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/07/go-package-goroutine-practice/" rel="next" title="Go package和goroutine的一些理解和实践">
+      Go package和goroutine的一些理解和实践 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E5%8F%AF%E7%BB%B4%E6%8A%A4%E6%80%A7-%E5%8F%AF%E6%89%A9%E5%B1%95%E6%80%A7"><span class="nav-text">一. 可维护性&#x2F;可扩展性</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AD%A3%E4%BA%A4%E8%AE%BE%E8%AE%A1"><span class="nav-text">正交设计</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AD%A3%E4%BA%A4%E5%AE%9E%E8%B7%B5"><span class="nav-text">正交实践</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E5%8F%AF%E9%9D%A0%E6%80%A7"><span class="nav-text">二. 可靠性</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%81%A5%E5%A3%AE%E6%80%A7"><span class="nav-text">1. 健壮性</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E9%98%B2%E5%BE%A1%E5%BC%8F%E7%BC%96%E7%A8%8B"><span class="nav-text">防御式编程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95"><span class="nav-text">测试</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%AE%B9%E9%94%99%E8%83%BD%E5%8A%9B"><span class="nav-text">2. 容错能力</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E5%8F%AF%E8%B0%83%E8%AF%95%E8%83%BD%E5%8A%9B"><span class="nav-text">3. 可调试能力</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

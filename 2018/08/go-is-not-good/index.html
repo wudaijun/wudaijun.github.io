@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="访问控制 package 内没有任何访问控制 package 间的访问控制只由大小写区分  问题1我们可以通过合理拆分 package，来避免代码维护变得越来越困难，为了避免循环依赖，这里有一些实践。 问题2则更难处理一些，因此 Go语言的reflect这类基础设施也受此影响，有时候你为了对象能够序列化或者 DeepCopy，就必须将其字段大写，也就对所有的package都暴露了实现。也就是说，G">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go 的一些&quot;坑&quot;">
+<meta property="og:url" content="http://wudaijun.com/2018/08/go-is-not-good/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="访问控制 package 内没有任何访问控制 package 间的访问控制只由大小写区分  问题1我们可以通过合理拆分 package，来避免代码维护变得越来越困难，为了避免循环依赖，这里有一些实践。 问题2则更难处理一些，因此 Go语言的reflect这类基础设施也受此影响，有时候你为了对象能够序列化或者 DeepCopy，就必须将其字段大写，也就对所有的package都暴露了实现。也就是说，G">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-08-24T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.612Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="go">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2018/08/go-is-not-good/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Go 的一些"坑" | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/08/go-is-not-good/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Go 的一些"坑"
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-08-25 00:00:00" itemprop="dateCreated datePublished" datetime="2018-08-25T00:00:00+08:00">2018-08-25</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/go/" itemprop="url" rel="index"><span itemprop="name">go</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/08/go-is-not-good/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/08/go-is-not-good/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="访问控制"><a href="#访问控制" class="headerlink" title="访问控制"></a>访问控制</h4><ol>
+<li>package 内没有任何访问控制</li>
+<li>package 间的访问控制只由大小写区分</li>
+</ol>
+<p>问题1我们可以通过合理拆分 package，来避免代码维护变得越来越困难，为了避免循环依赖，这里有<a href="http://wudaijun.com/2018/07/go-package-goroutine-practice/">一些实践</a>。</p>
+<p>问题2则更难处理一些，因此 Go语言的reflect这类基础设施也受此影响，有时候你为了对象能够序列化或者 DeepCopy，就必须将其字段大写，也就对所有的package都暴露了实现。也就是说，Go 语言的基础设施(如reflect)也受此访问控制的限制(reflect本质上也是个package)。</p>
+<span id="more"></span>
+<p>比如游戏服务器中 Model，为了序列化，没有办法将其结构实现对外隐藏起来，只暴露API，这也就导致没有一种安全的方法来做脏标记这种状态封装(Go也没有类似Lua metatable这种Hook机制)。</p>
+<h4 id="可变语义"><a href="#可变语义" class="headerlink" title="可变语义"></a>可变语义</h4><p>Go语言鼓励你用指针，还帮你做了指针的自动解引用，但是 Go 的大部分数据结构都是引用语义并且goroutine不安全的，如 slice，map等，Go不提供任何不可变语义，比如 const，copy-on-write等，这很符合 Go 的哲学: 简单(实现起来简单)。要想共享数据，要么通过 channel 或 mutex 来实现串行访问，要么就拷贝一份(深拷贝,DeepCopy)。初学者要没搞明白Go的数据结构实现之前，很容易写出并发不安全的代码。</p>
+<h4 id="没有泛型"><a href="#没有泛型" class="headerlink" title="没有泛型"></a>没有泛型</h4><p>泛型本质上就是基于现有类型创造新的类型，达成代码复用。比如<code>map[KeyType]ValueType</code>，Go的reflect可以完成这个任务，你可以反射得到对象的type和value，然后可以通过这个type来创建新的对象或者构建更复杂的类型，比如<code>[]type</code>，<code>chan type</code>，<code>map[int]type</code>，甚至 struct，但是这一切都是运行时的，没有类型安全保证。是的，一门静态语言提供给开发者的泛型机制(reflect)并不提供类型安全保证。开发者只能通过interface来做一些丑陋的代码复用，典型的如sync.Map。</p>
+<h4 id="deepcopy"><a href="#deepcopy" class="headerlink" title="deepcopy"></a>deepcopy</h4><p>前面说了，go不支持不可变语义，如果你要共享，要么加锁，要么拷贝。是的，Go 当然有 deepcopy 函数，但不是 Go 本身提供的，而是<a target="_blank" rel="noopener" href="https://github.com/mohae/deepcopy/blob/master/deepcopy.go">第三方基于reflect的</a>。首先，基于 reflect 的 deepcopy 比自己写一个 deepcopy 要慢一个数量级，和直接序列化为 bson/json差不多。其次，前面也提到了，reflect 不能访问小写开头字段，因此基于reflect的deepcopy是不完整的，这可能导致一些问题，比如该对象的某个API访问了小写字段，或者大写字段和小写字段有相互关联。</p>
+<p>解决DeepCopy的方案有两个，一是自己实现一个基于代码生成(<a target="_blank" rel="noopener" href="https://golang.org/pkg/text/template/">text/template</a>)的deepcopy，这也是我们最近在尝试的。而是等着哪一天Go 想通了，做了个语言层面的deepcopy :)</p>
+<h4 id="构造函数"><a href="#构造函数" class="headerlink" title="构造函数"></a>构造函数</h4><p>Go没有构造函数，Go”尽量”让零值(var t T)易于使用，比如int默认为0，string默认为””，sync 包的大部分数据结构都可以拿来即用(<code>sync.Mutex</code>,<code>sync.WaitGroup</code>等)。但也有例外，比如map:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> m1 = <span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">string</span>&#123;&#125; <span class="comment">// empty map</span></span><br><span class="line"><span class="keyword">var</span> m0 <span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">string</span>     <span class="comment">// zero map (nil)</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">println</span>(<span class="built_in">len</span>(m1))   <span class="comment">// outputs &#x27;0&#x27;</span></span><br><span class="line"><span class="built_in">println</span>(<span class="built_in">len</span>(m0))   <span class="comment">// outputs &#x27;0&#x27;</span></span><br><span class="line"><span class="built_in">println</span>(m1[<span class="string">&quot;foo&quot;</span>]) <span class="comment">// outputs &#x27;&#x27;</span></span><br><span class="line"><span class="built_in">println</span>(m0[<span class="string">&quot;foo&quot;</span>]) <span class="comment">// outputs &#x27;&#x27;</span></span><br><span class="line">m1[<span class="string">&quot;foo&quot;</span>] = <span class="string">&quot;bar&quot;</span>  <span class="comment">// ok</span></span><br><span class="line">m0[<span class="string">&quot;foo&quot;</span>] = <span class="string">&quot;bar&quot;</span>  <span class="comment">// panics!</span></span><br></pre></td></tr></table></figure>
+<p>对零值map的读取是ok的，但写入会panic!，我想大家都经历过<code>panic: assignment to entry in nil map</code>这类错误。特别在使用别人的结构体时，如果其内包含指针或map，而你没有显示调用其初始化函数(通常是NewXXX, OpenXXX, InitXXX)，后果通常是panic，毕竟库作者不一定会在每个 API上都检查初始状态，这通常需要使用者去谨慎检查并承担责任。</p>
+<h4 id="切片和动态数组"><a href="#切片和动态数组" class="headerlink" title="切片和动态数组"></a>切片和动态数组</h4><p>Go 的切片用于引用数组的一部分，如<code>s := a[1:3]</code>，切换本身可以访问或修改数组的部分元素，但不会拷贝数组或者对数组大小造成影响。动态数组则是可以不断追加(append)元素的数组，这两个东西本来是两个概念，但是不巧的是，在 Go 中，它们都叫 slice，在一个切片语义的 slice上执行append一个元素将可能导致:</p>
+<ol>
+<li>len&lt;cap时，切片修改了原本不属其引用范围的数组元素</li>
+<li>len==cap 时，切片重新分配，并拷贝原本所指向数组元素，从而丢失切片的引用语义</li>
+</ol>
+<p>因此我们在使用 slice 的一个实践就是一个slice只表达一种语义(要么切片，要么动态数组)，不要混用，关于slice 的更多细节参考<a href="http://wudaijun.com/2016/09/go-notes-1-datastructures/">这里</a>。</p>
+<h4 id="nil-interface"><a href="#nil-interface" class="headerlink" title="nil interface"></a>nil interface</h4><p>我在<a href="http://wudaijun.com/2018/01/go-interface-implement/">这篇博客</a>里谈了下interface的实现，简单来说，interface{}本身就是一个结构体，包含 type/itab, data 两个字段，现在我们来看个有趣的示例:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> ITester <span class="keyword">interface</span> &#123;</span><br><span class="line">	A()</span><br><span class="line">	B()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Test <span class="keyword">struct</span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(*Test)</span> <span class="title">A</span><span class="params">()</span></span> &#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(Test)</span> <span class="title">B</span><span class="params">()</span></span> &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">	<span class="keyword">var</span> t *Test = <span class="literal">nil</span></span><br><span class="line">	<span class="keyword">var</span> it ITester = t</span><br><span class="line">	<span class="built_in">println</span>(t, it) <span class="comment">// &#x27;0x0 (0x1071e60,0x0)&#x27;</span></span><br><span class="line">	<span class="keyword">if</span> it != <span class="literal">nil</span> &#123;</span><br><span class="line">		<span class="built_in">println</span>(<span class="string">&quot;Not nil!&quot;</span>) <span class="comment">// 程序会走到这里</span></span><br><span class="line">		it.A()     <span class="comment">// ok</span></span><br><span class="line">		it.B()     <span class="comment">// panic: value method main.Test.B called using nil *Test pointer</span></span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="built_in">println</span>(<span class="string">&quot;nil!&quot;</span>)     <span class="comment">// 对interface&#123;&#125;不了解的同学可能会认为应该走到这里</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>现在我们来大概看看发生了什么，it本身是个itab+data的结构体，其中itab包含了t的类型以及ITester方法定义等，data则指向t，因此it打印出来第二个字段为0x0，但指向nil值的it本身并不为nil，也就是说<code>var it1 ITester = nil</code>和<code>var it2 Itester = (*Test)(nil)</code>，两条语句的性质是完全不一样的。it可以正常调用A()，因为A()的receiver是指针，而调用B()则会panic，因为需要解nil指针。这个示例能够说明interface{}实现的一些非直观性，以及自动解引用和nil receiver结合时引发的一些问题。另外，如果你真的需要判断一个interface{}指向的值是否为nil，还得用到”万能的”反射: <code>if it != nil &amp;&amp; !reflect.ValueOf(it).IsNil()</code>。</p>
+<h4 id="And-More…"><a href="#And-More…" class="headerlink" title="And More…"></a>And More…</h4><p>前面只是列举了部分我在使用中对Go语言设计的反思，还有一些被广为诟病的如GOPATH，依赖管理等，它们有些可能是 Feature(嗯，万能的词汇)，有些则可能有设计上的考量(你我皆凡人)，Go语言目前给我的整体感觉就是”差那么一步”，比如map没有clear接口，没有提供deepcopy函数，没有构造函数等，这一步或难(比如添加 const语义)或不难(比如map clear)，但设计者终究没有为开发者提供这样的选项，这种差一步的好处便是简单(这里当然说的是语言实现简单)，这可能是Go语言最重要的设计哲学之一，也是对”互联网C语言”Slogan的践行。另一个角度来说，开发者对语言的期望是很高的，灵活性/安全性，开发效率/运行效率，命令式/面向对象/函数式/泛型等统统都要。:) 有意思的是，网上有人将对 Go 语言的吐槽收集起来，做成了<a target="_blank" rel="noopener" href="https://github.com/ksimka/go-is-not-good">go is not good</a>系列，然后赚了3000多个Star。。。真的是Go社区火了，带动了一堆”副产业”。。。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/08/go-is-not-good/" title="Go 的一些&quot;坑&quot;">http://wudaijun.com/2018/08/go-is-not-good/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/go/" rel="tag"><i class="fa fa-tag"></i> go</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/08/gs-devops/" rel="prev" title="GS DevOps 实践">
+      <i class="fa fa-chevron-left"></i> GS DevOps 实践
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/09/consistency/" rel="next" title="一致性杂谈">
+      一致性杂谈 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6"><span class="nav-text">访问控制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8F%AF%E5%8F%98%E8%AF%AD%E4%B9%89"><span class="nav-text">可变语义</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%B2%A1%E6%9C%89%E6%B3%9B%E5%9E%8B"><span class="nav-text">没有泛型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#deepcopy"><span class="nav-text">deepcopy</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0"><span class="nav-text">构造函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%87%E7%89%87%E5%92%8C%E5%8A%A8%E6%80%81%E6%95%B0%E7%BB%84"><span class="nav-text">切片和动态数组</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#nil-interface"><span class="nav-text">nil interface</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#And-More%E2%80%A6"><span class="nav-text">And More…</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

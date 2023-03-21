@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="2022.1.22 更新: 最近一年，Go泛型已经从草案，过渡到提案，并开始实现。Go1.18实现了初版泛型，最终方案相较之前的泛型草案，将类型列表约束(type list in constraint)进一步丰富完善为类型集约束(type sets of constraints)的概念，本文内容已随最新文档更新。   之前我在编程范式游记中介绍了OOP中的子类化(subtype，也叫子类型多态">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go 泛型特性速览">
+<meta property="og:url" content="http://wudaijun.com/2020/12/go-generics/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="2022.1.22 更新: 最近一年，Go泛型已经从草案，过渡到提案，并开始实现。Go1.18实现了初版泛型，最终方案相较之前的泛型草案，将类型列表约束(type list in constraint)进一步丰富完善为类型集约束(type sets of constraints)的概念，本文内容已随最新文档更新。   之前我在编程范式游记中介绍了OOP中的子类化(subtype，也叫子类型多态">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-12-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.615Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="golang">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2020/12/go-generics/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Go 泛型特性速览 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2020/12/go-generics/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Go 泛型特性速览
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-12-20 00:00:00" itemprop="dateCreated datePublished" datetime="2020-12-20T00:00:00+08:00">2020-12-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/golang/" itemprop="url" rel="index"><span itemprop="name">golang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2020/12/go-generics/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/12/go-generics/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <blockquote>
+<blockquote>
+<p>2022.1.22 更新: 最近一年，Go泛型已经从草案，过渡到提案，并开始实现。<a target="_blank" rel="noopener" href="https://tip.golang.org/doc/go1.18">Go1.18</a>实现了初版泛型，最终方案相较之前的泛型草案，将<strong>类型列表约束(type list in constraint)</strong>进一步丰富完善为<strong>类型集约束(type sets of constraints)</strong>的概念，本文内容已随最新文档更新。</p>
+</blockquote>
+</blockquote>
+<p>之前我在<a href="https://wudaijun.com/2019/05/programing-paradigm/">编程范式游记</a>中介绍了OOP中的子类化(subtype，也叫子类型多态subtype polymorphism)和泛型(generics，也叫参数多态parametric polymorphism或类型参数type parameters)，关于两者的区别和比较可以参考那篇文章，在其中我吐槽了Go目前对泛型支持的匮乏，Go泛型最初在<a target="_blank" rel="noopener" href="https://github.com/golang/go/wiki/Go">Go 2</a>中讨论，目前已经在Go1.18中正式实现，随着Go泛型设计和实现的细节也越来越清晰，我们从最新的<a target="_blank" rel="noopener" href="https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md">Go泛型文档</a>来了解下Go泛型设计上有哪些考量和取舍。</p>
+<p>PS. 虽然Go官方文档仍然沿用社区惯用的”泛型(generics)”术语，由于主流语言都有自己不同的泛型支持，如Java基于<strong>编译期类型擦除</strong>的泛型(伪泛型)，C++的<strong>图灵完备</strong>的模板机制(支持模板元编程的真泛型)等，为了避免概念混淆，将Go泛型理解为<strong>类型参数(type parameters)</strong>更精确，它不支持C++那样灵活的模板元编程，但比Java这种运行时擦除类型信息的补丁实现更优，另外，关于运算符泛型，Go也提出了一套新的解决方案。</p>
+<h4 id="1-最简原型"><a href="#1-最简原型" class="headerlink" title="1. 最简原型"></a>1. 最简原型</h4><p>先从最简单的泛型定义开始:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Define</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Print</span>[<span class="title">T</span>] <span class="params">(s []T)</span></span> &#123;</span><br><span class="line">	<span class="keyword">for</span> _, v := <span class="keyword">range</span> s &#123;</span><br><span class="line">		fmt.Println(v)</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// Call</span></span><br><span class="line">Print[<span class="keyword">int</span>]([]<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>&#125;)</span><br></pre></td></tr></table></figure>
+<p>语法上和其它语言泛型大同小异，泛型的本质是将<strong>类型参数化</strong>，Go中用函数名后的<code>[]</code>定义类型参数。以上声明对C++开发者来说非常亲切的(只是换了一种语法形式)，实际上这在Go中是错误的泛型函数声明，因为它没有指明类型参数约束(constraints)。</p>
+<span id="more"></span>
+<h4 id="2-类型约束"><a href="#2-类型约束" class="headerlink" title="2. 类型约束"></a>2. 类型约束</h4><p>与C++不同，Go在一开始就确定要引入泛型的类型参数约束(bounded generic types，subtype与generics的有机结合)，并且借机吐槽了C++的无约束泛型类型参数，因为这会带来非常难调试的编译时报错。在上例中，即使Print内部没有调用T的任何方法，也需要通过新引入的<code>any</code>关键字来表示任意类型约束(考虑下不能未显示指定约束则缺省即为<code>any</code>的原因)。因此正确的Print声明方式为:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Print</span>[<span class="title">T</span> <span class="title">any</span>] <span class="params">(s []T)</span></span> &#123; ...</span><br></pre></td></tr></table></figure>
+<p>PS: 任意类型不代表不能执行任意操作，如声明变量，赋值，取地址(<code>&amp;</code>)，取类型(<code>.(type)</code>)等。</p>
+<p>那么除去<code>any</code>，如何表示一个有效的类型约束，参考其它支持bounded generic types语言的做法，如C#/Java，自然go interface是不二之选，因为go interface本质就是做subtype，而subtype本身主要就是服务于静态语言的type checker的。因此subtype也可以辅助编译器完善对类型参数的检查。使用interface做类型参数约束的函数看起来是这个样子:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Stringify</span>[<span class="title">T</span> <span class="title">fmt</span>.<span class="title">Stringer</span>]<span class="params">(s []T)</span> <span class="params">(ret []<span class="keyword">string</span>)</span></span> &#123;</span><br><span class="line">	<span class="keyword">for</span> _, v := <span class="keyword">range</span> s &#123;</span><br><span class="line">		ret = <span class="built_in">append</span>(ret, v.String()) D</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> ret</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里有一个有意思的问题，为什么Go编译器不直接用Stringify函数中对T的各种函数调用，自动推敲生成一个匿名interface呢，如此对Stringify来说，外部满足<code>fmt.Stringer</code>的类型，仍然能够使用Stringify，并且这本身也是Go隐式接口的一大便利(不依赖于subclass来实现subtype，Go没有subclass)，其它像C++/C#/Java依赖于显示接口/基类继承声明得语言，是无法做到的。关于这一点，Go官方的解释是，如果接口隐式推敲，少了显式接口这层”契约”，那么Stringify的一个很小的改动都可能导致上层调用不可用，这不利于构建大型项目。调用方只需要关心它是否满足接口约束，而不应该也不需要去阅读Stringify的代码来知道它可能调用T的哪些函数。</p>
+<p>既然选定了用interface来做类型参数约束，那么再来看<code>any</code>，它实际上就和<code>interface&#123;&#125;</code>没有区别的，任意类型都满足<code>interface&#123;&#125;</code>接口，因此实际上Print也可以声明为 <code>func Print[T interface&#123;&#125;] (s []T)</code>，但是官方觉得在写任意类型的泛型的时候，每次写<code>interface&#123;&#125;</code>太麻烦了(符合golang的极简思维)，因此还是觉得应该保留<code>any</code>关键字，作为<code>interface&#123;&#125;</code>的别名，但是在除了泛型类型约束之外，常规空接口仍然用<code>interface&#123;&#125;</code>而不能用<code>any</code>，解释是不希望新增的泛型给以前的代码带来影响…</p>
+<h4 id="3-泛型类型"><a href="#3-泛型类型" class="headerlink" title="3. 泛型类型"></a>3. 泛型类型</h4><p>除了泛型函数外，基于泛型也可以构建新的类型，如:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 定义一个可保存任意类型的切片</span></span><br><span class="line"><span class="keyword">type</span> Vector[T any] []T</span><br><span class="line"><span class="comment">// 实现泛型类Vector方法</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(v *Vector[T])</span> <span class="title">Push</span><span class="params">(x T)</span></span> &#123; *v = <span class="built_in">append</span>(*v, x) &#125;</span><br><span class="line"><span class="comment">// 实例化泛型类型 Vecter[int] t</span></span><br><span class="line"><span class="keyword">var</span> v Vector[<span class="keyword">int</span>]</span><br><span class="line"></span><br><span class="line"><span class="comment">// 与前面的Vector[int]等价，事实上编译器也会生成类似的类</span></span><br><span class="line"><span class="keyword">type</span> VecterInt []<span class="keyword">int</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(v *VectorInt)</span> <span class="title">Push</span><span class="params">(x <span class="keyword">int</span>)</span></span> &#123; *v = <span class="built_in">append</span>(*v, x) &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 定义一个可保存两个任意类型值的Pair</span></span><br><span class="line"><span class="keyword">type</span> Pair[T1, T2 any] <span class="keyword">struct</span> &#123;</span><br><span class="line">	val1  T1</span><br><span class="line">    val2  T2</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 定义Pair List</span></span><br><span class="line"><span class="comment">// 注意next字段引用了自身，目前这种相互直接或间接引用，要求参数类型(以及顺序)一致，后面可能会放宽此要求</span></span><br><span class="line"><span class="keyword">type</span> List[T1, T2 any] <span class="keyword">struct</span> &#123;</span><br><span class="line">	next *List[T1, T2] <span class="comment">// 如果改成 List[T2, T1] 则不行</span></span><br><span class="line">	val  Pair[T1, T2] </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="4-类型集约束"><a href="#4-类型集约束" class="headerlink" title="4. 类型集约束"></a>4. 类型集约束</h4><p>前面提到Go通过interface完成对参数类型的约束，理论上来说已经是完备的了(毕竟interface用作subtype已经证明了这点)，但是还不够方便，比如:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// This function is INVALID.</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Smallest</span>[<span class="title">T</span> <span class="title">any</span>]<span class="params">(s []T)</span> <span class="title">T</span></span> &#123;</span><br><span class="line">	r := s[<span class="number">0</span>] <span class="comment">// panic if slice is empty</span></span><br><span class="line">	<span class="keyword">for</span> _, v := <span class="keyword">range</span> s[<span class="number">1</span>:] &#123;</span><br><span class="line">		<span class="keyword">if</span> v &lt; r &#123; <span class="comment">// INVALID</span></span><br><span class="line">			r = v</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> r</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在<code>Smallest</code>函数中，我们希望求出一个切片中的最小元素，但是这个函数声明本身是无效的，因为不是所有的类型都支持<code>&lt;</code>运算符，事实上，在Go中，仅有限的内置类型支持<code>&lt;</code>，其它自定义类型均不支持通过方法定义自己的<code>&lt;</code>运算(此处开始怀念C++的运算符，但是其带来的”一切皆有可能”的代码理解负担也确实头疼…)，诚然这里可以通过定义类似的Comparable interface来进行类型约束和比较，将<code>v &lt; r</code>替换为<code>v.Less(r)</code>，但你也需要为原生支持比较的类型(int/float/string)定义一个新的类型并实现Comparable接口，反而让Smallest使用起来更复杂。因此，这里Go有必要为基础运算符定义一套泛型类型约束，使得调用方可以直接通过<code>Smallest[int]([]int&#123;3,1,4&#125;)</code>即可使用。</p>
+<p>这里有两种实现方式，一种方案是预定义基础运算的约束，并且让满足条件的基础类型自动适配而无需手动实现，如<code>&lt;</code>，<code>&gt;</code>，<code>==</code>，<code>&lt;&lt;</code>，<code>&amp;&amp;</code>，<code>range</code>，<code>size</code>等。另一种方式是基于Go几乎所有的逻辑运算符(唯二的例外在后面会讨论)都仅支持内置基础类型，并且内置基础类型是有限的这两点事实，从另一个角度出发: 让类型约束可以直接指定其需要包含的基础类型。Go优先选择了第二种方案，提供所谓<strong>类型集约束(type sets of contraints)</strong>机制。</p>
+<h5 id="类型集"><a href="#类型集" class="headerlink" title="类型集"></a>类型集</h5><p>Go新增了类型集(type sets)的概念，每个类型都有自己的类型集，对于非接口类型T而言，其类型集为<code>&#123;T&#125;</code>，即为它自身。对于接口类型而言，如下面的接口T:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> T <span class="keyword">interface</span> &#123;</span><br><span class="line">	io.Reader</span><br><span class="line">	Foo()</span><br><span class="line">	Bar() <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 语义上等价于</span></span><br><span class="line"><span class="keyword">type</span> E1 <span class="keyword">interface</span> &#123; Foo() &#125;</span><br><span class="line"><span class="keyword">type</span> E2 <span class="keyword">interface</span> &#123; Bar() <span class="keyword">int</span> &#125;</span><br><span class="line"><span class="keyword">type</span> T <span class="keyword">interface</span> &#123;</span><br><span class="line">	io.Reader</span><br><span class="line">	E1</span><br><span class="line">	E2</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>接口本质是若干方法签名 + 内嵌接口的组合，而方法签名很容易转换为对应方法的interface(上例的E1和E2)，而接口T的类型集，本质是<code>io.Reader</code>的类型集和E1，E2的类型集的交集，这个定义，既能阐述接口本身概念(满足接口所定义的所有方法)，也能阐述接口作为类型约束的概念(满足T所定义的所有约束)。这个交集的概念是贯穿Go接口和Go泛型约束的。</p>
+<h5 id="类型集约束"><a href="#类型集约束" class="headerlink" title="类型集约束"></a>类型集约束</h5><p>但是，Go接口只支持方法签名和内嵌接口，对于作为泛型类型约束来说，功能弱了一些(比如不能完成前面提到的类型枚举)，因此Go对interface进行了功能扩展，添加了三个特性，使用了这三个特性的interface，将只能作为类型约束，而不能再作为接口:</p>
+<ol>
+<li>类型枚举: 允许类型约束的interface中，直接枚举任意类型，如<code>type Integer inteface&#123; int &#125;</code></li>
+<li>类型近似: 类型枚举不能解决类型重定义的问题，如<code>type MyInt int</code>，也应该满足<code>Integer</code>约束，因此类型约束interface可以通过<code>~T</code>来表达T的近似类型(approximation constraint)，对于约束<code>type Integer2 interface &#123;~int&#125;</code>而言，任何底层类型为int的类型，均满足该约束，包括MyInt</li>
+<li>类型联合: 可以通过<code>A|B</code>来表达”A或B类型”的概念，对于约束<code>type PredeclaredSignedInteger interface &#123; int | int8 | int16 | int32 | int64 &#125;</code>而言，任意以上5个整数类型之一，均满足其约束条件</li>
+</ol>
+<p>现在再来看前面的Smallest函数，它的完整正确约束应该为:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Ordered is a type constraint that matches any ordered type.</span></span><br><span class="line"><span class="comment">// An ordered type is one that supports the &lt;, &lt;=, &gt;, and &gt;= operators.</span></span><br><span class="line"><span class="keyword">type</span> Ordered <span class="keyword">interface</span> &#123;</span><br><span class="line">	~<span class="keyword">int</span> | ~<span class="keyword">int8</span> | ~<span class="keyword">int16</span> | ~<span class="keyword">int32</span> | ~<span class="keyword">int64</span> |</span><br><span class="line">		~<span class="keyword">uint</span> | ~<span class="keyword">uint8</span> | ~<span class="keyword">uint16</span> | ~<span class="keyword">uint32</span> | ~<span class="keyword">uint64</span> | ~<span class="keyword">uintptr</span> |</span><br><span class="line">		~<span class="keyword">float32</span> | ~<span class="keyword">float64</span> |</span><br><span class="line">		~<span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>考虑到<code>Ordered</code>这类约束可能会在很多地方用到，因此可能需要将其归到官方库中提供，该package为<code>contraints</code>，如此<code>Smallest</code>即可定义为<code>func Smallest[T constraints.Ordered](s []T) T</code>。</p>
+<p>这里再提一下Go泛型的显示声明原则，有了类型列表约束之后，函数可以直接使用类型列表中所有类型都支持的运算，但<strong>不能直接使用类型列表都支持的方法，即使这些类型都提供了该方法</strong>:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> MyInt <span class="keyword">int</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(i MyInt)</span> <span class="title">String</span><span class="params">()</span> <span class="title">string</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> strconv.Itoa(<span class="keyword">int</span>(i))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> MyFloat <span class="keyword">float64</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(f MyFloat)</span> <span class="title">String</span><span class="params">()</span> <span class="title">string</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> strconv.FormatFloat(<span class="keyword">float64</span>(f), <span class="string">&#x27;g&#x27;</span>, <span class="number">-1</span>, <span class="number">64</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> MyIntOrFloat <span class="keyword">interface</span> &#123;</span><br><span class="line">	MyInt | MyFloat</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">ToString</span>[<span class="title">T</span> <span class="title">MyIntOrFloat</span>]<span class="params">(v T)</span> <span class="title">string</span></span> &#123;</span><br><span class="line">    <span class="keyword">return</span> v.String() <span class="comment">// Error: 泛型函数只能使用类型约束显式声明的方法</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这样是为了避免当类型和接口嵌套较深时，调用方很难搞清楚函数到底依赖了约束的哪些方法(因为没了类型约束这层契约)，因此在<code>MyIntOrFloat</code>中显式添加<code>String() string</code>接口是一个更明智的选择。</p>
+<p>综上，Go泛型约束基于接口，但其功能是接口的父集，在扩展了interface功能后，完整的作为类型约束的interface语法如下:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// InterfaceTypeName 即为内嵌接口，MethodSpec 为方法签名，均为Go接口本身的概念</span></span><br><span class="line">InterfaceType  = <span class="string">&quot;interface&quot;</span> <span class="string">&quot;&#123;&quot;</span> &#123;(MethodSpec | InterfaceTypeName | ConstraintElem) <span class="string">&quot;;&quot;</span> &#125; <span class="string">&quot;&#125;&quot;</span> .</span><br><span class="line">ConstraintElem = ConstraintTerm &#123; <span class="string">&quot;|&quot;</span> ConstraintTerm &#125; .</span><br><span class="line">ConstraintTerm = [<span class="string">&quot;~&quot;</span>] Type .</span><br></pre></td></tr></table></figure>
+<h4 id="5-预定义约束"><a href="#5-预定义约束" class="headerlink" title="5. 预定义约束"></a>5. 预定义约束</h4><p><strong>几乎所有的运算符都仅支持内置类型</strong>，这其中有两个例外的运算符，等于(==)和不等于(!=)，比如我们知道，在Go中，struct，array是可以直接比较的，Go需要特殊处理这两个运算符，因此还是提出了<code>comparable</code>这个特殊的预定义类型约束:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Index</span>[<span class="title">T</span> <span class="title">comparable</span>]<span class="params">(s []T, x T)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">	<span class="keyword">for</span> i, v := <span class="keyword">range</span> s &#123;</span><br><span class="line">		<span class="keyword">if</span> v == x &#123;</span><br><span class="line">			<span class="keyword">return</span> i</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">-1</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>由于Go同时支持了预定义类型约束和类型集约束，因此开发者可能定义出一个永远无法满足的类型约束:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> ImpossibleConstraint <span class="keyword">interface</span> &#123;</span><br><span class="line">	comparable</span><br><span class="line">	[]<span class="keyword">int</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>由于<code>[]int</code>无法被比较，因此没有任何类型能满足<code>ImpossibleConstraint</code>约束，定义这个约束本身不会报错，但是在尝试调用使用该约束的任意泛型函数和泛型类时，会得到编译错误。</p>
+<p>有了预定义类型约束和类型集约束之后，Go关于运算符的泛型补丁算是打完了，这里再简单梳理下作为interface接口和interface约束的区别:</p>
+<ol>
+<li>Go预定义了两个类型约束: <code>any</code>(等价于interface{}) 和 <code>comparable</code></li>
+<li>约束在接口的基础上，扩展了类型集的支持，包括类型枚举(<code>type T interface &#123;int&#125;</code>)，或类型(<code>int8|int16</code>)，近似类型(<code>~int</code>)三种特性</li>
+<li>接口的本质是一种类型，可定义值，可为nil(表示没有值，但有类型信息)，类型约束本身描述类型的元信息(类型的类型)，它用来定义值通常没有意义，并且不能为nil</li>
+<li>约束本身可以泛型化，这个在之后会提到</li>
+</ol>
+<h4 id="6-复合类型的类型集约束"><a href="#6-复合类型的类型集约束" class="headerlink" title="6. 复合类型的类型集约束"></a>6. 复合类型的类型集约束</h4><p>如果类型集约束中可以存在复合类型，再结合索引<code>[]</code>，求大小<code>len</code>，遍历<code>range</code>，字段访问<code>.</code>等针对复合类型的操作符时，有意思的问题就来了。由于不同复合类型的操作符的参数和返回值类型可能是不同的，比如如果类型集约束中包含<code>[]int</code>和<code>[]int64</code>，它们的索引操作<code>[]</code>会分别返回<code>int</code>和<code>int64</code>，那么此时编译器有两种做法:</p>
+<ol>
+<li>支持<code>[]</code>操作，但是需要有一个类型联合(<code>type union</code>)的新类型，来保存<code>[]</code>的返回值。比如在这里，编译器会生成<code>int</code>和<code>int64</code>的联合来保存<code>[]</code>的返回值</li>
+<li>仅当<code>[]</code>对类型列表中所有的类型的参数和返回值都一致时，才允许使用<code>[]</code>，否则不允许使用<code>[]</code>并报编译错误</li>
+</ol>
+<p>Go目前选择第二种，因为直观上它更容易理解，具体以例子来说:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> structField <span class="keyword">interface</span> &#123;</span><br><span class="line">		<span class="keyword">struct</span> &#123; a <span class="keyword">int</span>; x <span class="keyword">int</span> &#125; |</span><br><span class="line">		<span class="keyword">struct</span> &#123; b <span class="keyword">int</span>; x <span class="keyword">float64</span> &#125; |</span><br><span class="line">		<span class="keyword">struct</span> &#123; c <span class="keyword">int</span>; x <span class="keyword">uint64</span> &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">IncrementX</span>[<span class="title">T</span> <span class="title">structField</span>]<span class="params">(p *T)</span></span> &#123;</span><br><span class="line">	v := p.x <span class="comment">// Error: 对structField type list来说，操作p.x的返回值类型不一样</span></span><br><span class="line">	v++</span><br><span class="line">	p.x = v</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> sliceOrMap <span class="keyword">interface</span> &#123;</span><br><span class="line">	[]<span class="keyword">int</span> | <span class="keyword">map</span>[<span class="keyword">int</span>]<span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Entry</span>[<span class="title">T</span> <span class="title">sliceOrMap</span>]<span class="params">(c T, i <span class="keyword">int</span>)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">	c[i] <span class="comment">// OK. []int和map[int]int的索引操作的参数和返回值均为int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> sliceOrFloatMap <span class="keyword">interface</span> &#123;</span><br><span class="line">	[]<span class="keyword">int</span> | <span class="keyword">map</span>[<span class="keyword">float64</span>]<span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">FloatEntry</span>[<span class="title">T</span> <span class="title">sliceOrFloatMap</span>]<span class="params">(c T)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> c[<span class="number">1.0</span>] <span class="comment">// Error: 对[]int和map[float64]int来说，[]操作的参数类型不一致</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>目前来说，这应该能够应付绝大部分复合类型type list的应用场景。</p>
+<h4 id="7-类型参数的相互引用"><a href="#7-类型参数的相互引用" class="headerlink" title="7. 类型参数的相互引用"></a>7. 类型参数的相互引用</h4><p>Go支持同一个类型参数列表间的相互引用，如下面的泛型图类型:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> graph</span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建了一个泛型接口约束来表示图的节点，该约束限制类型必须提供一个返回任意类型切片的Edges()函数</span></span><br><span class="line"><span class="keyword">type</span> NodeConstraint[Edge any] <span class="keyword">interface</span> &#123;</span><br><span class="line">	Edges() []Edge</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建了一个泛型接口约束来表示图的边，该约束限制类型必须提供一个返回两个相同的任意类型值的Nodes()函数</span></span><br><span class="line"><span class="keyword">type</span> EdgeConstraint[Node any] <span class="keyword">interface</span> &#123;</span><br><span class="line">	Nodes() (from, to Node)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 重点在这里，对泛型图类的类型约束列表中，存在相互引用</span></span><br><span class="line"><span class="comment">// 即限制了NodeConstraint的泛型类型(Edges返回的切片边类型)必须满足另一个EdgeConstraint约束</span></span><br><span class="line"><span class="comment">// EdgeConstraint 的泛型类型(Nodes返回的节点类型)必须满足NodeConstraint</span></span><br><span class="line"><span class="comment">// 即将两个接口约束相互关联了起来</span></span><br><span class="line"><span class="keyword">type</span> Graph[Node NodeConstraint[Edge], Edge EdgeConstraint[Node]] <span class="keyword">struct</span> &#123; ... &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建图，由于约束本身也是泛型，所以看起来复杂一些</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">New</span>[<span class="title">Node</span> <span class="title">NodeConstraint</span>[<span class="title">Edge</span>], <span class="title">Edge</span> <span class="title">EdgeConstraint</span>[<span class="title">Node</span>]] <span class="params">(nodes []Node)</span> *<span class="title">Graph</span>[<span class="title">Node</span>, <span class="title">Edge</span>]</span> &#123;</span><br><span class="line">	...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 求图最短路径的方法，由于New的时候，编译器已经检查过了。因此方法中不再需要复填Node/EdgeConstraint，直接使用类型参数即可。</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(g *Graph[Node, Edge])</span> <span class="title">ShortestPath</span><span class="params">(from, to Node)</span> []<span class="title">Edge</span></span> &#123; ... &#125;</span><br></pre></td></tr></table></figure>
+<p>我们可以用以下Vertex和FromTo类来实例化Graph泛型类:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> Vertex <span class="keyword">struct</span> &#123; ... &#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(v *Vertex)</span> <span class="title">Edges</span><span class="params">()</span> []*<span class="title">FromTo</span></span> &#123; ... &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FromTo <span class="keyword">struct</span> &#123; ... &#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(ft *FromTo)</span> <span class="title">Nodes</span><span class="params">()</span> <span class="params">(*Vertex, *Vertex)</span></span> &#123; ... &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> g = graph.New[*Vertex, *FromTo]([]*Vertex&#123; ... &#125;)</span><br></pre></td></tr></table></figure>
+<p>除了相互引用以外，类型约束还可以引用自身，比如定义类型自己的<code>Equal</code>函数:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 查找并返回e的下标，官方给出的写法</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Index</span>[<span class="title">T</span> <span class="title">interface</span></span> &#123; Equal(T) <span class="keyword">bool</span> &#125;](s []T, e T) <span class="keyword">int</span> &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 以下是等价写法</span></span><br><span class="line"><span class="keyword">type</span> Equaler[T any] <span class="keyword">interface</span> &#123; </span><br><span class="line">	Equal(T) <span class="keyword">bool</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查找并返回e的下标</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Index</span>[<span class="title">T</span> <span class="title">Equaler</span>[<span class="title">T</span>]]<span class="params">(s []T, e T)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Go编译器会推导类型参数相互引用的合理性，这进一步提升了泛型的灵活性。</p>
+<h4 id="8-函数参数类型推导"><a href="#8-函数参数类型推导" class="headerlink" title="8. 函数参数类型推导"></a>8. 函数参数类型推导</h4><p>回到前面的Print，该泛型函数的调用方式形如: <code>Print[int]([]int&#123;3,1,2&#125;)</code>，但前面的类型参数相互引用中提到，编译器需要支持一定的类型推导(type inference)能力，因此实际上大部分时候，我们都不需要显式指定类型参数，直接通过<code>Print([]int&#123;3,1,2&#125;)</code>调用即可，编译器会通过实参<code>[]int&#123;3,1,2&#125;</code>匹配<code>[]T</code>，推导出T为int。</p>
+<p>这种根据泛型函数调用时传入的实参类型，推敲得到泛型函数类型参数的类型的能力就是函数参数类型推导。</p>
+<p>Go类型推导基于底层的类型一致(type unification)机制，本质上来说是一套类型匹配机制，对了类型A和类型B:</p>
+<ol>
+<li>如果A，B均不包含类型参数，那么A和B一致当且仅当A和B相同</li>
+<li>仅一方包含类型参数: 如A为<code>[]map[int]bool</code>，B为<code>[]T</code>，那么称A和B是类型一致的，并且此时T为<code>map[int]bool</code></li>
+<li>双方都包含类型参数: 如A为<code>[]map[T1]bool</code>，B为<code>[]map[int]T2</code>，那么A B也是类型一致的，并且T1为<code>int</code>，T2为<code>bool</code></li>
+</ol>
+<p>Go对泛型函数的类型参数推导是在函数调用而不是实例化的时候发生的，并且函数类型参数推导本身不包含类型约束检查和形实参赋值检查(像普通函数调用的检查一样)，这些是在类型推导完成之后才开始的。类型推导分为两个阶段:</p>
+<ol>
+<li>第一阶段，忽略所有的无类型(untype)实参(如字面常量<code>5</code>)，先依次推导参数列表中其它的包含类型参数的形参，如果一个类型参数在形参中出现了多次，那么它每次匹配的类型必须是相同的。注: 对于函数的类型参数推导，编译器<strong>只能对出现在函数参数列表中的类型参数进行推导</strong>，而对于那些只用于函数体或函数返回值的类型参数，编译器是无法推导的。</li>
+<li>第二阶段，再开始处理无类型实参的匹配，因为其对应形参中的类型参数，可能在第一遍的时候被推敲出来了，如果对应形参还没被推导出来，给无类型实参赋予默认类型(如<code>5</code>对应<code>int</code>)，再开始推导对应形参。</li>
+</ol>
+<p>分为两个阶段是为了延迟无类型实参的类型推导，使泛型对于无类型实参更友好易用。举个例子:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">NewPair</span>[<span class="title">F</span> <span class="title">any</span>]<span class="params">(f1, f2 F)</span> *<span class="title">Pair</span>[<span class="title">F</span>]</span> &#123; ... &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// OK, 第一阶段完成后(F类型仍然未知)，开始给无类型实参赋予默认类型int，两次匹配均得到F为int，前后一致，推导完成，F为int</span></span><br><span class="line">NewPair(<span class="number">1</span>, <span class="number">2</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">// OK, 第一阶段完成后，根据int64(2)推导得到F为int64，第二阶段时，所有无类型实参的类型都已经确定，推导完成，F为int64</span></span><br><span class="line"><span class="comment">// 如果不是两阶段推导，那么这种情况就无法被支持</span></span><br><span class="line">NewPair(<span class="number">1</span>, <span class="keyword">int64</span>(<span class="number">2</span>))</span><br><span class="line"></span><br><span class="line"><span class="comment">// Failed，第一阶段完成后(F未知)，开始分别给无类型参数赋予默认值int和float64，F前后匹配两次的类型不一致，推导失败，编译器报错</span></span><br><span class="line">NewPair(<span class="number">1</span>, <span class="number">2.5</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="9-约束类型推导"><a href="#9-约束类型推导" class="headerlink" title="9. 约束类型推导"></a>9. 约束类型推导</h4><p>约束类型推导，提供了基于一个类型参数，推导出另一个类型参数的能力，通常应用在多个类型参数之间有关联时。如前面定义Graph泛型类时，用到了泛型接口约束:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> NodeConstraint[Edge any] <span class="keyword">interface</span> &#123;</span><br><span class="line">	Edges() []Edge</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>泛型接口约束允许定义泛型类型参数之间的关系，但是由于约束本身也是泛型的，因此对接口约束中的类型参数也需要推导，这个步骤发生在函数类型参数推导之后，具体的推导规则仍然是根据已知的具象的实参推导未知的类型参数。具体推导规则描述起来比较抽象，仍然以官方例子来说:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 将数字切片中所有元素翻倍并返回</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Double</span>[<span class="title">E</span> <span class="title">constraints</span>.<span class="title">Number</span>]<span class="params">(s []E)</span> []<span class="title">E</span></span> &#123;</span><br><span class="line">	r := <span class="built_in">make</span>([]E, <span class="built_in">len</span>(s))</span><br><span class="line">	<span class="keyword">for</span> i, v := <span class="keyword">range</span> s &#123;</span><br><span class="line">		r[i] = v + v</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> r</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> MySlice []<span class="keyword">int</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 返回值是[]int，而不是MySlice</span></span><br><span class="line"><span class="keyword">var</span> V1 = Double(MySlice&#123;<span class="number">1</span>&#125;)</span><br></pre></td></tr></table></figure>
+<p>为了<code>Double</code>函数更易用，我们需要为<code>Double</code>的参数即切片本身定义一个类型参数(这样才能定义相同类型的返回值)，但是我们同时需要约束这个切片的元素类型，因此这里需要定义泛型接口约束:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> SC[E any] <span class="keyword">interface</span> &#123;</span><br><span class="line">	[]E</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 定义泛型约束 SC[E]，并且约束E的类型为数字</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">DoubleDefined</span>[<span class="title">S</span> <span class="title">SC</span>[<span class="title">E</span>], <span class="title">E</span> <span class="title">constraints</span>.<span class="title">Number</span>]<span class="params">(s S)</span> <span class="title">S</span></span> &#123;</span><br><span class="line">	<span class="comment">// Note that here we pass S to make, where above we passed []E.</span></span><br><span class="line">	r := <span class="built_in">make</span>(S, <span class="built_in">len</span>(s))</span><br><span class="line">	<span class="keyword">for</span> i, v := <span class="keyword">range</span> s &#123;</span><br><span class="line">		r[i] = v + v</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> r</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> MySlice []<span class="keyword">int</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// V3的类型是MySlice</span></span><br><span class="line"><span class="keyword">var</span> V3 = DoubleDefined(MySlice&#123;<span class="number">1</span>&#125;)</span><br></pre></td></tr></table></figure>
+<p>上例再一次说明了泛型接口约束存在的必要性，按照我的理解，泛型接口约束允许<strong>对一个类型分层次的约束，以及完成约束与约束之间的关联</strong>。回到对约束的类型推导上来，在<code>DoubleDefined</code>中，函数的类型参数推导没有办法推导<code>E</code>的类型(因为它没有出现在函数参数列表中)，它只能推导得到<code>S -&gt; MySlice</code>，这个时候就需要约束类型参数推导来完成剩下的工作了，<code>MySlice</code>是已知的具象的类型，从它对应的<code>SC[E]</code>约束开始推导，<code>SC[E]</code>类型列表中只有一个类型<code>[]E</code>，因此<code>MySlice</code>只能<code>[]E</code>类型一致，推出<code>E -&gt; int</code>。</p>
+<p>约束的类型推导的时机在函数参数类型推导之后，但是仍然在约束检查之前。</p>
+<h4 id="10-小结"><a href="#10-小结" class="headerlink" title="10. 小结"></a>10. 小结</h4><p>以上主要是简单归纳了Go泛型文档中，偏应用层面的一些特性，简单小结一下:</p>
+<ol>
+<li>和其它语言的泛型类似，本质是将类型参数化，支持函数泛型和类型泛型，但目前<a target="_blank" rel="noopener" href="https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#no-parameterized-methods">暂不支持方法泛型</a></li>
+<li>通过基于接口的类型约束来描述和限制类型参数(bounded generic types)</li>
+<li>类型约束对接口扩展了类型枚举、类型近似、类型联合等元素，用以支持运算符的泛型操作</li>
+<li>类型约束对外描述类型参数所需实现的方法或允许的类型集</li>
+<li>类型约束对内定义了类型参数所允许调用的方法和支持的操作</li>
+<li>类型约束本身也可以泛型化，用以类型参数的相互引用或自引用</li>
+<li>类型推导使得大部分时候调用方无需显式指定类型参数</li>
+<li>本质上是编译期泛型，泛型类型的反射包括完整的编译时类型信息</li>
+<li>不支持元编程、偏特化、变参等高级特性</li>
+</ol>
+<p>在大部分的设计取舍上，Go官方会优先考虑构建大型项目所必需的实用性(可读+易用)，类型约束不只是type checker，更是一层设计上不可缺少的契约层，尽可能地将大部分信息都明确地内聚到这层契约上。有时候为了实用性，Go会选择牺牲一定的灵活性，类型集约束就是一个例子。</p>
+<p>这里顺便再提下类型集约束，它是把双刃剑，一方面很大程度解决了Go没有运算符重载的问题(这里并不是说有运算符重载就一定香，它带来的代码理解负担也需要慎重考虑)，但另一方面，类型集约束也带来了如下问题:</p>
+<ol>
+<li>打破了接口类型约束的封装，甚至允许将泛型约束”降级”为具体类型(只有一个类型的类型列表约束)</li>
+<li>接口约束和类型列表约束两者组合可能定义出永远不能被实例化的约束</li>
+<li>类型列表约束没有根治没有运算符重载的问题，还加了个预定义约束<code>comparable</code>补丁</li>
+</ol>
+<p>因此个人觉得，类型列表约束需要慎用，特别是对于自定义类型。</p>
+<p>总的来说，这次的Go泛型可以说是众望所归，整体上还是比较实用易用。我已经有点跃跃欲试了，准备在实践中重写部分代码，增强复用性、扩展性以及运行性能。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2020/12/go-generics/" title="Go 泛型特性速览">http://wudaijun.com/2020/12/go-generics/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/golang/" rel="tag"><i class="fa fa-tag"></i> golang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/08/gs-testing-practice/" rel="prev" title="GS 测试规范实践">
+      <i class="fa fa-chevron-left"></i> GS 测试规范实践
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/02/gs-mq-practice/" rel="next" title="聊聊GS引入MQ的一些实践">
+      聊聊GS引入MQ的一些实践 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E6%9C%80%E7%AE%80%E5%8E%9F%E5%9E%8B"><span class="nav-text">1. 最简原型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E7%B1%BB%E5%9E%8B%E7%BA%A6%E6%9D%9F"><span class="nav-text">2. 类型约束</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E6%B3%9B%E5%9E%8B%E7%B1%BB%E5%9E%8B"><span class="nav-text">3. 泛型类型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E7%B1%BB%E5%9E%8B%E9%9B%86%E7%BA%A6%E6%9D%9F"><span class="nav-text">4. 类型集约束</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E7%B1%BB%E5%9E%8B%E9%9B%86"><span class="nav-text">类型集</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E7%B1%BB%E5%9E%8B%E9%9B%86%E7%BA%A6%E6%9D%9F"><span class="nav-text">类型集约束</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-%E9%A2%84%E5%AE%9A%E4%B9%89%E7%BA%A6%E6%9D%9F"><span class="nav-text">5. 预定义约束</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-%E5%A4%8D%E5%90%88%E7%B1%BB%E5%9E%8B%E7%9A%84%E7%B1%BB%E5%9E%8B%E9%9B%86%E7%BA%A6%E6%9D%9F"><span class="nav-text">6. 复合类型的类型集约束</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#7-%E7%B1%BB%E5%9E%8B%E5%8F%82%E6%95%B0%E7%9A%84%E7%9B%B8%E4%BA%92%E5%BC%95%E7%94%A8"><span class="nav-text">7. 类型参数的相互引用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#8-%E5%87%BD%E6%95%B0%E5%8F%82%E6%95%B0%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC"><span class="nav-text">8. 函数参数类型推导</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#9-%E7%BA%A6%E6%9D%9F%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC"><span class="nav-text">9. 约束类型推导</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#10-%E5%B0%8F%E7%BB%93"><span class="nav-text">10. 小结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

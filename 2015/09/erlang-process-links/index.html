@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="learn some erlang上很喜欢的一个章节，主要阐述进程，链接，监视，信号捕获等。花了两天的时间才翻译完(- -)。第一次翻译文章，真心不是件容易的事。但也受益匪浅，平时一晃而过的地方，现在却要字字推敲。这是初稿，后续慢慢校正。原文地址：http:&#x2F;&#x2F;learnyousomeerlang.com&#x2F;errors-and-processes">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【译】进程和错误">
+<meta property="og:url" content="http://wudaijun.com/2015/09/erlang-process-links/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="learn some erlang上很喜欢的一个章节，主要阐述进程，链接，监视，信号捕获等。花了两天的时间才翻译完(- -)。第一次翻译文章，真心不是件容易的事。但也受益匪浅，平时一晃而过的地方，现在却要字字推敲。这是初稿，后续慢慢校正。原文地址：http:&#x2F;&#x2F;learnyousomeerlang.com&#x2F;errors-and-processes">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201509/process_link_exit.png">
+<meta property="article:published_time" content="2015-09-24T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.605Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201509/process_link_exit.png">
+
+<link rel="canonical" href="http://wudaijun.com/2015/09/erlang-process-links/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>【译】进程和错误 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/09/erlang-process-links/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          【译】进程和错误
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-09-25 00:00:00" itemprop="dateCreated datePublished" datetime="2015-09-25T00:00:00+08:00">2015-09-25</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/09/erlang-process-links/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/09/erlang-process-links/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><a target="_blank" rel="noopener" href="http://learnyousomeerlang.com/content">learn some erlang</a>上很喜欢的一个章节，主要阐述进程，链接，监视，信号捕获等。花了两天的时间才翻译完(- -)。第一次翻译文章，真心不是件容易的事。但也受益匪浅，平时一晃而过的地方，现在却要字字推敲。这是初稿，后续慢慢校正。原文地址：<a target="_blank" rel="noopener" href="http://learnyousomeerlang.com/errors-and-processes">http://learnyousomeerlang.com/errors-and-processes</a></p>
+<hr>
+<span id="more"></span>
+<h3 id="链接"><a href="#链接" class="headerlink" title="链接"></a>链接</h3><p>链接(link)是两个进程之间的一种特殊的关系。一旦这种关系建立，如果任意一端的进程发生异常，错误，或退出(参见<a target="_blank" rel="noopener" href="http://learnyousomeerlang.com/errors-and-exceptions">Errors and Exceptions</a>)，链接的另一端进程将一并退出。</p>
+<p>这是个很有用的概念，源自于Erlang的原则”鼓励崩溃”：如果发生错误的进程崩溃了而那些依赖它的进程不受影响，那么之后所有这些依赖进程都需要处理这种依赖缺失。让它们都退出再重启整组进程通常是一个可行的方案。链接正提供了这种方案所需。</p>
+<p>要为两个进程设置链接，Erlang提供了基础函数<code>link/1</code>，它接收一个Pid作为参数。这个函数将在当前进程和Pid进程之前创建一个链接。要取消链接，可使用<code>ulink/1</code>。当链接的一个进程崩溃，将发送一个特殊的消息，该消息描述了哪个进程出于什么原因而发送故障。如果进程正常退出(如正常执行完其主函数)，这类消息将不会被发送。我将首先介绍这个新函数，它是<a target="_blank" rel="noopener" href="http://learnyousomeerlang.com/static/erlang/linkmon.erl">linkmon.erl</a>的一部分：</p>
+<pre><code>myproc() -&gt;
+    timer:sleep(5000),
+    exit(reason).
+</code></pre><p>如果你尝试下面的调用(并且在两次spawn操作之间等待5秒钟)，你就能看到shell只有在两个进程之间设置了链接时，才会因<code>reason</code>而崩溃。</p>
+<pre><code>1&gt; c(linkmon).
+&#123;ok,linkmon&#125;
+2&gt; spawn(fun linkmon:myproc/0).
+&lt;0.52.0&gt;
+3&gt; link(spawn(fun linkmon:myproc/0)).
+true
+** exception error: reason    % 译注：此时Shell Process已经崩溃，只是立即被重启了。通过self()查看前后的Pid是不同的
+</code></pre><p>或者，我们可以用图片来阐述：</p>
+<p><img src="/assets/image/201509/process_link_exit.png" alt=""></p>
+<p>然后，这个<code>&#123;&#39;EXIT&#39;, B, Reason&#125;</code>消息并不能被<code>try ... catch</code>捕获。我们需要通过其它机制来实现这点，我们将在后面看到。</p>
+<p>值得注意的是，链接通常被用来建立一个需要一起退出的进程组：</p>
+<pre><code>chain(0) -&gt;
+    receive
+        _ -&gt; ok
+    after 2000 -&gt;
+        exit(&quot;chain dies here&quot;)
+    end;
+chain(N) -&gt;
+    Pid = spawn(fun() -&gt; chain(N-1) end),
+    link(Pid),
+    receive
+        _ -&gt; ok
+    end.
+</code></pre><p><code>chain</code>函数接收一个整型参数N，创建N个依次相互链接的进程。为了能够将N-1参数传递给下一个<code>chain</code>进程(也就是<code>spawn/1</code>)，我将函数调用放在了一个匿名函数中，因此它不再需要参数。调用<code>spawn(?MODULE, chain, [N-1])</code>能达到同样的效果。</p>
+<p>这里，我将有一条链式的进程组，并且随着它们的后继者退出而退出：</p>
+<pre><code>4&gt; c(linkmon).              
+&#123;ok,linkmon&#125;
+5&gt; link(spawn(linkmon, chain, [3])).
+true
+** exception error: &quot;chain dies here&quot;
+</code></pre><p>正如你所看到的，Shell将从其它进程收到死亡信号。这幅图阐述产生的进程依次链接：</p>
+<pre><code>[shell] == [3] == [2] == [1] == [0]
+[shell] == [3] == [2] == [1] == *dead*
+[shell] == [3] == [2] == *dead*
+[shell] == [3] == *dead*
+[shell] == *dead*
+*dead, error message shown*
+[shell] &lt;-- restarted
+</code></pre><p>在执行<code>linkmon:chain(0)</code>的进程死掉之后，错误消息沿着链接链依次传播，直播Shell进程也因此崩溃。崩溃可能发生在任何已经链接的进程中，因为链接是双向的，你只需要令其中一个死亡，其它进程都会随之死亡。</p>
+<pre><code>注意：如果你想要通过Shell杀掉其它进程，你可以使用`exit/2`函数，如：`exit(Pid, Reason)`。你可以试试。
+
+链接操作无法被累加，如果你在同样的一对进程上调用`link/1`15次，也只会实际存在一个链接，并且只需要一次`unlink/1`调用就可以解除链接。
+</code></pre><p>注意，<code>link(spawn(Function))</code>或<code>link(spawn(M,F,A))</code>是通过多步实现的。在一些情况下，可能进程在被链接之前就死掉了，这样引发了未知行为。出于这个原因，Erlang添加了<code>spawn_link/1-3</code>函数，它和<code>spawn/1-3</code>接收同样的参数，创建一个进程并且相<code>link/1</code>一样建立链接，但是它是一个原子操作(这个操作混合了多个指令，它可能成功或失败，但不会有其它未期望行为)。着通常更安全，并且你也省去了一堆圆括号。</p>
+<h3 id="信号捕获"><a href="#信号捕获" class="headerlink" title="信号捕获"></a>信号捕获</h3><p>现在回到链接和进程故障。错误在进程之间向消息那样传递，这类特殊的消息叫做信号。退出信号是自动作用于进程的”秘密消息”，它会立即杀死进程。</p>
+<p>我之前提到过很多次，为了高可靠性，应用程序需要能够很快的杀掉和重启进程。现在，链接很好地完成了杀死进程的任务，还差进程重启。</p>
+<p>为了重启一个进程，我们首先需要一种方式来知道有进程挂了。这可以通过在链接之上封装一层叫系统进程的概念来完成。系统进程其实就是普通进程，只不过他们可以将退出信号转换为普通消息。在一个运行进程上执行<code>precess_floag(trap_exit, true)</code>可以<br>将其转换为系统进程。没什么比例子更具有说服力了，我们来试试。我首先在一个系统进程上将重演chain例子：</p>
+<pre><code>1&gt; process_flag(trap_exit, true).
+true
+2&gt; spawn_link(fun() -&gt; linkmon:chain(3) end).
+&lt;0.49.0&gt;
+3&gt; receive X -&gt; X end.
+&#123;&#39;EXIT&#39;,&lt;0.49.0&gt;,&quot;chain dies here&quot;&#125;
+</code></pre><p>现在事情变得有趣了，回到我们的图例中，现在发生的是这样：</p>
+<pre><code>[shell] == [3] == [2] == [1] == [0]
+[shell] == [3] == [2] == [1] == *dead*
+[shell] == [3] == [2] == *dead*
+[shell] == [3] == *dead*
+[shell] &lt;-- &#123;&#39;EXIT,Pid,&quot;chain dies here&quot;&#125; -- *dead*
+[shell] &lt;-- still alive!
+</code></pre><p>这就是让我们可以快速重启进程的机制。通过在程序中使用系统进程，创建一个只负责检查进程崩溃并且在任意时间都能重启故障进程的进程变得很简单。我将在下一章真正用到了这项技术时，更详细地阐述这点。</p>
+<p>现在，我想回到我们在<a target="_blank" rel="noopener" href="http://learnyousomeerlang.com/errors-and-exceptions">exceptions</a>这一章看到的异常函数，并且展示它在设置了<code>trap exit</code>的进程上有何种行为。我们首先试验没有系统进程的情况。我连续地在相邻的进程上展示了未被捕获的异常，错误，和退出所造成的结果：</p>
+<pre><code>Exception source:    spawn_link(fun() -&gt; ok end)
+Untrapped Result:    - nothing - 
+Trapped      Result:    &#123;&#39;EXIT&#39;, &lt;0.61.0&gt;, normal&#125;
+注：进程正常退出，没有任何故障。这有点像`catch exit(normal)`的结果，除了在tuple中添加了Pid以知晓是哪个进程退出了。
+
+Exception source:    spawn_link(fun() -&gt; exit(reason) end)
+Untrapped Result:    ** exception exit: reason
+Trapped   Result:    &#123;&#39;EXIT&#39;, &lt;0.55.0&gt;, reason&#125;
+注：进程由于客观原因而终止，在这种情况下，如果没有捕获退出信号(trap exit)，当前进程被终止，否则你将收到以上消息。
+
+Exception source：    spawn_link(fun() -&gt; exit(normal) end)
+Untrapped Result:    - nothing -
+Trapped   Result:    &#123;&#39;EXIT&#39;, &lt;0.58.0&gt;, normal&#125;
+注：这相当于模仿进程正常终止。在一些情况下，你可能希望像正常流程一样杀掉进程，不需要任何异常流出。
+
+Exception source:    spawn_link(fun() -&gt; 1/0 end)
+Untrapped Result:    Error in process &lt;0.44.0&gt; with exit value: &#123;badarith, [&#123;erlang, &#39;/&#39;, [1,0]&#125;]&#125;
+Trapped   Result:    &#123;&#39;EXIT&#39;, &lt;0.52.0&gt;, &#123;badarith, [&#123;erlang, &#39;/&#39;, [1,0]&#125;]&#125;&#125;
+注：&#123;badarith, Reason&#125;不会被try ... catch捕获，继而转换为&#39;EXIT&#39;消息。这一点上来看，它的行为很像exit(reason)，但是有调用堆栈，可以了解到更多的信息。
+
+Exception source:    spawn_link(fun() -&gt; erlang:error(reason) end)
+Untrapped Result:    Error in process &lt;0.47.0&gt; with exit value: &#123;reason, [&#123;erlang, apply, 2&#125;]&#125;
+Trapped   Result:    &#123;&#39;EXIT&#39;, &lt;0.74.0&gt;, &#123;reason, [&#123;erlang, apply, 2&#125;]&#125;&#125;
+注：和1/0的情况很像，这是正常的，erlang:error/1 就是为了让你可以做到这一点。
+
+Exception source:    spawn_link(fun() -&gt; throw(rocks) end)
+Untrapped Result:    Error in process &lt;0.51.0&gt; with exit value: &#123;&#123;nocatch, rocks&#125;, [&#123;erlang, apply, 2&#125;]&#125;
+	Trapped   Result:	&#123;'EXIT', <0.79.0>, &#123;&#123;nocatch, rocks&#125;, [&#123;erlang, apply, 2&#125;]&#125;&#125;
+注：由于抛出的异常没有被try ... catch捕获，它向上转换为一个nocatch错误，然后再转换为`EXIT`消息。如果没有捕获退出信号，当前进程当终止，否则工作正常。
+</code></pre><p>这些都是一般异常。通常情况下：一切都工作得很好。当异常发生：进程死亡，不同的信号被发送出去。</p>
+<p>然后来介绍<code>exit/2</code>，它在Erlang进程中就相当于一把枪。它可以让一个进程杀掉远端另一个进程。以下是一些可能的调用情况：</p>
+<pre><code>Exception source:     exit(self(), normal)
+Untrapped Result:     ** exception exit: normal
+Trapped   Result:     &#123;&#39;EXIT&#39;, &lt;0.31.0&gt;, normal&#125;    注：当没有捕获退出信号时，exit(self(), normal)和exit(normal)作用一样。否则你将收到一条和链接进程挂掉一样格式的消息。(译注：如果忽略了&#123;&#39;EXIT&#39;, self(), normal&#125;，将不能通过exit(self(), normal)的方式杀掉自己。而exit(normal)则可以在任何情况结束自己。)
+
+Exception source:     exit(spawn_link(fun() -&gt; timer:sleep(50000) end), normal)
+Untrapped Result:     - nothing -
+Trapped   Result:     - nothing -
+注：这基本上等于调用exit(Pid, normal)。这条命令基本没有做任何有用的事情，因为进程不能以normal的方式来杀掉远端进程。(译注：通过normal的方式kill远端进程是无效的)。
+
+Exception source:     exit(spawn_link(fun() -&gt; timer:sleep(50000) end), reason)
+Untrapped Result:     ** exception exit: reason
+Trapped   Result:     &#123;&#39;EXIT&#39;, &lt;0.52.0&gt;, reason&#125;
+注：外部进程通过reason终止，看起来效果和在外部进程本身执行exit(reason)一样。
+
+Exception source:     exit(spawn_link(fun() -&gt; timer:sleep(50000) end), kill)
+Untrapped Result:     ** exception exit: killed
+Trapped   Result:     &#123;&#39;EXIT&#39;, &lt;0.58.0&gt;, killed&#125;
+注：出乎意料地，消息在从终止进程传向根源进程(译注：调用spawn的进程)时，发生了变化。根源进程收到killed而不是kill。这是因为kill是一个特殊的信号，更多的细节将在后面提到。
+
+Exception source:     exit(self(), kill)
+Untrapped Result:     ** exception exit: killed
+Trapped   Result:     ** exception exit: killed
+注：看起来这种情况不能够被正确地捕捉到，让我们来检查一下。
+
+Exception source:     spawn_link(fun() -&gt; exit(kill) end)
+Untrapped Result:     ** exception exit: killed
+Trapped   Result:     &#123;&#39;EXIT&#39;, &lt;0.67.0&gt;, kill&#125;
+注：现在看起来更加困惑了。当其它进程通过exit(kill)杀掉自己，并且我们不捕获退出信号，我们自己的进程退出原因为killed。然而，当我们捕获退出信号，却不再是killed。
+</code></pre><p>你可以捕获大部分的退出原因，在有些情况下，你可能想要残忍地谋杀进程：也许它捕获了退出信号，但是陷入了死循环，不能再读取任何消息。kill是一种不能被捕获的特殊信号。这一点确保了任何你想要杀掉的进程都将被终止。通常，当所有其它办法都试尽之后，kill是最后的杀手锏。</p>
+<p>由于kill退出原因不能够捕获，因此当其它进程收到该消息时，需要转换为killed。如果不以这种方式作出改变，所有其它链接到被kill进程的进程都将相继以相同的kill原因被终止，并且继续扩散到与它们链接的进程。随之而来的是一场死亡的雪崩效应。</p>
+<p>这也解释了为什么<code>exit(kill)</code>在被其它链接进程收到时转换成了killed(信号被修改了，这样才不会发生雪崩效应)，但是在本地捕获时(译注：这里我也没搞清楚，本地是指被kill的进程，还是指发出kill命令的进程)，仍然是kill。</p>
+<p>如果你对这一切感到困惑，不用担心，很多程序员都为此困惑。退出信号是一头有趣的野兽。幸运的是，上面已经提及几乎所有特殊情况。一旦你明白了这些，你就可以轻松明白大多数的Erlang并发错误管理机制。</p>
+<h3 id="监视器"><a href="#监视器" class="headerlink" title="监视器"></a>监视器</h3><p>那么，也许谋杀掉一个进程并不是你想要的，也许你并不想将你死亡的消息通告四周，也许你应该更像一个追踪者。在这种情况下，监视器就是你想要的。</p>
+<p>严格意义上说，监视器是一种特殊类型的链接。它与链接有两处不同：</p>
+<ul>
+<li>监视器是单向的</li>
+<li>监视可以被叠加</li>
+</ul>
+<p>监视器可以让一个进程知道另一个进程上发生了什么，但是它们对彼此来说都不是必不可少的。</p>
+<p>另一点，像上面所列出的一样，监视引用是可以被叠加的。乍一看这并没什么用，但是这对写需要统计其它进程情况的库很有帮助。</p>
+<p>正如你所了解的，链接更像是一种组织结构。当你在架构你的应用程序时，你需要决定每个进程做什么，依赖于什么。一些进程将被用来监督其它进程，一些进程不能没有其兄弟进程而独立存在，等等。这种结构通常是固定的，并且事先决定好的。链接对于这种情况是非常适用的，但除此之外，一般并没有使用它的必要。</p>
+<p>但是当你在使用两三个不同的库，而它们都需要知道其它进程存活与否，这种情况会发送什么？如果你尝试使用链接，那么当你尝试解除链接的时候，就会很快遇到问题。因为链接是不可叠加的，一旦取消了其中一个，你就取消了所有(译注：调用库时，仍然是在当前进程)在此之上的链接，也就破坏了其它库的所有假设。这很糟糕。因此你需要可叠加的链接，监视器就是你的解决方案。它们可以被单独地移除。另外，单向特性在库中也是很有用的，因为其它进程不应该关心上述库。</p>
+<p>那么监视器看起来是什么样子？很简单，让我们来设置一个。相关函数是<code>erlang:monitor/2</code>，第一个参数是原子<code>process</code>，第二个参数是进程Pid：</p>
+<pre><code>1&gt; erlang:monitor(process, spawn(fun() -&gt; timer:sleep(500) end)).
+#Ref&lt;0.0.0.77&gt;
+2&gt; flush().
+Shell got &#123;&#39;DOWN&#39;,#Ref&lt;0.0.0.77&gt;,process,&lt;0.63.0&gt;,normal&#125;
+ok
+</code></pre><p>每当你监视的进程挂掉时，你都会收到类似消息。消息格式为<code>&#123;&#39;DOWN&#39;, MonitorReference, process, Pid, Reason&#125;</code>。引用被用来取消监视，记住，监视是可以叠加的，所以可能不止一个。引用允许你以独特的方式追踪它们。还要注意，和链接一样，有一个原子函数可以在创建进程的同时监控它，<code>spawn_monitor/3</code>：</p>
+<pre><code>3&gt; &#123;Pid, Ref&#125; = spawn_monitor(fun() -&gt; receive _ -&gt; exit(boom) end end).
+&#123;&lt;0.73.0&gt;,#Ref&lt;0.0.0.100&gt;&#125;
+4&gt; erlang:demonitor(Ref).
+true
+5&gt; Pid ! die.
+die
+6&gt; flush().
+ok
+</code></pre><p>在这个例子中，我们在进程崩溃之前取消了监视，因此我们没有追踪到它的死亡。函数<code>demonitor/2</code>也存在，并且给出了更多信息，第二个参数是一个选项列表。目前只有两个选项，<code>info</code>和<code>flush</code>：</p>
+<pre><code>7&gt; f().
+ok
+8&gt; &#123;Pid, Ref&#125; = spawn_monitor(fun() -&gt; receive _ -&gt; exit(boom) end end).
+&#123;&lt;0.35.0&gt;,#Ref&lt;0.0.0.35&gt;&#125;
+9&gt; Pid ! die.
+die
+10&gt; erlang:demonitor(Ref, [flush, info]).
+false
+11&gt; flush().
+ok
+</code></pre><p><code>info</code>选项将告诉你在你取消监视的时候监视是否存在，因此第10行返回false。使用<code>flush</code>选项将移除信箱中的<code>DOWN</code>消息(译注：其它消息不受影响)，导致<code>flush()</code>操作没有在当前进程信箱中取得任何消息。</p>
+<h3 id="命名的进程"><a href="#命名的进程" class="headerlink" title="命名的进程"></a>命名的进程</h3><p>理解了链接和监视之后，还有一个问题需要解决。我们使用<a target="_blank" rel="noopener" href="http://learnyousomeerlang.com/static/erlang/linkmon.erl">linkmon.erl</a>模块的以下函数：</p>
+<pre><code>start_critic() -&gt;
+    spawn(?MODULE, critic, []).
+
+judge(Pid, Band, Album) -&gt;
+    Pid ! &#123;self(), &#123;Band, Album&#125;&#125;,
+    receive
+        &#123;Pid, Criticism&#125; -&gt; Criticism
+    after 2000 -&gt;
+        timeout
+    end.
+
+critic() -&gt;
+    receive
+        &#123;From, &#123;&quot;Rage Against the Turing Machine&quot;, &quot;Unit Testify&quot;&#125;&#125; -&gt;
+            From ! &#123;self(), &quot;They are great!&quot;&#125;;
+        &#123;From, &#123;&quot;System of a Downtime&quot;, &quot;Memoize&quot;&#125;&#125; -&gt;
+            From ! &#123;self(), &quot;They&#39;re not Johnny Crash but they&#39;re good.&quot;&#125;;
+        &#123;From, &#123;&quot;Johnny Crash&quot;, &quot;The Token Ring of Fire&quot;&#125;&#125; -&gt;
+            From ! &#123;self(), &quot;Simply incredible.&quot;&#125;;
+        &#123;From, &#123;_Band, _Album&#125;&#125; -&gt;
+            From ! &#123;self(), &quot;They are terrible!&quot;&#125;
+    end,
+    critic().
+</code></pre><p>现在假设我们在商店购买唱片。这里有一些听起来很有趣的专辑，但是我们不是很确定。你决定打电话给你的朋友<code>ctritic</code>(译注：后文称”鉴定家”)。</p>
+<pre><code>1&gt; c(linkmon).                        
+    &#123;ok,linkmon&#125;
+2&gt; Critic = linkmon:start_critic().
+    &lt;0.47.0&gt;
+3&gt; linkmon:judge(Critic, &quot;Genesis&quot;, &quot;The Lambda Lies Down on Broadway&quot;).
+    &quot;They are terrible!&quot;
+</code></pre><p>烦人的是，我们不久后就不能再得到唱片的评论了。为了保持鉴定家一直存活，我们将写一个基本的监督者进程，它的唯一职责就是在鉴定家挂掉之后重启它。</p>
+<pre><code>start_critic2() -&gt;
+    spawn(?MODULE, restarter, []).
+
+restarter() -&gt;
+    process_flag(trap_exit, true),
+    Pid = spawn_link(?MODULE, critic, []),
+    receive
+        &#123;&#39;EXIT&#39;, Pid, normal&#125; -&gt; % not a crash
+            ok;
+        &#123;&#39;EXIT&#39;, Pid, shutdown&#125; -&gt; % manual termination, not a crash
+            ok;
+        &#123;&#39;EXIT&#39;, Pid, _&#125; -&gt;
+            restarter()
+    end.
+</code></pre><p>这里，重启者就是它自己持有的进程。它会轮流启动鉴定家进程，并且一旦它异常退出，<code>restarter/0</code>将循环创建新的鉴定家。注意我添加了<code>&#123;&#39;EXIT&#39;, Pid, shudown&#125;</code>条目，这是为了让我们在必要时，可以手动杀掉鉴定家进程。</p>
+<p>我们这个方法的问题是，我们没有办法获得鉴定家进程的Pid，因此我们不能调用它并获得它的评论。Erlang解决这种问题的一个解决方案是为进程取一个名字。</p>
+<p>为进程取名字的作用是允许你用一个原子代替不可预测的Pid。之后这个原子可以像Pid一样用来发送消息。<code>erlang:register/2</code>被用来为进程取名。如果进程死亡，它会自动失去它的名字，你也可以使用<code>unregister/1</code>手动取消名字。你可以通过<code>register/0</code>获得一个所有注册了名字的进程列表，或者通过shell命令<code>reg()</code>获得更为详尽的信息。现在我们可以像下面这样重写<code>restarter/0</code>函数：</p>
+<pre><code>restarter() -&gt;
+    process_flag(trap_exit, true),
+    Pid = spawn_link(?MODULE, critic, []),
+    register(critic, Pid),
+    receive
+        &#123;&#39;EXIT&#39;, Pid, normal&#125; -&gt; % not a crash
+            ok;
+        &#123;&#39;EXIT&#39;, Pid, shutdown&#125; -&gt; % manual termination, not a crash
+            ok;
+        &#123;&#39;EXIT&#39;, Pid, _&#125; -&gt;
+            restarter()
+    end.
+</code></pre><p>正如你所看到的，不管鉴定家进程的Pid是什么，<code>register/2</code>将总是为其取名为<code>critic</code>。我们还需要做的是从抽象函数中替换需要传递Pid的地方。让我们试试：</p>
+<pre><code>judge2(Band, Album) -&gt;
+    critic ! &#123;self(), &#123;Band, Album&#125;&#125;,
+    Pid = whereis(critic),
+    receive
+        &#123;Pid, Criticism&#125; -&gt; Criticism
+    after 2000 -&gt;
+        timeout
+    end.
+</code></pre><p>这里，为了能在<code>receive</code>语句中进行模式匹配，<code>Pid = whereis(critic)</code>被用来查找鉴定家进程的Pid。我们需要这个Pid来确定我们能匹配到正确的消息(在我们说话的时候，它的信箱可能有500条消息！)。这可能是问题的来源。上面的代码假设了鉴定家进程在函数的前两行将保持一致。然而，下面的情况是完全有可能发生的：</p>
+<pre><code>1. critic ! Message
+                                   2. critic receives
+                                   3. critic replies
+                                   4. critic dies
+5. whereis fails
+                                6. critic is restarted
+7. code crashes
+
+当然，还有一种情况可能发生：
+
+1. critic ! Message
+                                   2. critic receives
+                                   3. critic replies
+                                  4. critic dies
+                                  5. critic is restarted
+6. whereis picks up
+   wrong pid
+7. message never matches
+</code></pre><p>如果我们不处理好的话，在一个进程中出错将可能导致另一个进程错误。在这种情况下，原子<code>critic</code>代表的值可能被多个进程看到。这就说所谓的共享状态。这里的问题是，<code>critic</code>的值可以在几乎同一时间被多个进程获取和修改，导致不一致的信息和软件错误。这类情况的通用术语为<strong>竞态</strong>。竞态是特别危险的，因为其依赖于事件时序。在几乎所有的并发和并行语言中，这种时序依赖于很多不可预测的因素，比如处理器有多忙，进程执行到哪了，以及你的程序在处理哪些数据。</p>
+<pre><code>别麻醉了自己
+
+你可能听说过Erlang通常是没有竞态或死锁的，这令并行代码更安全。这在很多情况下都是对的，但是永远不要认为你的代码真的那样安全。命名进程只是并行代码可能出错的多种情况之一。
+
+其它例子还包括计算机访问文件(并修改它们)，多个不同的进程更新相同的数据库记录，等等。
+</code></pre><p>对我们来说幸运的是，如果我们不假设命名进程保持不变的话，修复上面的代码是比较容易的。取而代之地，我们将使用引用(通过<code>make_ref()</code>创建)作为一个唯一的值来标识消息。我们需要重写<code>critic/0</code>为<code>critic/2</code>，<code>judge/3</code>为<code>judge2/2</code>：</p>
+<pre><code>judge2(Band, Album) -&gt;
+    Ref = make_ref(),
+critic ! &#123;self(), Ref, &#123;Band, Album&#125;&#125;,
+    receive
+        &#123;Ref, Criticism&#125; -&gt; Criticism
+    after 2000 -&gt;
+        timeout
+    end.
+
+critic2() -&gt;
+    receive
+        &#123;From, Ref, &#123;&quot;Rage Against the Turing Machine&quot;, &quot;Unit Testify&quot;&#125;&#125; -&gt;
+            From ! &#123;Ref, &quot;They are great!&quot;&#125;;
+        &#123;From, Ref, &#123;&quot;System of a Downtime&quot;, &quot;Memoize&quot;&#125;&#125; -&gt;
+            From ! &#123;Ref, &quot;They&#39;re not Johnny Crash but they&#39;re good.&quot;&#125;;
+        &#123;From, Ref, &#123;&quot;Johnny Crash&quot;, &quot;The Token Ring of Fire&quot;&#125;&#125; -&gt;
+            From ! &#123;Ref, &quot;Simply incredible.&quot;&#125;;
+        &#123;From, Ref, &#123;_Band, _Album&#125;&#125; -&gt;
+            From ! &#123;Ref, &quot;They are terrible!&quot;&#125;
+    end,
+    critic2().
+</code></pre><p>并且随之改变<code>restarter/0</code>，让它通过<code>critic2/0</code>而不是<code>critic/0</code>来产生新进程。其它函数应该能保持正常工作。用户并不能察觉到变化。好吧，他们能察觉到，因为我们改变了函数名和函数参数个数，但是他们并不知道实现细节的改变和为什么这些改变如此重要。他们能看到的是他们的代码更简单了，并且不在需要Pid来调用函数了：</p>
+<pre><code>6&gt; c(linkmon).
+&#123;ok,linkmon&#125;
+7&gt; linkmon:start_critic2().
+&lt;0.55.0&gt;
+8&gt; linkmon:judge2(&quot;The Doors&quot;, &quot;Light my Firewall&quot;).
+&quot;They are terrible!&quot;
+9&gt; exit(whereis(critic), kill).
+true
+10&gt; linkmon:judge2(&quot;Rage Against the Turing Machine&quot;, &quot;Unit Testify&quot;).    
+&quot;They are great!&quot;
+</code></pre><p>现在，即使我们杀掉了critic，马上会有一个新的回来解决我们的问题。这就是命名进程的作用。如果你试图通过没有注册的进程调用<code>linkmon:judge2/2</code>，一个<code>bad argument</code>错误将会被函数内的<code>!</code>操作符抛出，确保依赖于命名进程的进程，将不能在没有命名进程的情况下而运行。</p>
+<pre><code>注意：如果你还记得之前的文章，原子可用的数量有限(尽管很高)。你不应该动态地创建原子。这意味着命名进程应该保留给一些虚拟机上唯一的伴随整个应用程序周期的重要的服务。
+
+如果你需要为进程命名，但是它们不是常驻进程或者它们都不是虚拟机上唯一的，那可能意味着它们需要表示为一组，链接它们，并在它们崩溃后重启可能是一个理智的选择，而不是尝试为他们动态命名。
+</code></pre>
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/09/erlang-process-links/" title="【译】进程和错误">http://wudaijun.com/2015/09/erlang-process-links/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/09/erlang-ranch/" rel="prev" title="ranch">
+      <i class="fa fa-chevron-left"></i> ranch
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/10/unity-mecanim/" rel="next" title="Unity 动画系统小记">
+      Unity 动画系统小记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%93%BE%E6%8E%A5"><span class="nav-text">链接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7%E6%8D%95%E8%8E%B7"><span class="nav-text">信号捕获</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%91%E8%A7%86%E5%99%A8"><span class="nav-text">监视器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%91%BD%E5%90%8D%E7%9A%84%E8%BF%9B%E7%A8%8B"><span class="nav-text">命名的进程</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

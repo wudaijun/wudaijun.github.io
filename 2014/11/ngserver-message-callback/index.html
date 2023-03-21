@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="在前面Service框架的介绍中，提到在GameService的ProcessMsg(UserMessage*)和ProcessMsg(InsideMessage*)中，都完成了消息的回调处理。消息响应函数的注册是在服务初始化(Init())中完成的。需要注册和回调的消息有InsideMessage和UserMessage，对于InsideMessage，响应函数只有一种形式：即为响应服务的成员函">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NGServer 消息的注册与回调">
+<meta property="og:url" content="http://wudaijun.com/2014/11/ngserver-message-callback/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="在前面Service框架的介绍中，提到在GameService的ProcessMsg(UserMessage*)和ProcessMsg(InsideMessage*)中，都完成了消息的回调处理。消息响应函数的注册是在服务初始化(Init())中完成的。需要注册和回调的消息有InsideMessage和UserMessage，对于InsideMessage，响应函数只有一种形式：即为响应服务的成员函">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2014-11-05T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.601Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="ngserver">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2014/11/ngserver-message-callback/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>NGServer 消息的注册与回调 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/11/ngserver-message-callback/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          NGServer 消息的注册与回调
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2014-11-06 00:00:00" itemprop="dateCreated datePublished" datetime="2014-11-06T00:00:00+08:00">2014-11-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2014/11/ngserver-message-callback/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2014/11/ngserver-message-callback/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在前面Service框架的介绍中，提到在GameService的<code>ProcessMsg(UserMessage*)</code>和<code>ProcessMsg(InsideMessage*)</code>中，都完成了消息的回调处理。消息响应函数的注册是在服务初始化(Init())中完成的。需要注册和回调的消息有InsideMessage和UserMessage，对于InsideMessage，响应函数只有一种形式：即为响应服务的成员函数。而对于UserMessage，由于UserMessage有Player指针，响应函数则会有多种形式：</p>
+<ol>
+<li>作为注册Service的成员函数，并且将Player作为第一个参数。这常在登录和注册流程中发生，如 <code>LoginService::OnPlayerLogin(Player&amp; player, const C2S_Login&amp; msg)</code>。 登录和注册的验证流程在LoginService中统一处理。</li>
+<li>作为Player的成员函数，当Player登录成功后，此时客户端与服务器进行的交互都是基于业务逻辑的，因此应在Player的成员函数处理。如 <code>Player::OnEnterGate(const C2S_EnterGate&amp; msg)</code></li>
+<li>其它响应函数，如全局函数。</li>
+</ol>
+<span id="more"></span>
+<p>事实上，基于UserMessage中的Player指针，我们可以实现上面的调用方式，现在就需要通过一种或多种的注册回调机制，来实现对各种响应函数形式的注册和回调。</p>
+<h2 id="使用消息注册与回调"><a href="#使用消息注册与回调" class="headerlink" title="使用消息注册与回调"></a>使用消息注册与回调</h2><p>消息的注册通过指定消息ID和消息响应函数来完成，注册函数主要有如下形式：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">bool MapService::Init()</span><br><span class="line">&#123;</span><br><span class="line">	&#x2F;&#x2F; 注册用户消息 响应函数原型： void MapService::OnWorldChat(Player* player, C2S_WorldChat&amp; msg)</span><br><span class="line">	RegistPlayer(MsgId::kC2S_WorldChat, &amp;MapService::OnWorldChat, this);</span><br><span class="line">	&#x2F;&#x2F; 注册用户消息 响应函数原型： void Player::OnEnterGate(const C2S_EnterGate&amp; msg)</span><br><span class="line">	RegistPlayer(yuedong::protocol::kC2S_EnterGate, &amp;Player::OnEnterGate);</span><br><span class="line">	&#x2F;&#x2F; 注册用户消息 响应函数原型：void Test(Player* player, Test);</span><br><span class="line">	</span><br><span class="line">	&#x2F;&#x2F; 注册响应服务之间的内部消息</span><br><span class="line">	RegistInside(SSMsgId::kSS_PlayerLogin, &amp;MapService::OnPlayerLogin, this);</span><br><span class="line">	return true;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面注册了三种主要消息，通过RegistPlayer注册玩家消息，通过RegistInside注册内部消息。RegistPlayer通过模板推导和函数重载完成了三种响应函数原型的注册。下面以RegistPlayer为例，讲述消息注册机的内部机制：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">GameService</span> :</span> <span class="keyword">public</span> Service</span><br><span class="line">&#123;</span><br><span class="line"><span class="comment">// ....</span></span><br><span class="line"><span class="comment">// 消息注册</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="comment">// 注册第一个参数为Player*的回调函数 </span></span><br><span class="line">	<span class="comment">// 当 F 模板推导为全局函数时，第一个参数为Player*  </span></span><br><span class="line">	<span class="comment">//	如 void Test(Player*, C2S_Test&amp;)</span></span><br><span class="line">	<span class="comment">// 当 F 模板推导为Player成员函数时，将解析出来的Player*直接作为this指针调用该成员函数</span></span><br><span class="line">	<span class="comment">//  如 Player::OnEnterGate(C2S_EnterGate&amp;)</span></span><br><span class="line">	<span class="keyword">template</span>&lt;<span class="keyword">typename</span> MsgEnum, <span class="keyword">typename</span> F&gt;</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">RegistPlayer</span><span class="params">(MsgEnum msgid, F f)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">	    _calltype[(<span class="keyword">uint16_t</span>)msgid] = cbPlayerAgent;</span><br><span class="line">	    _player_delegate.Regist((<span class="keyword">uint16_t</span>)msgid, f);</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// 注册第一个参数为Player*的MapService成员函数 </span></span><br><span class="line">	<span class="comment">//	如MapService::OnWorldChat(Player*, C2S_WorldChat&amp;)</span></span><br><span class="line">	<span class="keyword">template</span>&lt;<span class="keyword">typename</span> MsgEnum, <span class="keyword">typename</span> F, <span class="keyword">typename</span> ObjT&gt;</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">RegistPlayer</span><span class="params">(MsgEnum msgid, F f, ObjT* obj)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">	    _calltype[(<span class="keyword">uint16_t</span>)msgid] = cbPlayerAgent;</span><br><span class="line">	    _player_delegate.Regist((<span class="keyword">uint16_t</span>)msgid, f, obj);</span><br><span class="line">	&#125;</span><br><span class="line"><span class="comment">//....</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">	DelegateManager&lt;<span class="built_in">std</span>::<span class="built_in">pair</span>&lt;Player*, ProtocolReader&amp;&gt;&gt; _player_delegate;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>在<code>bool MapService::ProcessMsg(UserMessage* msg)</code>中回调响应函数：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">MapService::ProcessMsg</span><span class="params">(UserMessage* msg)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    UserMessageT&lt;PlayerPtr&gt;* msgT = <span class="keyword">dynamic_cast</span>&lt;UserMessageT&lt;PlayerPtr&gt;*&gt;(msg);</span><br><span class="line">    <span class="keyword">if</span> (msgT == <span class="literal">nullptr</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">    PlayerPtr player = msgT-&gt;GetClient();</span><br><span class="line">    <span class="keyword">int32_t</span> sid = player-&gt;GetSid();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 不是发送给当前服务的消息 转发</span></span><br><span class="line">    <span class="keyword">if</span> (sid != _sid)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> ServiceManager::Send(sid, msg);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 客户端断开连接</span></span><br><span class="line">    <span class="keyword">if</span> (msg-&gt;_len == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        player-&gt;Offline();</span><br><span class="line">        _session_manager-&gt;RemoveSession(player-&gt;GetConnId());</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function">ProtocolReader <span class="title">reader</span><span class="params">(msg-&gt;_data, msg-&gt;_len)</span></span>;</span><br><span class="line">    <span class="keyword">uint16_t</span> msgid = reader.ReadMsgId();</span><br><span class="line">    CallBackType cbType = _calltype[msgid];</span><br><span class="line">    <span class="keyword">switch</span> (cbType)</span><br><span class="line">    &#123;</span><br><span class="line">    <span class="keyword">case</span> cbPlayerDelegate:</span><br><span class="line">        <span class="keyword">auto</span> arg = <span class="built_in">std</span>::<span class="built_in">pair</span>&lt;Player*, ProtocolReader&amp;&gt;(player.get(), reader);</span><br><span class="line">        _player_delegate.Call(msgid, arg);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//case ...</span></span><br><span class="line">	<span class="comment">//	break;</span></span><br><span class="line">	</span><br><span class="line">	<span class="keyword">default</span>:</span><br><span class="line">		<span class="keyword">break</span>; </span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在<code>bool MapService::ProcessMsg(UserMessage* msg)</code>中，取出UserMessage中的PlayerPtr指针，将其与ProtocolReader一起打包成std::pair，而事实上，这个pair才是最终的解码器，在这一点上，也可以专门写一个UserMessageReader类来读取UserMessage的Player指针，以及消息数据。后面也会向这方面改进。可以注意到这个pair也是 <code>_player_delegate</code>的DelegateManager模板参数,下面介绍DelegateManager.</p>
+<h4 id="DelegateManager"><a href="#DelegateManager" class="headerlink" title="DelegateManager"></a>DelegateManager</h4><p>DelegateManager是一个模板类，它第一个模板参数Decoder，是解码器</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// AutoCall.h</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Decoder, <span class="keyword">size_t</span> Capacity = <span class="number">65535</span>&gt;</span><br><span class="line">class DelegateManager</span><br><span class="line">&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">typename</span> IDelegate&lt;Decoder&gt;* DelegatePtr;</span><br><span class="line">    DelegatePtr _caller[Capacity];</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    DelegateManager()</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">memset</span>(_caller, <span class="number">0</span>, <span class="keyword">sizeof</span>(_caller));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ~DelegateManager()</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">size_t</span> i = <span class="number">0</span>; i &lt; Capacity; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span> (_caller[i] != <span class="literal">nullptr</span>)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">delete</span> _caller[i];</span><br><span class="line">                _caller[i] = <span class="literal">nullptr</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">Call</span><span class="params">(<span class="keyword">uint16_t</span> id, Decoder&amp; s)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (_caller[id] != <span class="literal">nullptr</span>)</span><br><span class="line">            <span class="keyword">return</span> _caller[id]-&gt;Call(s);</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 内部注册接口</span></span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, DelegatePtr dp)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (_caller[id] != <span class="literal">nullptr</span>)</span><br><span class="line">            <span class="keyword">delete</span> _caller[id];</span><br><span class="line"></span><br><span class="line">        _caller[id] = dp;</span><br><span class="line">        <span class="keyword">return</span> dp;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="comment">// 外部具体注册方式 省略了函数原型不完全匹配时的注册接口 此时参数类型需要显式给出 在调用时隐含转换</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="comment">// 完全匹配 全局函数</span></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> R&gt;</span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, R(*f)())</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> Regist(id, CreateDelegate0&lt;Decoder&gt;(f));;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> R, <span class="keyword">typename</span> T1&gt;</span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, R(*f)(T1))</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> Regist(id, CreateDelegate1&lt;Decoder, T1&gt;(f));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> R, <span class="keyword">typename</span> T1, <span class="keyword">typename</span> T2&gt;</span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, R(*f)(T1, T2))</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> Regist(id, CreateDelegate2&lt;Decoder, T1, T2&gt;(f));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 完全匹配 成员函数</span></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> R, <span class="keyword">typename</span> ObjT&gt;</span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, R(ObjT::*f)(), ObjT* obj)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">std</span>::function&lt;R()&gt; bindf = <span class="built_in">std</span>::bind(f, obj);</span><br><span class="line">        <span class="keyword">return</span> Regist(id, CreateDelegate0&lt;Decoder&gt;(bindf));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> R, <span class="keyword">typename</span> ObjT, <span class="keyword">typename</span> T1&gt;</span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, R(ObjT::*f)(T1), ObjT* obj)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">std</span>::function&lt;R(T1)&gt; bindf = <span class="built_in">std</span>::bind(f, obj, <span class="built_in">std</span>::placeholders::_1);</span><br><span class="line">        <span class="keyword">return</span> Regist(id, CreateDelegate1&lt;Decoder, T1&gt;(bindf));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> R, <span class="keyword">typename</span> ObjT, <span class="keyword">typename</span> T1, <span class="keyword">typename</span> T2&gt;</span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, R(ObjT::*f)(T1, T2), ObjT* obj)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">std</span>::function&lt;R(T1, T2)&gt; bindf = <span class="built_in">std</span>::bind(f, obj, <span class="built_in">std</span>::placeholders::_1, <span class="built_in">std</span>::placeholders::_2);</span><br><span class="line">        <span class="keyword">return</span> Regist(id, CreateDelegate2&lt;Decoder, T1, T2&gt;(bindf));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 完全匹配  成员函数  该成员函数的this指针从Decoder中读取</span></span><br><span class="line">    <span class="comment">// 这里必须要使用bind函数 预留出this指针的位置</span></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> R, <span class="keyword">typename</span> ObjT&gt;</span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, R(ObjT::*f)())</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> bindf = <span class="built_in">std</span>::bind(f, placeholders::_1);</span><br><span class="line">        <span class="keyword">return</span> Regist(id, CreateDelegate1&lt;Decoder, ObjT*&gt;(bindf));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> R, <span class="keyword">typename</span> ObjT, <span class="keyword">typename</span> T1&gt;</span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, R(ObjT::*f)(T1))</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> bindf = <span class="built_in">std</span>::bind(f, placeholders::_1, placeholders::_2);</span><br><span class="line">        <span class="keyword">return</span> Regist(id, CreateDelegate2&lt;Decoder, ObjT*, T1&gt;(bindf));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> R, <span class="keyword">typename</span> ObjT, <span class="keyword">typename</span> T1, <span class="keyword">typename</span> T2&gt;</span><br><span class="line">    <span class="function">DelegatePtr <span class="title">Regist</span><span class="params">(<span class="keyword">uint16_t</span> id, R(ObjT::*f)(T1, T2))</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> bindf = <span class="built_in">std</span>::bind(f, placeholders::_1, placeholders::_2, placeholders::_3);</span><br><span class="line">        <span class="keyword">return</span> Regist(id, CreateDelegate3&lt;Decoder, ObjT*, T1, T2&gt;(bindf));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>DelegateManager管理所有消息ID到消息响应的映射，并提供注册和回调结果。<br>Regist的多种重载识别出需要创建的Delegate对象，由DelegateManager统一管理。</p>
+<p>注册主要通过Regist函数的重载和模板推导来进行三种注册方式(实际上不止三种)：全局函数，Service成员函数，Player成员函数。</p>
+<p>DelegateManager中，通过Delegate类来代理响应函数。CreateDelegate用于创建响应函数对应的Delegate：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// AutoCall.h</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Decoder, <span class="keyword">typename</span> FuncT&gt;</span><br><span class="line"><span class="function">IDelegate&lt;Decoder&gt;* <span class="title">CreateDelegate0</span><span class="params">(FuncT f)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> Delegate0&lt;Decoder, FuncT&gt;(f);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Decoder, <span class="keyword">typename</span> T1, <span class="keyword">typename</span> FuncT&gt;</span><br><span class="line"><span class="function">IDelegate&lt;Decoder&gt;* <span class="title">CreateDelegate1</span><span class="params">(FuncT f)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> Delegate1&lt;Decoder, T1, FuncT&gt;(f);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Decoder, <span class="keyword">typename</span> T1, <span class="keyword">typename</span> T2, <span class="keyword">typename</span> FuncT&gt;</span><br><span class="line"><span class="function">IDelegate&lt;Decoder&gt;* <span class="title">CreateDelegate2</span><span class="params">(FuncT f)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> Delegate2&lt;Decoder, T1, T2, FuncT&gt;(f);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最终的Delegate，需要保存回调函数，并提供调用接口Call:</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Decoder&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDelegate</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">virtual</span> ~IDelegate()&#123;&#125;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="title">Call</span><span class="params">(Decoder&amp; s)</span> </span>= <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/***********************************************************/</span></span><br><span class="line"><span class="comment">/*    默认的Delegate，所有参数都通过Decode全局函数解码得出    */</span></span><br><span class="line"><span class="comment">/***********************************************************/</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 0个参数的响应函数</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Decoder, <span class="keyword">typename</span> FuncT&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegate0</span> :</span> <span class="keyword">public</span> IDelegate &lt; Decoder &gt;</span><br><span class="line">&#123;</span><br><span class="line">    FuncT _func;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    Delegate0(FuncT func) :</span><br><span class="line">        _func(func)&#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">Call</span><span class="params">(Decoder&amp; s)</span> <span class="keyword">override</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        _func();</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 1个参数的响应函数</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Decoder, <span class="keyword">typename</span> T1, <span class="keyword">typename</span> FuncT&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegate1</span> :</span> <span class="keyword">public</span> IDelegate &lt; Decoder &gt;</span><br><span class="line">&#123;</span><br><span class="line">    FuncT _func;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    Delegate1(FuncT func) :</span><br><span class="line">        _func(func)&#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">Call</span><span class="params">(Decoder&amp; s)</span> <span class="keyword">override</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">std</span>::remove_const &lt; <span class="built_in">std</span>::remove_reference&lt;T1&gt;::type &gt;::type t1;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (!Decode(s, t1))</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">        _func(t1);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2个参数</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Decoder, <span class="keyword">typename</span> T1, <span class="keyword">typename</span> T2, <span class="keyword">typename</span> FuncT&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegate2</span> :</span> <span class="keyword">public</span> IDelegate &lt; Decoder &gt;</span><br><span class="line">&#123;</span><br><span class="line">    FuncT _func;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    Delegate2(FuncT func) :</span><br><span class="line">        _func(func)&#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">Call</span><span class="params">(Decoder&amp; s)</span> <span class="keyword">override</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">std</span>::remove_const&lt; <span class="built_in">std</span>::remove_reference&lt;T1&gt;::type &gt;::type t1;</span><br><span class="line">        <span class="built_in">std</span>::remove_const&lt; <span class="built_in">std</span>::remove_reference&lt;T2&gt;::type &gt;::type t2;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (!Decode(s, t1))</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        <span class="keyword">if</span> (!Decode(s, t2))</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">        _func(t1, t2);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>Delegate保存回调函数，并且提供调用接口，调用接口Call仅有一个参数，就是解码器，也是DelegateManager的模板参数。对于我们的<code>_player_delegate</code>来说，就是<code>pair&lt;Player*, ProtocolReader&amp;&gt;</code>。而上面的Delegate类是默认实现，通过Decode全局函数完成对Decoder的解码，在前面消息编解码中提到过，ProtocolReader实现了这样一个接口。而对于我们的pair，需要特例化，方式一是特例化Decode，方式二是特例化Delegate类。我们采用方法二：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// AutoCallSpecial.h</span></span><br><span class="line"><span class="comment">/*******************************************************************************************************/</span></span><br><span class="line"><span class="comment">/*   特例化Decoder: std::pair&lt;T1, ProtocolReader&amp;&gt; T1是响应函数的第一个参数 其他参数从ProtocolReader中读取  */</span></span><br><span class="line"><span class="comment">/*******************************************************************************************************/</span></span><br><span class="line"><span class="comment">// 带一个参数 T1</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T1, <span class="keyword">typename</span> FuncT&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegate1</span>&lt;</span><span class="built_in">std</span>::<span class="built_in">pair</span>&lt;T1, ProtocolReader&amp;&gt;, T1, FuncT&gt; : <span class="keyword">public</span> IDelegate &lt; <span class="built_in">std</span>::<span class="built_in">pair</span>&lt;T1, ProtocolReader&amp;&gt; &gt;</span><br><span class="line">&#123;</span><br><span class="line">    FuncT _func;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    Delegate1(FuncT f) :</span><br><span class="line">        _func(f)&#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">Call</span><span class="params">(<span class="built_in">std</span>::<span class="built_in">pair</span>&lt;T1, ProtocolReader&amp;&gt;&amp; s)</span> <span class="keyword">override</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        _func(s.first);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 带两个参数  第一个参数为T1 第二个参数从ProtocolReader中读取</span></span><br><span class="line"><span class="keyword">template</span> &lt; <span class="keyword">typename</span> T1, <span class="keyword">typename</span> T2, <span class="keyword">typename</span> FuncT &gt; </span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Delegate2</span>&lt;</span><span class="built_in">std</span>::<span class="built_in">pair</span>&lt;T1, ProtocolReader&amp;&gt;, T1, T2, FuncT&gt; : <span class="keyword">public</span> IDelegate &lt; <span class="built_in">std</span>::<span class="built_in">pair</span>&lt;T1, ProtocolReader&amp;&gt; &gt; </span><br><span class="line">&#123;</span><br><span class="line">    FuncT _func;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    Delegate2(FuncT f) :</span><br><span class="line">        _func(f)&#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">Call</span><span class="params">(<span class="built_in">std</span>::<span class="built_in">pair</span>&lt;T1, ProtocolReader&amp;&gt;&amp; s)</span> <span class="keyword">override</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">std</span>::remove_const&lt; <span class="built_in">std</span>::remove_reference&lt;T2&gt;::type &gt;::type t2;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (!Decode(s.second, t2))</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">        _func(s.first, t2);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>如果通过一个UserMessageReader来对UserMessage特殊解码的话，便可以直接特例化Decode，更加简便一些。</p>
+<p>AutoCallSpecial.h中还对InsideMessage完成了特例化，而消息的回调方式也不仅限于cbPlayerDelegate一种。添加一种自定义的回调方式也比较简单：</p>
+<ol>
+<li>先自定义一个解码器，将所需参数包含进去，解码器可以是个自定义类，也可以是个容器或其它，将其作为DelegateManager的模板参数</li>
+<li>在CallBackType中添加该回调类型</li>
+<li>在对应ProcessMsg中，组建自己的解码器，调用<code>DelegateManager::Call</code>函数</li>
+<li>DelegateManager会最终调到 <code>Delegate::Call</code> 因此如果有必要，需要对Delegate进行特例化，保证使用你的解码器能正确解码，或者直接使用默认Delegate类中的Decode方式，特例化全局Decode函数。</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2014/11/ngserver-message-callback/" title="NGServer 消息的注册与回调">http://wudaijun.com/2014/11/ngserver-message-callback/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/ngserver/" rel="tag"><i class="fa fa-tag"></i> ngserver</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2014/11/ngserver-message-encoder/" rel="prev" title="NGServer 消息的编解码">
+      <i class="fa fa-chevron-left"></i> NGServer 消息的编解码
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2014/11/cpp-constructor/" rel="next" title="C++ 构造语义">
+      C++ 构造语义 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8%E6%B6%88%E6%81%AF%E6%B3%A8%E5%86%8C%E4%B8%8E%E5%9B%9E%E8%B0%83"><span class="nav-text">使用消息注册与回调</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#DelegateManager"><span class="nav-text">DelegateManager</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

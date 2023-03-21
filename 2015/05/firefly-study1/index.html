@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. 简介firefly是一款python开发的开源游戏服务器框架，基于分布式，底层使用twisted。 firefly采用多进程方案，节点之间通过网络通信(当然你也可以创建单节点，独立完成大部分功能)，具有很好的可扩展性。 二. 使用作为一个Python初学者，下面只谈一些自己对firefly的一些肤浅认识。上面的途径可以获取到更完整和深入的资料。 下面的Demo的源代码可在我的Github上下">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Firefly 学习(一)">
+<meta property="og:url" content="http://wudaijun.com/2015/05/firefly-study1/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. 简介firefly是一款python开发的开源游戏服务器框架，基于分布式，底层使用twisted。 firefly采用多进程方案，节点之间通过网络通信(当然你也可以创建单节点，独立完成大部分功能)，具有很好的可扩展性。 二. 使用作为一个Python初学者，下面只谈一些自己对firefly的一些肤浅认识。上面的途径可以获取到更完整和深入的资料。 下面的Demo的源代码可在我的Github上下">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201505/firefly_nodes.png">
+<meta property="article:published_time" content="2015-05-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.603Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="firefly">
+<meta property="article:tag" content="python">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201505/firefly_nodes.png">
+
+<link rel="canonical" href="http://wudaijun.com/2015/05/firefly-study1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Firefly 学习(一) | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/05/firefly-study1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Firefly 学习(一)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-05-20 00:00:00" itemprop="dateCreated datePublished" datetime="2015-05-20T00:00:00+08:00">2015-05-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/05/firefly-study1/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/05/firefly-study1/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一-简介"><a href="#一-简介" class="headerlink" title="一. 简介"></a>一. 简介</h2><p><a target="_blank" rel="noopener" href="https://github.com/9miao/firefly">firefly</a>是一款python开发的开源游戏服务器框架，基于分布式，底层使用twisted。</p>
+<p>firefly采用多进程方案，节点之间通过网络通信(当然你也可以创建单节点，独立完成大部分功能)，具有很好的可扩展性。</p>
+<h2 id="二-使用"><a href="#二-使用" class="headerlink" title="二. 使用"></a>二. 使用</h2><p>作为一个Python初学者，下面只谈一些自己对firefly的一些肤浅认识。上面的途径可以获取到更完整和深入的资料。</p>
+<p>下面的Demo的源代码可在<a href="demo_github">我的Github</a>上下载。</p>
+<h3 id="1-流程"><a href="#1-流程" class="headerlink" title="1. 流程"></a>1. 流程</h3><p>总体上看，如果你要使用firefly，所需要做的事就是：</p>
+<ul>
+<li>通过配置文件定义所有节点，节点配置，节点实现文件，以及节点和节点之间的联系(通过网络端口)</li>
+<li>定义节点实现文件</li>
+<li>启动主节点</li>
+</ul>
+<p>firefly通过配置文件来设定你的分布式服务器，然后你只需创建和启动master节点，master服务器会启动配置文件中的各个子节点：</p>
+<span id="more"></span>
+<pre><code>if __name__==&quot;__main__&quot;:
+    from firefly.master.master import Master
+    master = Master()
+    master.config(&#39;config.json&#39;,&#39;appmain.py&#39;)
+    master.start()
+</code></pre><p>config.json定义你的分布式服务，appmain.py是你的子节点公共入口，master节点已在master.start()中启动。</p>
+<h3 id="2-配置文件"><a href="#2-配置文件" class="headerlink" title="2. 配置文件"></a>2. 配置文件</h3><p>下面是一份 config.json 实例，该配置文件配置了一个无盘节点，即没有使用数据库:</p>
+<pre><code>&#123;
+&quot;master&quot;:&#123;&quot;rootport&quot;:9999,&quot;webport&quot;:9998&#125;,
+&quot;servers&quot;:&#123;
+    &quot;gate&quot;:&#123;&quot;name&quot;:&quot;gate&quot;, &quot;rootport&quot;:10000, &quot;app&quot;:&quot;app.gateserver&quot;&#125;,
+    &quot;net&quot;:&#123;&quot;name&quot;:&quot;net&quot;, &quot;netport&quot;:10001, &quot;name&quot;:&quot;net&quot;, &quot;remoteport&quot;:[&#123;&quot;rootport&quot;:10000, &quot;rootname&quot;:&quot;gate&quot;&#125;], &quot;app&quot;:&quot;app.netserver&quot;&#125;,
+    &quot;game1&quot;:&#123;&quot;name&quot;:&quot;game1&quot;, &quot;remoteport&quot;:[&#123;&quot;rootport&quot;:10000, &quot;rootname&quot;:&quot;gate&quot;&#125;], &quot;app&quot;:&quot;app.game1server&quot;&#125;
+&#125;
+&#125;
+</code></pre><p>通过配置文件已经能够很清楚地看懂该服务器的整个分布式情况：</p>
+<p><img src="/assets/image/201505/firefly_nodes.png" alt="" title="firefly的分布式节点"></p>
+<h4 id="master节点"><a href="#master节点" class="headerlink" title="master节点"></a>master节点</h4><p>master节点管理所有的节点，它有两个端口rootport和webport，顾名思义，rootport用于和和服务器中其它节点通信，webport用于后台管理，如关闭和重启所有子节点。调用master.start()后，框架会自动创建master节点并监听rootport和webport端口，后者通过<a href="flask">Flask</a>实现。</p>
+<h4 id="分布式节点"><a href="#分布式节点" class="headerlink" title="分布式节点"></a>分布式节点</h4><p>如果将master节点称为整个服务器的根节点，那么servers中定义的节点即为分布式节点，样例config中定义了四个分布式节点，gate, dbfront, net, game1。每个节点都可以定义自己的父节点(通过remoteport，可有多个父节点)，并且关联节点的实现文件(位于config所在目录 app/*.py)。其中gate是net和game1的父节点，意味着如果有网络消息需要game1节点处理，那么消息将由net-&gt;gate-&gt;game1，同理消息响应途径为：game1-&gt;gate-&gt;net。</p>
+<h3 id="3-公共入口"><a href="#3-公共入口" class="headerlink" title="3. 公共入口"></a>3. 公共入口</h3><p>appmain是我们定义的节点公共入口，它会由firefly通过<code>python appmain.py 节点名 配置路径</code>调用，节点名即为gate, dbfront, net, game1之一，配置路径即为 config.json。该入口允许我们对各分布式节点做一些预先特殊处理，在Demo的appmain.py中，仅仅是读取必须配置，通过一个firefly导出的统一节点类来启动节点:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">#coding:utf8</span><br><span class="line">&quot;&quot;&quot;</span><br><span class="line">本模块在启动master时作为参数传入</span><br><span class="line">firefly会在每个Server(除了master)启动时都调用该模块:</span><br><span class="line">    cmds &#x3D; &#39;python %s %s %s&#39;%(self.mainpath, sername, self.configpath) [位于master&#x2F;master.py, 其中self.mainpath即为本模块] </span><br><span class="line">&quot;&quot;&quot;</span><br><span class="line">import os</span><br><span class="line">import json, sys</span><br><span class="line">from firefly.server.server import FFServer</span><br><span class="line"></span><br><span class="line">if __name__ &#x3D;&#x3D; &#39;__main__&#39;:</span><br><span class="line">    args &#x3D; sys.argv</span><br><span class="line">    servername &#x3D; None</span><br><span class="line">    config &#x3D; None</span><br><span class="line">    if len(args) &gt; 2:</span><br><span class="line">        servername &#x3D; servername &#x3D; args[1]</span><br><span class="line">        config &#x3D; json.load(open(args[2], &#39;r&#39;))</span><br><span class="line">    else:</span><br><span class="line">        raise ValueError</span><br><span class="line"></span><br><span class="line">    dbconf &#x3D; config.get(&#39;db&#39;, &#123;&#125;)</span><br><span class="line">    memconf &#x3D; config.get(&#39;memcached&#39;, &#123;&#125;)</span><br><span class="line">    servsconf &#x3D; config.get(&#39;servers&#39;, &#123;&#125;)</span><br><span class="line">    masterconf &#x3D; config.get(&#39;master&#39;,&#123;&#125;)</span><br><span class="line">    serverconf &#x3D; servsconf.get(servername)</span><br><span class="line">    server &#x3D; FFServer()</span><br><span class="line">    server.config(serverconf, dbconfig&#x3D;dbconf, memconfig&#x3D;memconf, masterconf&#x3D;masterconf)</span><br><span class="line">    print servername, &#39;start&#39;</span><br><span class="line">    server.start()</span><br><span class="line">    print servername, &#39;stop&#39;</span><br></pre></td></tr></table></figure>
+<p>appmain.py通过firefly的FFServer来启动节点，这里先不管FFServer如何区分各个节点。至此，我们的分布式服务器就算是启动了。</p>
+<h3 id="4-节点实现"><a href="#4-节点实现" class="headerlink" title="4. 节点实现"></a>4. 节点实现</h3><p>最后需要我们关心的，就是节点实现了，不用多说，FFServer会根据你传入的节点实现文件，来实现节点的功能。而实际上我们需要做的事情是很少的，因为启动服务器，监听端口，节点间通信，甚至网络消息编解码等等这些功能，FFServer都帮你做了，后面会提到它如何区分和实现这些功能。</p>
+<p>而我们要做的，就是通过装饰器响应消息就OK了，并且节点之间的消息转发也很方便：</p>
+<p><strong>netserver实现</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">#coding:utf8</span><br><span class="line"></span><br><span class="line">from firefly.server.globalobject import GlobalObject, netserviceHandle</span><br><span class="line"></span><br><span class="line">&quot;&quot;&quot;</span><br><span class="line">netservice 默认是 CommandService:</span><br><span class="line">    netservice &#x3D; services.CommandService(&quot;netservice&quot;)  [位于server&#x2F;server.py]</span><br><span class="line">    CommandService 的消息响应函数格式为: HandleName_CommandID(conn, data)</span><br><span class="line">    CommandService 会通过&#39;_&#39;解析出CommandID并注册HandleName_CommandId为其消息响应函数</span><br><span class="line">&quot;&quot;&quot;</span><br><span class="line"></span><br><span class="line">@netserviceHandle</span><br><span class="line">def netHandle_100(_conn, data):</span><br><span class="line">    print &quot;netHandle_100: &quot;, data</span><br><span class="line">    return &quot;netHandle_100 completed&quot;</span><br><span class="line"></span><br><span class="line">@netserviceHandle</span><br><span class="line">def netHandle_200(_conn, data):</span><br><span class="line">    print &quot;netHandle_200: &quot;, data, &quot;forward to gate&quot;</span><br><span class="line">    # 转发到 gateserver.gateHandle1</span><br><span class="line">    # 通过 GlobalObject().remote[父节点名]来得到父节点的远程调用对象</span><br><span class="line">    return GlobalObject().remote[&#39;gate&#39;].callRemote(&#39;gateHandle1&#39;, data)</span><br><span class="line"></span><br><span class="line">@netserviceHandle</span><br><span class="line">def netHandle_300(_conn, data):</span><br><span class="line">    print &quot;netHandle_300: &quot;, data, &quot;forward to gate&quot;</span><br><span class="line">    return GlobalObject().remote[&#39;gate&#39;].callRemote(&#39;gateHandle2&#39;, data)</span><br></pre></td></tr></table></figure>
+<p><strong>gateserver实现</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">#coding:utf-8</span><br><span class="line"></span><br><span class="line">from firefly.server.globalobject import GlobalObject, rootserviceHandle</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">@rootserviceHandle</span><br><span class="line">def gateHandle1(data):</span><br><span class="line">    print &quot;gateHandle: &quot;, data</span><br><span class="line">    return &quot;gateHandle Completed&quot;</span><br><span class="line"></span><br><span class="line">@rootserviceHandle</span><br><span class="line">def gateHandle2(data):</span><br><span class="line">    print &quot;gateHandle2: &quot;, data, &quot;forward to game1: &quot;</span><br><span class="line">    # 转发到 game1.game1Handle</span><br><span class="line">    # 通过 GlobalObject().root.callChild(节点名，节点函数，参数)远程调用孩子节点</span><br><span class="line">    return GlobalObject().root.callChild(&quot;game1&quot;, &quot;game1Handle&quot;, data)</span><br></pre></td></tr></table></figure>
+<p><strong>game1server实现</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">from firefly.server.globalobject import GlobalObject, remoteserviceHandle</span><br><span class="line"></span><br><span class="line">@remoteserviceHandle(&quot;gate&quot;)</span><br><span class="line">def game1Handle(data):</span><br><span class="line">    print &quot;game1Handle: &quot;, data</span><br><span class="line">    return &quot;game1Handle completed&quot;</span><br></pre></td></tr></table></figure>
+<p>运行Demo，启动测试客户端，得到结果:</p>
+<p>Server端: </p>
+<pre><code>[firefly.netconnect.protoc.LiberateFactory] Client 0 login in.[127.0.0.1,61752]
+[LiberateProtocol,0,127.0.0.1] call method netHandle_100 on service[single]
+[LiberateProtocol,0,127.0.0.1] netHandle_100:  msgdata
+[LiberateProtocol,0,127.0.0.1] call method netHandle_200 on service[single]
+[LiberateProtocol,0,127.0.0.1] netHandle_200:  msgdata forward to gate
+[BilateralBroker,0,127.0.0.1] call method gateHandle1 on service[single]
+[BilateralBroker,0,127.0.0.1] gateHandle:  msgdata
+[LiberateProtocol,0,127.0.0.1] call method netHandle_300 on service[single]
+[LiberateProtocol,0,127.0.0.1] netHandle_300:  msgdata forward to gate
+[BilateralBroker,0,127.0.0.1] call method gateHandle2 on service[single]
+[BilateralBroker,0,127.0.0.1] gateHandle2:  msgdata forward to game1:
+[Broker,client] call method game1Handle on service[single]
+[Broker,client] game1Handle:  msgdata
+[LiberateProtocol,0,127.0.0.1] Client 0 login out.
+</code></pre><p>Client端:</p>
+<pre><code>----------------
+send commandId: 100
+netHandle_100 completed
+----------------
+send commandId: 200
+gateHandle Completed
+----------------
+send commandId: 300
+game1Handle completed
+</code></pre><h3 id="6-总结"><a href="#6-总结" class="headerlink" title="6. 总结"></a>6. 总结</h3><p>看起来，使用firefly确实很简单，通过配置文件即可完成强大的分布式部署，节点之间的通信协议，节点间消息以及网络消息的编解码，甚至重连机制框架都已经帮你完成。你只需通过python装饰器，来实现自己的请求响应逻辑即可。</p>
+<h2 id="三-实现原理"><a href="#三-实现原理" class="headerlink" title="三. 实现原理"></a>三. 实现原理</h2><p>简单梳理一下firefly内部替我们完成的事。</p>
+<h3 id="1-master启动"><a href="#1-master启动" class="headerlink" title="1.master启动"></a>1.master启动</h3><p>在我们的app入口文件中，通过master.start()启动服务器，master.start()完成了:</p>
+<ul>
+<li>创建一个PBRoot 在rootport监听其它节点连接</li>
+<li>创建一个Flask  在webport 监听管理员命令</li>
+<li>遍历配置中的servers 通过<code>python appmain.py 节点名 配置文件</code>启动各个分布式节点，appmain.py由使用者编写和提供</li>
+</ul>
+<h3 id="2-FFServer"><a href="#2-FFServer" class="headerlink" title="2.FFServer"></a>2.FFServer</h3><p>在appmain.py中，通过FFServer来创建和启动一个节点，firefly FFServer抽象一个服务进程，前面曾提到过，由于所有非master节点都通过FFServer启动，那么FFServer如何区分各节点功能和通讯协议？ 答案很简单，FFServer检查节点各项配置，为各项配置创建对应的组件，其中比较重要的有:</p>
+<ul>
+<li>webport 代表该节点希望提供web服务，FFServer通过Flask启动一个简单的web server</li>
+<li>rootport 代表该节点是一个父节点，创建并启动PBRoot类(master也有一个PBRoot成员)来监听其它节点的连接 </li>
+<li>netport 代表该节点希望接收客户端网络数据，FFServer创建LiberateFactory并监听netport，LiberateFactory中包含对网络数据的解码</li>
+<li>db 若该配置为true，FFServer会根据config中的db配置连接到DB</li>
+<li>mem 若该配置为true，FFServer会根据config中的memcached配置连接到memchache</li>
+<li>remoteport, FFServer为每个父节点创建RemoteObject，并保存remote[name] -&gt; RemoteObject 映射</li>
+</ul>
+<p>这样，一个节点可以灵活分配一个或多个职责，并且每份职责通过独立的类来处理内部逻辑和通信协议等。除此之外，FFServer还做了两件事：</p>
+<ul>
+<li>import 节点关联的实现文件，该实现文件通过装饰器可以导入消息回调函数。</li>
+<li>连接master节点</li>
+</ul>
+<h3 id="3-待续"><a href="#3-待续" class="headerlink" title="3. 待续"></a>3. 待续</h3>
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/05/firefly-study1/" title="Firefly 学习(一)">http://wudaijun.com/2015/05/firefly-study1/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/firefly/" rel="tag"><i class="fa fa-tag"></i> firefly</a>
+              <a href="/tags/python/" rel="tag"><i class="fa fa-tag"></i> python</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/05/wordpress-setup/" rel="prev" title="WordPress搭建历程">
+      <i class="fa fa-chevron-left"></i> WordPress搭建历程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/05/twisted/" rel="next" title="Twisted">
+      Twisted <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-%E7%AE%80%E4%BB%8B"><span class="nav-text">一. 简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C-%E4%BD%BF%E7%94%A8"><span class="nav-text">二. 使用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%B5%81%E7%A8%8B"><span class="nav-text">1. 流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="nav-text">2. 配置文件</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#master%E8%8A%82%E7%82%B9"><span class="nav-text">master节点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E8%8A%82%E7%82%B9"><span class="nav-text">分布式节点</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%85%AC%E5%85%B1%E5%85%A5%E5%8F%A3"><span class="nav-text">3. 公共入口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E8%8A%82%E7%82%B9%E5%AE%9E%E7%8E%B0"><span class="nav-text">4. 节点实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E6%80%BB%E7%BB%93"><span class="nav-text">6. 总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="nav-text">三. 实现原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-master%E5%90%AF%E5%8A%A8"><span class="nav-text">1.master启动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-FFServer"><span class="nav-text">2.FFServer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%BE%85%E7%BB%AD"><span class="nav-text">3. 待续</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

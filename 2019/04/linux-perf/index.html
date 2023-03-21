@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Perf(Performance Event)是Linux 2.6.31后内置的性能分析工具，它相较其它Prof工具最大的优势在于与Linux Kernel紧密结合，可以进行内核甚至硬件级的性能分析。我之前只零散地用一些ptrace,strace之类的小工具，与Perf比起来，确实小巫见大巫。也赶紧花了点时间简单了解和试用一下，添加到工具箱，以备不时之需。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux Perf 简单试用">
+<meta property="og:url" content="http://wudaijun.com/2019/04/linux-perf/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="Perf(Performance Event)是Linux 2.6.31后内置的性能分析工具，它相较其它Prof工具最大的优势在于与Linux Kernel紧密结合，可以进行内核甚至硬件级的性能分析。我之前只零散地用一些ptrace,strace之类的小工具，与Perf比起来，确实小巫见大巫。也赶紧花了点时间简单了解和试用一下，添加到工具箱，以备不时之需。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-04-04T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.613Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2019/04/linux-perf/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Linux Perf 简单试用 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2019/04/linux-perf/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Linux Perf 简单试用
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-04-05 00:00:00" itemprop="dateCreated datePublished" datetime="2019-04-05T00:00:00+08:00">2019-04-05</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2019/04/linux-perf/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2019/04/linux-perf/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Perf(Performance Event)是Linux 2.6.31后内置的性能分析工具，它相较其它Prof工具最大的优势在于与Linux Kernel紧密结合，可以进行内核甚至硬件级的性能分析。我之前只零散地用一些<code>ptrace</code>,<code>strace</code>之类的小工具，与Perf比起来，确实小巫见大巫。也赶紧花了点时间简单了解和试用一下，添加到工具箱，以备不时之需。</p>
+<span id="more"></span>
+<p>几乎所有的性能分析工具的基本原理都是对监测目标进行数据采样，Perf也不例外，Perf可以基于各种Event对目标进行测样。如基于时间点(tick)采样，可以得到程序运行时间的分布，即程序中哪些函数最耗时。基于cache miss采样，可以得到程序的cache miss分布，即cache失效经常发生在哪些代码中。通过<code>perf list</code>可以Perf支持的各种Event:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">$ sudo perf list                                                                                                                                                             List of pre-defined events (to be used in -e):</span><br><span class="line"></span><br><span class="line"> cpu-cycles OR cycles                       [Hardware event]</span><br><span class="line"> instructions                               [Hardware event]</span><br><span class="line"> cache-references                           [Hardware event]</span><br><span class="line"> cache-misses                               [Hardware event]</span><br><span class="line"> branch-instructions OR branches            [Hardware event]</span><br><span class="line"> branch-misses                              [Hardware event]</span><br><span class="line"> bus-cycles                                 [Hardware event]</span><br><span class="line"></span><br><span class="line"> cpu-clock                                  [Software event]</span><br><span class="line"> task-clock                                 [Software event]</span><br><span class="line"> page-faults OR faults                      [Software event]</span><br><span class="line"> minor-faults                               [Software event]</span><br><span class="line"> major-faults                               [Software event]</span><br><span class="line"> context-switches OR cs                     [Software event]</span><br><span class="line"> cpu-migrations OR migrations               [Software event]</span><br><span class="line"> alignment-faults                           [Software event]</span><br><span class="line"> emulation-faults                           [Software event]</span><br><span class="line"></span><br><span class="line"> [...]</span><br><span class="line"></span><br><span class="line"> sched:sched_stat_runtime                   [Tracepoint event]</span><br><span class="line"> sched:sched_pi_setprio                     [Tracepoint event]</span><br><span class="line"> syscalls:sys_enter_socket                  [Tracepoint event]</span><br><span class="line"> syscalls:sys_exit_socket                   [Tracepoint event]</span><br><span class="line"></span><br><span class="line"> [...]</span><br></pre></td></tr></table></figure>
+<p>该列表非常长，以上是简化之后的输出结果，可以将Perf Event大致分为三类:</p>
+<ol>
+<li>Hardware Event: 主要是由CPU或PMU硬件产生的事件，如cache-misses, cpu-cycle, instructions, branch-misses等。</li>
+<li>Software Event: 由内核软件产生的事件，如 page-faults, context-switches, cpu-migrations等。</li>
+<li>Tracepoints: 散布在内核源码中的各种静态的追踪点(Hook)，Perf可以通过挂载Hook来收集这些事件。如kmalloc, syscall, sched_switch等。</li>
+</ol>
+<p>PMU(Performance Monitoring Unit) 是各CPU厂商随CPU提供的硬件，它允许软件针对某种CPU硬件事件(如cache miss, branch-misses, instructions)设置counter，并且统计该事件次数，当次数到达counter值后，产生中断。软件通过捕获这些中断来考察CPU使用情况。</p>
+<h3 id="perf-top"><a href="#perf-top" class="headerlink" title="perf top"></a>perf top</h3><p><code>perf top</code> 用于实时显示当前系统的性能统计信息，用于观察整个系统的当前状态。我们先写一个简单的死循环程序:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">run_forever</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">long</span> <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">while</span>(<span class="number">1</span>) &#123;</span><br><span class="line">                i++;</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        run_forever();</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译并执行它: <code>gcc -o t1 -g t1.c &amp;&amp; ./t1</code>，然后在另一个窗口执行<code>perf top</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Samples: 249K of event &#39;cycles:ppp&#39;, Event count (approx.): 59571881744</span><br><span class="line">Overhead  Shared Object             Symbol</span><br><span class="line">  92.24%  t1                        [.] run_forever</span><br><span class="line">   0.49%  [kernel]                  [k] menu_select</span><br><span class="line">   0.44%  cadvisor                  [.] runtime.findObject</span><br><span class="line">   0.36%  [kernel]                  [k] nmi</span><br><span class="line">   0.29%  game                      [.] runtime.scanobject</span><br><span class="line">   0.28%  cadvisor                  [.] runtime.scanobject</span><br><span class="line">   0.25%  cadvisor                  [.] runtime.(*mspan).nextFreeIndex</span><br><span class="line">   0.24%  [kernel]                  [k] vsnprintf</span><br><span class="line">   0.21%  [kernel]                  [k] __switch_to</span><br><span class="line">   ...</span><br></pre></td></tr></table></figure>
+<p>默认情况下，<code>perf top</code>命令将采样cpu-cycles Event，即每个时钟周期进行采样，对所有CPU正在执行的代码(Symbol)进行统计(包括内核代码)，并按照出现次数降序排列。因此<code>perf top</code>打印的是CPU运行时间分布，即哪些函数最耗时。上图清楚指明了目前该机器上最耗时的进程(Shared Object)为t1，以及其热点函数(Symbol)为<code>run_forever</code>。在<code>perf top</code>界面按[h]键可以呼叫帮助菜单，看到所有可用的功能何对应的快捷键。选中t1一行，按[a]键即可启用Annotate(注释)功能，它可以进一步查看当前符号:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">run_forever  &#x2F;home&#x2F;docker&#x2F;test&#x2F;t1</span><br><span class="line">Percent│</span><br><span class="line">       │</span><br><span class="line">       │</span><br><span class="line">       │    Disassembly of section .text:</span><br><span class="line">       │</span><br><span class="line">       │    00000000000005fa &lt;run_forever&gt;:</span><br><span class="line">       │    run_forever():</span><br><span class="line">       │    void run_forever() &#123;</span><br><span class="line">       │      push   %rbp</span><br><span class="line">       │      mov    %rsp,%rbp</span><br><span class="line">       │            long int i &#x3D; 0;</span><br><span class="line">       │      movq   $0x0,-0x8(%rbp)</span><br><span class="line">       │            while(1) &#123;</span><br><span class="line">       │                    i++;</span><br><span class="line"> 99.95 │ c:   addq   $0x1,-0x8(%rbp)</span><br><span class="line">  0.05 │    ↑ jmp    c</span><br></pre></td></tr></table></figure>
+<p>可以看到该函数 99.94% 的时间都在执行 i++ 这一行。</p>
+<p>当然，你也通过参数指定<code>perf top</code>采样其它Event(比如cache-misses)并设置其采样速率(比如改为每秒5000次，默认是4000):</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ perf top -e cache-misses -c 5000</span><br></pre></td></tr></table></figure>
+<p><code>perf top</code> 适用于做系统的整体状态统计，然后初步定位到问题进程。当然，由于我们的示例代码太简单，通过<code>perf top</code>就足以分析出问题进程和问题代码。而当情况更复杂时，我们则需要其它perf工具的配合。</p>
+<h3 id="perf-stat"><a href="#perf-stat" class="headerlink" title="perf stat"></a>perf stat</h3><p>当你想要分析指定应用程序各方面性能时，可以用<code>perf stat</code>命令，我们仍然通过一段程序来说明:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">static char array[10000][10000];</span><br><span class="line">int main (void)&#123;</span><br><span class="line">        int i, j;</span><br><span class="line">        for (i &#x3D; 0; i &lt; 10000; i++)</span><br><span class="line">            for (j &#x3D; 0; j &lt; 10000; j++)</span><br><span class="line">                 array[i][j]&#x3D;i;</span><br><span class="line">                 return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>现在我们通过<code>perf stat</code>来对这个程序的一些事件进行采样:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">$ gcc -o t2 t2.c</span><br><span class="line">$ sudo perf stat -r 5 -e cache-misses,cache-references,instructions,cycles,L1-dcache-stores,L1-dcache-store-misses .&#x2F;t</span><br><span class="line"></span><br><span class="line"> Performance counter stats for &#39;.&#x2F;t2&#39; (5 runs):</span><br><span class="line"></span><br><span class="line">         3,340,700      cache-misses              #    2.631 % of all cache refs      ( +-  0.25% )</span><br><span class="line">       126,973,736      cache-references                                              ( +-  0.02% )</span><br><span class="line">     1,471,226,871      instructions              #    0.40  insn per cycle                                              ( +-  0.01% )</span><br><span class="line">     3,643,287,243      cycles                                                        ( +-  0.59% )</span><br><span class="line">       219,156,878      L1-dcache-stores                                              ( +-  0.01% )</span><br><span class="line">       102,035,758      L1-dcache-store-misses                                        ( +-  0.01% )</span><br><span class="line"></span><br><span class="line">       1.026604322 seconds time elapsed                                          ( +-  0.58% )                                        ( +-  0.26% )</span><br></pre></td></tr></table></figure>
+<p><code>-r</code>指定重复执行次数，可以保证采样结果的可参考性。<code>-e</code>指定要采样的Event，如果指定了cache-misses/cache-reference,cycles/instructions这类成对的Event时，perf会自动计算相关比例值。另外，cache-references/misses指的是Last Level Cache(LLC) references/misses。</p>
+<p>结果显示程序执行时间为1.02s,CPU每个时钟周期可以执行0.4条指令，看这些你可能无法直观地判断程序优劣，但是如果我们善用数据局部性，将<code>array[j][i] = i</code>改为<code>array[i][j] = i</code>，再来看看结果:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Performance counter stats for &#39;.&#x2F;t2&#39; (5 runs):</span><br><span class="line"></span><br><span class="line">        1,693,216      cache-misses              #   96.113 % of all cache refs      ( +-  0.05% )</span><br><span class="line">        1,761,695      cache-references                                              ( +-  0.13% )</span><br><span class="line">    1,470,420,403      instructions              #    1.54  insn per cycle                                              ( +-  0.01% )</span><br><span class="line">      955,043,789      cycles                                                        ( +-  0.03% )</span><br><span class="line">      218,964,664      L1-dcache-stores                                              ( +-  0.01% )</span><br><span class="line">        1,790,183      L1-dcache-store-misses                                        ( +-  0.03% )</span><br><span class="line"></span><br><span class="line">      0.271631085 seconds time elapsed                                          ( +-  0.41% )                                       ( +-  0.27% )</span><br></pre></td></tr></table></figure>
+<p>cache-misses数量降了一倍，L1-dcache-store-misses更是降了几十倍，insn per cycle由0.52提升到了1.54，亦即CPU利用率更高了，程序整体运行速度快了接近5倍。但你可能会注意到，程序改动后，<code>cache-misses/cache-references</code>的比例从2.63%提升到96.113%，cache命中率降低了？花了很长时间Google后(perf对各种Event的文档太稀缺了，基本没有一份相对详细的Event文档)，<a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/55035313/how-does-linux-perf-calculate-the-cache-references-and-cache-misses-events">这篇问答</a>中提到如果存取在L1-dcache-stores命中，则不会记入cache-references，因此当程序数据局部性提升后，在L1层就已经能取到了，也就导致cache-references急剧减少，相对也就导致<code>cache-misses/cache-references</code>比例反而上升了。</p>
+<p><code>perf stat</code>也可以通过<code>-p</code>附加到正在运行中的进程</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 附加到指定进程采样3秒</span><br><span class="line">$ perf stat -p PID sleep 3</span><br><span class="line"># 附加到指定进程，直到目标进程结束，或Ctrl+C终止</span><br><span class="line">$ perf stat -p PID</span><br></pre></td></tr></table></figure>
+<h3 id="perf-record-report"><a href="#perf-record-report" class="headerlink" title="perf record/report"></a>perf record/report</h3><p><code>perf record</code>可以将指定采样数据采样到文件，参数与<code>perf stat</code>类似，可以接可执行文件或附加到指定进程，只不过没有任何输出，而是将采样数据写入到perf.data文件中。与之相匹配的，<code>perf report</code>可以将文件中采样数据展示出来。我们仍然以t2.c为例:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">sudo perf record -e cache-misses:u .&#x2F;t2</span><br><span class="line">sudo perf report</span><br><span class="line">Samples: 1K of event &#39;cache-misses:u&#39;, Event count (approx.): 1627272</span><br><span class="line">Overhead  Command  Shared Object     Symbol</span><br><span class="line">  96.48%  t2       t2                [.] main</span><br><span class="line">   3.27%  t2       [kernel]          [k] page_fault</span><br><span class="line">   0.11%  t2       ld-2.27.so        [.] 0x000000000000d305</span><br><span class="line">   0.11%  t2       ld-2.27.so        [.] 0x00000000000109b8</span><br><span class="line">   0.03%  t2       ld-2.27.so        [.] 0x0000000000018d7d</span><br><span class="line">   0.00%  t2       ld-2.27.so        [.] 0x0000000000002082</span><br><span class="line">   0.00%  t2       ld-2.27.so        [.] 0x0000000000001ea0</span><br></pre></td></tr></table></figure>
+<p>96.48的 cache-misses Event都分布在main函数中，同样，可以通过上下键选中main函数Enter进入并选择”Annotate main”，可以看到汇编代码级的cache-misses分布(通过 <code>gcc -g -o t2 t2.c</code> 可以保留汇编到代码的符号映射):</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">Percent│    Disassembly of section .text:</span><br><span class="line">       │</span><br><span class="line">       │    00000000000005fa &lt;main&gt;:</span><br><span class="line">       │    main():</span><br><span class="line">       │    static char array[10000][10000];</span><br><span class="line">       │    int main (void)&#123;</span><br><span class="line">       │      push   %rbp</span><br><span class="line">       │      mov    %rsp,%rbp</span><br><span class="line">       │            int i, j;</span><br><span class="line">       │            for (i &#x3D; 0; i &lt; 10000; i++)</span><br><span class="line">       │      movl   $0x0,-0x8(%rbp)</span><br><span class="line">       │    ↓ jmp    4d</span><br><span class="line">       │                for (j &#x3D; 0; j &lt; 10000; j++)</span><br><span class="line">       │ d:   movl   $0x0,-0x4(%rbp)</span><br><span class="line">       │    ↓ jmp    40</span><br><span class="line">       │                     array[j][i]&#x3D;i;</span><br><span class="line">  1.16 │16:   mov    -0x8(%rbp),%eax</span><br><span class="line">       │      mov    %eax,%ecx</span><br><span class="line">       │      mov    -0x8(%rbp),%eax</span><br><span class="line">       │      cltq</span><br><span class="line">  0.68 │      mov    -0x4(%rbp),%edx</span><br><span class="line">  0.10 │      movslq %edx,%rdx</span><br><span class="line">       │      imul   $0x2710,%rdx,%rdx</span><br><span class="line">       │      add    %rax,%rdx</span><br><span class="line">  1.06 │      lea    array,%rax</span><br><span class="line">       │      add    %rdx,%rax</span><br><span class="line">       │      mov    %cl,(%rax)</span><br><span class="line">       │                for (j &#x3D; 0; j &lt; 10000; j++)</span><br><span class="line"> 76.54 │      addl   $0x1,-0x4(%rbp)</span><br><span class="line">  0.48 │40:   cmpl   $0x270f,-0x4(%rbp)</span><br><span class="line"> 19.98 │    ↑ jle    16</span><br><span class="line">       │            for (i &#x3D; 0; i &lt; 10000; i++)</span><br><span class="line">       │      addl   $0x1,-0x8(%rbp)</span><br><span class="line">       │4d:   cmpl   $0x270f,-0x8(%rbp)</span><br><span class="line">       │    ↑ jle    d</span><br><span class="line">       │                     return 0;</span><br><span class="line">       │      mov    $0x0,%eax</span><br><span class="line">       │    &#125;</span><br><span class="line">       │      pop    %rbp</span><br><span class="line">       │    ← retq</span><br></pre></td></tr></table></figure>
+<p>而如果将代码改成局部友好，main函数将不会出现在<code>perf report</code>的列表中。<code>perf record/report</code>用法与现在的主流prof工具类似，这种方式最灵活，对环境的各种要求也低。</p>
+<p>在学习过程中也发现Perf一些不足之处，首先就是文档很少，特别关于各种Event，因为它们很多与具体硬件实现相关。第二就是与Linux内核深度结合，是优点也是缺点，因为这也意味着它的跨平台性不是很好。因此它更像是Linux系统级的Prof工具，对于应用级的分析，Perf可能是有点过于底层和重量级了。</p>
+<p>参考资料:</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://perf.wiki.kernel.org/index.php/Tutorial">Linux kernel profiling with perf</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.ibm.com/developerworks/cn/linux/l-cn-perf1/index.html">Perf — Linux下的系统性能调优工具，第 1 部分</a></li>
+<li><a target="_blank" rel="noopener" href="http://web.eece.maine.edu/~vweaver/projects/perf_events/perf_event_open.html">ManPage of PERF_EVENT_OPEN</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2019/04/linux-perf/" title="Linux Perf 简单试用">http://wudaijun.com/2019/04/linux-perf/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/linux/" rel="tag"><i class="fa fa-tag"></i> linux</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/02/gameserver-challenge/" rel="prev" title="游戏服务器的挑战">
+      <i class="fa fa-chevron-left"></i> 游戏服务器的挑战
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/04/cache-coherence-and-memory-consistency/" rel="next" title="Cache一致性和内存一致性">
+      Cache一致性和内存一致性 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#perf-top"><span class="nav-text">perf top</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#perf-stat"><span class="nav-text">perf stat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#perf-record-report"><span class="nav-text">perf record&#x2F;report</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

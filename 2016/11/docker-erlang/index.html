@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="接上篇，结合Erlang，对Docker的实际应用进一步理解。并探索将Docker应用到Erlang集群的方案。 简单Docker交互下面是个简单的echo server： -module(server_echo). -export([start&#x2F;0]).  start() -&gt;      io:format(&quot;SERVER Trying to bind to port 2345\">
+<meta property="og:type" content="article">
+<meta property="og:title" content="探索Docker在Erlang集群中的应用">
+<meta property="og:url" content="http://wudaijun.com/2016/11/docker-erlang/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="接上篇，结合Erlang，对Docker的实际应用进一步理解。并探索将Docker应用到Erlang集群的方案。 简单Docker交互下面是个简单的echo server： -module(server_echo). -export([start&#x2F;0]).  start() -&gt;      io:format(&quot;SERVER Trying to bind to port 2345\">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2016-11-04T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.609Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="docker">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2016/11/docker-erlang/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>探索Docker在Erlang集群中的应用 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/11/docker-erlang/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          探索Docker在Erlang集群中的应用
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-11-05 00:00:00" itemprop="dateCreated datePublished" datetime="2016-11-05T00:00:00+08:00">2016-11-05</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/tool/" itemprop="url" rel="index"><span itemprop="name">tool</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/11/docker-erlang/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/11/docker-erlang/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>接<a target="_blank" rel="noopener" href="http://0.0.0.0:4444/2016/11/docker-basic/">上篇</a>，结合Erlang，对Docker的实际应用进一步理解。并探索将Docker应用到Erlang集群的方案。</p>
+<h2 id="简单Docker交互"><a href="#简单Docker交互" class="headerlink" title="简单Docker交互"></a>简单Docker交互</h2><p>下面是个简单的echo server：</p>
+<pre><code>-module(server_echo).
+-export([start/0]).
+
+start() -&gt;
+     io:format(&quot;SERVER Trying to bind to port 2345\n&quot;),
+     &#123;ok, Listen&#125; = gen_tcp:listen(2345, [ binary
+                                         , &#123;packet, 0&#125;
+                                         , &#123;reuseaddr, true&#125;
+                                         , &#123;active, true&#125;
+                                         ]),
+     io:format(&quot;SERVER Listening on port 2345\n&quot;),
+     accept(Listen).
+
+ accept(Listen) -&gt;
+     &#123;ok, Socket&#125; = gen_tcp:accept(Listen),
+     WorkerPid = spawn(fun() -&gt; echo(Socket) end),
+     gen_tcp:controlling_process(Socket, WorkerPid),
+     accept(Listen).
+
+ echo(Socket) -&gt;
+     receive
+         &#123;tcp, Socket, Bin&#125; -&gt;
+             io:format(&quot;SERVER Received: ~p\n&quot;, [Bin]),
+             gen_tcp:send(Socket, Bin),
+             echo(Socket);
+         &#123;tcp_closed, Socket&#125; -&gt;
+             io:format(&quot;SERVER: The client closed the connection\n&quot;)
+     end.
+</code></pre><p>简单起见，我们直接用<code>telnet</code>命令对echo server进行测试。现在，考虑如何在Docker容器中运行echo server。</p>
+<span id="more"></span>
+<h3 id="容器中运行"><a href="#容器中运行" class="headerlink" title="容器中运行"></a>容器中运行</h3><pre><code>sudo docker run -it --rm -v ~/docker:/code -w /code erlang erl
+Erlang/OTP 19 [erts-8.1] [source] [64-bit] [smp:4:4] [async-threads:10] [hipe] [kernel-poll:false]
+
+Eshell V8.1  (abort with ^G)
+1&gt; c(server_echo).
+&#123;ok,server_echo&#125;
+2&gt; server_echo:start().
+SERVER Trying to bind to port 2345
+SERVER Listening on port 2345
+</code></pre><p>在<code>docker run</code>中，我们将本地代码路径挂载到容器的/code目录，并且将/code作为容器的工作目录，此后对本地代码的修改，将直接反映在容器中，而无需拷贝。运行容器后会进入erl shell，并且当前路径(/code)即为本地代码路径(~/docker)，之后编译运行server即可。</p>
+<h3 id="宿主机访问容器"><a href="#宿主机访问容器" class="headerlink" title="宿主机访问容器"></a>宿主机访问容器</h3><p>如下方案可以让宿主机能访问容器端口：</p>
+<ul>
+<li>在<code>docker run</code>中指定<code>-p 2345:2345</code>导出2345端口，之后访问宿主机的2345端口等同于访问容器2345端口</li>
+<li>在<code>docker run</code>中指定<code>--network host</code>使容器和宿主机共享网络栈，IP和端口</li>
+<li>通过<code>docker inspect</code>查询容器IP地址(如:<code>172.17.0.2</code>)，可在宿主机上通过该IP访问容器</li>
+</ul>
+<h3 id="容器之间访问"><a href="#容器之间访问" class="headerlink" title="容器之间访问"></a>容器之间访问</h3><p>容器间交互方式主要有三种：</p>
+<ul>
+<li>通过<code>docker inspect</code>得到容器IP地址，通过IP地址进行容器间的交互</li>
+<li>通过<code>docker run</code>中指定<code>--network container:&lt;name or id&gt;</code>，将新创建的容器与一个已经存在的容器的共享网络栈，IP和端口</li>
+<li>通过<code>docker run</code>的<code>--link &lt;name or id&gt;</code>选项链接两个容器，之后可以将容器名或容器ID作为Hostname来访问容器，注意<code>--link</code>选项仅在<code>--network bridge</code>下有效</li>
+</ul>
+<h3 id="定义Dockerfile"><a href="#定义Dockerfile" class="headerlink" title="定义Dockerfile"></a>定义Dockerfile</h3><p>前面我是通过挂载目录的方式将本地代码映射到容器中，这种方式在本地开发中比较方便，但是在项目部署或环境配置比较复杂时，我们需要通过Dockerfile来构建自己的镜像(而不是基于官方Erlang镜像)，初始化项目环境，就本例而言，Dockerfile非常简单：</p>
+<pre><code>FROM erlang
+
+RUN mkdir code
+
+COPY server_echo.erl code/server_echo.erl
+
+RUN cd code &amp;&amp; erlc server_echo.erl
+
+WORKDIR /code
+
+ENTRYPOINT [&quot;erl&quot;, &quot;-noshell&quot;, &quot;-run&quot;, &quot;server_echo&quot;, &quot;start&quot;]
+</code></pre><h2 id="Erlang多节点通信"><a href="#Erlang多节点通信" class="headerlink" title="Erlang多节点通信"></a>Erlang多节点通信</h2><h3 id="再谈Erlang分布式通信"><a href="#再谈Erlang分布式通信" class="headerlink" title="再谈Erlang分布式通信"></a>再谈Erlang分布式通信</h3><p>Erlang的分布式节点有自己的通信机制，这套通信机制对上层用户是透明的，我们只需一个节点名(<code>node@host</code>)，即可访问这个节点，而无需关心这个节点是在本机上还是在其它主机上。在这之上封装的Pid，进一步地屏蔽了节点内进程和跨节点进程的差异。</p>
+<p>在<a href="http://wudaijun.com/2016/03/erlang-distribution-2/">Erlang分布式系统(2)</a>中，我提到了Erlang的分布式设施，其中epmd扮演着重要的角色：它维护了本机上所有节点的节点名到节点监听地址的映射，并且由于epmd进程本身的监听端口在集群内是周知的(默认为4369)，因此可以根据节点名<code>node@host</code>得到节点所在主机上epmd的监听地址(<code>host:4369</code>)，进而从epmd进程上查询到节点名<code>node</code>所监听的地址，实现节点间通信。</p>
+<h3 id="在同主机不同容器中部署集群"><a href="#在同主机不同容器中部署集群" class="headerlink" title="在同主机不同容器中部署集群"></a>在同主机不同容器中部署集群</h3><p>现在回到Docker，我们先尝试在同一个主机，不同容器上建立集群：</p>
+<pre><code># 容器A 启动后通过docker inspect查询得到IP地址: 172.17.0.2
+sudo docker run -it erlang /bin/bash
+root@4453d880b5a5:/# erl -name n1@172.17.0.2 -setcookie 123
+Eshell V8.1  (abort with ^G)
+(n1@172.17.0.2)1&gt; 
+
+# 容器B 启动后通过docker inspect查询得到IP地址: 172.17.0.4
+sudo docker run -it erlang /bin/bash
+root@dd0f30178036:/# erl -name n2@172.17.0.4 -setcookie 123
+Eshell V8.1  (abort with ^G)
+(n2@172.17.0.4)1&gt; net_kernel:connect_node(&#39;n1@172.17.0.2&#39;).
+true
+(n2@172.17.0.4)2&gt; nodes().
+[&#39;n1@172.17.0.2&#39;]
+</code></pre><p>和在宿主机上一样，我们可以直接通过容器IP架设集群。这里使用的是<code>-name node@host</code>指定的longname，而如果使用shortname：</p>
+<pre><code># 容器A
+root@4453d880b5a5:/# erl -sname n1 -setcookie 123
+Eshell V8.1  (abort with ^G)
+(n1@4453d880b5a5)1&gt;
+
+# 容器B
+root@dd0f30178036:/# erl -sname n2 -setcookie 123
+Eshell V8.1  (abort with ^G)
+(n2@dd0f30178036)1&gt; net_kernel:connect_node(&#39;n1@4453d880b5a5&#39;).
+false
+</code></pre><p>在shortname方案中，我们并不能通过nodename访问节点，本质上是因为<code>n2</code>节点不能通过<code>4453d880b5a5:4369</code>访问到<code>n1</code>节点所在主机上的epmd进程。我们测试一下网络环境：</p>
+<pre><code># 通过容器A名字ping
+ping 4453d880b5a5
+ping: unknown host
+
+# 直接ping容器A IP
+ping 172.17.0.2
+PING 172.17.0.2 (172.17.0.2): 56 data bytes
+64 bytes from 172.17.0.2: icmp_seq=0 ttl=64 time=0.099 ms
+64 bytes from 172.17.0.2: icmp_seq=1 ttl=64 time=0.089 ms
+</code></pre><p>发现是hostname解析出了问题，容器链接来解决这个问题：</p>
+<pre><code># 重新启动容器B 并链接到容器A
+docker run -it --link 4453d880b5a5 erlang /bin/bash
+root@7692c8c71218:/# erl -sname n2 -setcookie 123
+Eshell V8.1  (abort with ^G)
+(n2@dd0f30178036)1&gt; net_kernel:connect_node(&#39;n1@4453d880b5a5&#39;).
+true
+</code></pre><p>有个有趣的问题是，当容器B link了容器A，那么容器B能通过容器A的Id或名字访问容器B，而反过来，容器A却不能以同样的方式访问容器B。也就是说link是单向的，这同样可以通过ping来验证。</p>
+<h3 id="在不同的主机上部署集群"><a href="#在不同的主机上部署集群" class="headerlink" title="在不同的主机上部署集群"></a>在不同的主机上部署集群</h3><p>在不同的主机上部署集群，问题开始变得复杂：</p>
+<ol>
+<li>不同的主机上的Docker容器处于不同的子网(一台主机对应一个子网)，因此不同主机上的容器不能直接访问，需要先发布(publish)Erlang节点监听端口</li>
+<li>Erlang节点在Docker容器中的监听地址是由Erlang VM启动时分配的，因此我们无法在启动容器时就获知Erlang节点监听端口(从而发布该端口)</li>
+<li>假定我们预配置了Erlang节点的监听端口xxx，如果我们使用<code>-p xxx:xxx</code>将可能导致端口争用(亦即一台物理机只能运行一个Docker容器)，如果我们使用<code>-p xxx</code>将该端口发布到主机任意一个端口，那么这个发布的主机端口，将只能通过Docker Daemon获取到(命令行下可通过<code>docker port</code>查看)</li>
+<li>再来看epmd，每个Docker容器中都会跑一个epmd进程，它记录的是节点名到<strong>节点在容器中的监听地址</strong>，因此，epmd本身返回的地址是不能直接被其它主机上的节点使用的</li>
+</ol>
+<h4 id="Erlang-In-Docker"><a href="#Erlang-In-Docker" class="headerlink" title="Erlang In Docker"></a>Erlang In Docker</h4><p>基于上面的种种限制，有人给出了一套解决方案：<a target="_blank" rel="noopener" href="https://github.com/Random-Liu/Erlang-In-Docker">Erlang In Docker</a>。这套方案对Erlang集群做了如下制约：</p>
+<ol>
+<li>每个Docker容器只能运行一个Erlang节点</li>
+<li>预配置Erlang节点的监听端口</li>
+<li>Erlang节点名格式为<code>DockerContainerID@HostIP</code></li>
+<li>使用Docker Daemon而不是epmd来获取节点监听端口</li>
+</ol>
+<p>这套方案的核心思路是用Docker Daemon替换epmd做节点监听的服务发现，原因有二：</p>
+<ul>
+<li>Docker Daemon运行于主机同级网络中</li>
+<li>维护了容器端口和主机端口的映射关系</li>
+</ul>
+<p>如果节点A想要访问节点B，则节点A需要提供：</p>
+<ul>
+<li>节点B所在主机地址: Host</li>
+<li>节点B所在主机上Docker Daemon的监听端口: DaemonPort</li>
+<li>节点B所在容器ID: ContainerID</li>
+<li>节点B在所在容器中的监听端口: Port0</li>
+</ul>
+<p>之后就可以通过Docker Daemon(<code>Host:DaemonPort</code>)查询到<code>ContainerID</code>容器的<code>Port0</code>端口在主机上对应的发布端口<code>Port1</code>，之后节点A即可通过<code>Host:Port1</code>与节点B通信。</p>
+<p>然而节点A只有节点B的名字，要在节点B中编码这四条信息是非常困难的，因此Erlang In Docker的做法是，预配置Port0(12345)和DaemonPort(4243)，剩下的主机地址和容器ID则编码在节点名中：<code>DockerContainerID@HostIP</code>。</p>
+<p>EID代码并不复杂，得益于Erlang可替换的分布式通信协议，EID只自定义了<code>eid_tcp_dist</code>(替换默认的<code>inet_tcp_dist</code>模块)和dpmd(通过与Docker Daemon交互模拟epmd的功能)两个模块。</p>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p>将Erlang应用到Docker上比较困难的主要原因是Erlang已经提供了非常完备的分布式设施(参见<a href="http://wudaijun.com/2016/03/erlang-distribution-2/">Erlang分布式系统(2)</a>)，并且这一套对上层都是透明的。EID这套方案看起来限制很多，但细想也没多大问题，具体还要看在生产环境中的表现，目前我比较顾虑它的通信效率(NAT)和<code>eid_tcp_dist</code>是否足够健壮。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/11/docker-erlang/" title="探索Docker在Erlang集群中的应用">http://wudaijun.com/2016/11/docker-erlang/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/docker/" rel="tag"><i class="fa fa-tag"></i> docker</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/11/docker-basic/" rel="prev" title="Docker 学习">
+      <i class="fa fa-chevron-left"></i> Docker 学习
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/12/unicode-in-erlang/" rel="next" title="Erlang Unicode编码">
+      Erlang Unicode编码 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%80%E5%8D%95Docker%E4%BA%A4%E4%BA%92"><span class="nav-text">简单Docker交互</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%B9%E5%99%A8%E4%B8%AD%E8%BF%90%E8%A1%8C"><span class="nav-text">容器中运行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%BF%E4%B8%BB%E6%9C%BA%E8%AE%BF%E9%97%AE%E5%AE%B9%E5%99%A8"><span class="nav-text">宿主机访问容器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%B9%E5%99%A8%E4%B9%8B%E9%97%B4%E8%AE%BF%E9%97%AE"><span class="nav-text">容器之间访问</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9A%E4%B9%89Dockerfile"><span class="nav-text">定义Dockerfile</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Erlang%E5%A4%9A%E8%8A%82%E7%82%B9%E9%80%9A%E4%BF%A1"><span class="nav-text">Erlang多节点通信</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%8D%E8%B0%88Erlang%E5%88%86%E5%B8%83%E5%BC%8F%E9%80%9A%E4%BF%A1"><span class="nav-text">再谈Erlang分布式通信</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%A8%E5%90%8C%E4%B8%BB%E6%9C%BA%E4%B8%8D%E5%90%8C%E5%AE%B9%E5%99%A8%E4%B8%AD%E9%83%A8%E7%BD%B2%E9%9B%86%E7%BE%A4"><span class="nav-text">在同主机不同容器中部署集群</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%A8%E4%B8%8D%E5%90%8C%E7%9A%84%E4%B8%BB%E6%9C%BA%E4%B8%8A%E9%83%A8%E7%BD%B2%E9%9B%86%E7%BE%A4"><span class="nav-text">在不同的主机上部署集群</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Erlang-In-Docker"><span class="nav-text">Erlang In Docker</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-text">总结</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

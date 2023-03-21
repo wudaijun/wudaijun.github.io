@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="现状&amp;契机&amp;目标DevOps 是分工细化下的产物，用于提高开发和运维的协作效率，实现快速交付。这里主要从开发的角度谈谈游戏服务器中的DevOps，以及我们最近做的一些尝试。 1. 现状我们现在是不同的项目使用不同的语言和框架，上线前，运维了解熟悉各个项目组的配置方案，部署流程，数据管理等，同时开发也需要熟悉运维的检测工具，接入监控报警机制。这通常需要一周甚至更多的时间，并且线上部署">
+<meta property="og:type" content="article">
+<meta property="og:title" content="GS DevOps 实践">
+<meta property="og:url" content="http://wudaijun.com/2018/08/gs-devops/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="现状&amp;契机&amp;目标DevOps 是分工细化下的产物，用于提高开发和运维的协作效率，实现快速交付。这里主要从开发的角度谈谈游戏服务器中的DevOps，以及我们最近做的一些尝试。 1. 现状我们现在是不同的项目使用不同的语言和框架，上线前，运维了解熟悉各个项目组的配置方案，部署流程，数据管理等，同时开发也需要熟悉运维的检测工具，接入监控报警机制。这通常需要一周甚至更多的时间，并且线上部署">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201808/docker-ops.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201808/fluentd_sample.png">
+<meta property="article:published_time" content="2018-08-17T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.612Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="gameserver">
+<meta property="article:tag" content="docker">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201808/docker-ops.png">
+
+<link rel="canonical" href="http://wudaijun.com/2018/08/gs-devops/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>GS DevOps 实践 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/08/gs-devops/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          GS DevOps 实践
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-08-18 00:00:00" itemprop="dateCreated datePublished" datetime="2018-08-18T00:00:00+08:00">2018-08-18</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/08/gs-devops/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/08/gs-devops/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="现状-amp-契机-amp-目标"><a href="#现状-amp-契机-amp-目标" class="headerlink" title="现状&amp;契机&amp;目标"></a>现状&amp;契机&amp;目标</h2><p>DevOps 是分工细化下的产物，用于提高开发和运维的协作效率，实现快速交付。这里主要从开发的角度谈谈游戏服务器中的DevOps，以及我们最近做的一些尝试。</p>
+<h3 id="1-现状"><a href="#1-现状" class="headerlink" title="1. 现状"></a>1. 现状</h3><p>我们现在是不同的项目使用不同的语言和框架，上线前，运维了解熟悉各个项目组的配置方案，部署流程，数据管理等，同时开发也需要熟悉运维的检测工具，接入监控报警机制。这通常需要一周甚至更多的时间，并且线上部署和本地部署可能是两套完全不同的流程，由于项目组相关性太强，运维通常也是专职维护指定项目，效率很低。上线后，如果出了BUG 需要紧急修复，通常是开发人员直接ssh到正式环境的主机上，进行日志查看，状态调试，甚至代码修改，对操作人员的要求比较高并且风险大，没有充分发挥运维的作用。</p>
+<span id="more"></span>
+<h3 id="2-契机"><a href="#2-契机" class="headerlink" title="2. 契机"></a>2. 契机</h3><ul>
+<li>微服务理念，比如服务发现，错误处理，无状态服务等等，使得应用的节点拓扑和交互边界更加清晰规范，更易于管理。</li>
+<li>容器技术为节点提供了比物理机更快速，一致，隔离的环境，使得服务部署更加容易。容器也比原生OS进程提供了更多的资源控制，状态监控等功能。</li>
+</ul>
+<h3 id="3-目标"><a href="#3-目标" class="headerlink" title="3. 目标"></a>3. 目标</h3><p><img src="/assets/image/201808/docker-ops.png" alt=""></p>
+<p>整个 DevOps 其实就两个关键点:</p>
+<ol>
+<li>怎么部署上去: 构建与部署流程，其实就是CI流程，目前还没有比较好的基于Docker的界面化CI工具</li>
+<li>部署之后怎么管理: 包括状态监控，故障转移等，大部分工作docker swarm都已经做好了，GS只要支持服务发现即可，或者用 docker swarm 网络的服务发现，我们是自己做的 etcd+grpc。</li>
+</ol>
+<h2 id="具体实践"><a href="#具体实践" class="headerlink" title="具体实践"></a>具体实践</h2><p>就我们目前而言，DevOps的主要途径是让运维尽早地参与到项目的框架设计中，制定相关的标准和规范，开发过程通过遵守这些规范以达成更快的交付速度，更稳定，安全的运行状态，以及更系统，完善的维护流程。这个过程需要开发人员懂一些基本运维知识，最好就是开发环境的部署流程和线上环境一样，这样，运维在规范开发，开发过程中也在完善运维流程，达成双向促进。这里从 GS 的角度谈谈我们从”可运维”角度做的一些具体实践。</p>
+<h3 id="1-GS-配置"><a href="#1-GS-配置" class="headerlink" title="1. GS 配置"></a>1. GS 配置</h3><p>GS 配置指节点(容器)配置，通常是运维最关心的，配置方案有很多种，配置文件，启动参数，配置服务，甚至硬编码，之前我们更多的是用配置文件，即将配置模板加入代码仓库，然后在本地拷贝一份改成自己的配置，这份配置是不加入仓库的，这种方案有两个缺点: 1. 拿到代码才能拿到配置模板，2. 需要手动改配置文件，这就产生了文件路径依赖，并且不方便做自动化。<a target="_blank" rel="noopener" href="https://peter.bourgon.org/go-for-industrial-programming/#program-configuration">Go 工业级编程</a>这篇文章中曾经提到:最好的配置方案就是通过启动参数，这一点我深表赞同，最好的配置方案就是当你拿到这个二进制时，你就拿到了这个二进制的使用方法，并且作者提到的配置方案已经有了很好的实现: <a target="_blank" rel="noopener" href="https://github.com/urfave/cli/tree/v2">cli.v2</a>，可以结合 yml 文件更好地简化和管理配置。我们目前所有的运维配置都通过命令行指定。</p>
+<p>命令行配置可以很方面地过渡到容器，绝大部分的参数都通过容器启动参数传入，极少数特殊配置可以考虑通过ENV传入，这两种方案应该能满足任何情况，比文件配置具备更高的灵活性和安全性。</p>
+<h3 id="2-GD-配置"><a href="#2-GD-配置" class="headerlink" title="2. GD 配置"></a>2. GD 配置</h3><p>在我们之前的实践中，代码和策划配置csv文件常常是放在一起的，这本身不是一个很好的实践，比如我要热更配置，就必须要更新代码仓库。在容器化之后，这种缺点会更明显，更新配置就意味着要更新代码重新构建镜像，也就要停服，自然也就做不了热更。因此我们现在统一把csv配置通过脚本导入到 mongodb，将策划配置作为外部输入源来管理，这样不同的服务器可以指定使用同一个 DB 的配置(策划配置只读)，热更也得以实现(先更新配置并生成到 DB，再发送hotload命令给GS)。</p>
+<h3 id="3-日志规范"><a href="#3-日志规范" class="headerlink" title="3. 日志规范"></a>3. 日志规范</h3><p>日志数据通常分为两大类: 逻辑调试日志和数据分析日志，<br>调试日志是给开发者看得，通常分为几个等级，有时候为了方便，我们还会按照模块功能对调试日志进行归类，比如网络消息日志，地图日志等，数据分析日志主要是给运营，数据部看的，包括 IPO 日志和运营日志。所有这些日志可能来源于不同的节点上，这给日志查阅和整理带来了难度，之前大多数项目组可能都是直接将日志存为文件，然后运维和开发者需要知道每个GS的日志目录在哪里，在容器化部署下，这暴露出几个问题:</p>
+<ol>
+<li>为了保证日志在容器停止后不丢失，容器的目录需要挂载出来，这样容器和宿主机绑在了一起，不具备位置透明性</li>
+<li>当容器被部署在其它物理机的时候，日志前后就被分隔开了</li>
+<li>多个无状态容器的日志或者逻辑相关的容器日志分散在各处，不方便按照时间线统一查看</li>
+</ol>
+<p>因此，基于以上种种原因，我们需要一个统一的日志分发中心，目前我们用的是 Fluentd，它是一个开源的日志收集器，并且已经集成到 Docker <a target="_blank" rel="noopener" href="https://docs.docker.com/config/containers/logging/fluentd/">log-driver</a>，<a target="_blank" rel="noopener" href="https://www.fluentd.org/guides/recipes/docker-logging">这里</a>有它的简单使用文档，使用了 Fluentd 之后，整个日志流变成这样:</p>
+<p><img src="/assets/image/201808/fluentd_sample.png" alt=""></p>
+<h3 id="4-微容器"><a href="#4-微容器" class="headerlink" title="4. 微容器"></a>4. 微容器</h3><p>微容器是指仅包含OS库和运行应用所需要的依赖以及应用本身，其他都不需要的容器。微容器是容器轻量化的产物，它有如下好处:</p>
+<ol>
+<li>镜像很小，占用更低的磁盘空间，并且可以快速发布和部署</li>
+<li>更小的镜像意味着更小的攻击面，基础 OS 就更安全</li>
+</ol>
+<p>微容器我们主要要从两个方面着手: 轻量基础镜像和二进制部署。</p>
+<p>得益于Docker的联合文件系统，通常我们平时在使用Dockerfile时，都很少去关心基础镜像的大小，只有在初次并且本地没有对应的基础镜像层时，才会重新从Hub拉取。因此为了方便，通常项目组的Dockerfile都是基于ubuntu这类OS镜像，导致镜像的体积动辄几百 M，比如<code>ubuntu16.04</code>大小为115M，而<code>golang:1.9</code>大小为735M，目前有很多精简的基础镜像，如scratch, alpine等，alpine是一个只有4M左右的轻型Linux发行版，目前大部分官方镜像都已经支持alphine 作为基础镜像，比如也有对应的<code>go1.9-alpine</code>轻量版，大小降低至286M。由于我们是二进制部署，因此我们直接用的alpine作为基础镜像。</p>
+<p>二进制部署是指镜像中只存在二进制文件而不是整个源代码，这样一方面减少了镜像体积，另一方面提升了安全性。通常我们是在本地或者某个临时的”构建容器”中编译代码，然后将生成的二进制拷贝到”运行容器”中，这些方案要么很麻烦，要么不容易保证构建环境和运行环境的一致性，直到 Docker17.05引入了多段构建，可以在一个 Dockerfile 中完成之前需要多个 Dockerfile 才能完成的工作。如下是我们当前的 Dockerfile:</p>
+<pre><code>#  编译阶段
+FROM golang:alpine AS compiler
+ADD . /go/src/ngs
+# 跑单元测试
+RUN go test ngs/...
+WORKDIR /go/src/ngs
+# 二进制部署必须CGO_ENABLED=0，而race必须在CGO_ENABLED=1下才可用
+# 参考: https://github.com/golang/go/issues/128440
+RUN CGO_ENABLED=0 go build -o bin/game ngs/game
+
+# 发布阶段
+FROM alpine:latest
+WORKDIR /tmp/
+# https support
+RUN apk add --no-cache ca-certificates apache2-utils
+COPY --from=compiler /go/src/ngs/bin/game .
+COPY --from=compiler /go/src/ngs/gdconf/others gdconf/others
+ENTRYPOINT [&quot;./game&quot;]
+</code></pre><p>相比之前的源码部署，精简了基础镜像，并且没有了源码和构建工具，镜像从之前的823M (基于<code>go1.9</code>基础镜像)缩小到32M。</p>
+<h3 id="5-网络管理"><a href="#5-网络管理" class="headerlink" title="5. 网络管理"></a>5. 网络管理</h3><p>目前我们的容器化部署全部使用 host 网络模式，主要是为了简单和高效，同时对 docker bridge/overlay 网络理解得还不是很深，这会导致容器与主机的网络有所关联。但是基于 Etcd 服务发现机制，容器仍然可以透明在不同主机上进行故障转移和重新部署，因此容器对主机的依赖相对较轻。至于是否需要用 docker bridge/overlay，还有待研究，目前我觉得Docker网络还是要和<a href="http://wudaijun.com/2018/03/docker-swarm/">docker swarm</a>结合起来才能发挥最大优势，我们并不打算用 docker swarm，因为GS大部分节点是强状态的，不能像docker service那样透明扩展，路由，和收缩，或者换句话将，每个节点就是都是一个 service，那这样的话，用了 docker swarm 的好处基本就只有故障转移了。因此我们主要还是单容器部署，每个 GS 容器需要手动配置部署在哪个host上，在之上做一些状态监控，如果容器挂了，可以自己做自动重启，但是如果物理机挂了，需要手动部署到其它host上，然后基于自己做的服务发现将容器加入集群，我将这种集群称为”半自动集群”。</p>
+<h3 id="6-测试"><a href="#6-测试" class="headerlink" title="6. 测试"></a>6. 测试</h3><p>我们的测试流程主要包含单元测试和集成测试，单元测试就是 go test，是源码级的白盒测试，单元测试我们放在 Dockerfile 中做，每次构建会跑所有的单元测试，如果有测试没跑通，则构建失败。集成测试则是基于机器人测试用例的黑盒测试，需要单独跑在一个容器中，以 exitcode 作为测试是否成功的标志，集成测试在服务器部署之后，如果集成测试失败，则整个部署工作流失败。</p>
+<h3 id="7-CI-工具"><a href="#7-CI-工具" class="headerlink" title="7. CI 工具"></a>7. CI 工具</h3><p>谈到持续集成(CI)工具，大部分项目组都用的 Jenkins，我们前期也用的 Jenkins， 结合 GitLab WebHook 去做自动构建部署。在开发环境中，QA，GD 都能够很快上手。Jenkins很灵活，这也可能导致项目组的集成流程中过度依赖于Jenkins本身，比如依赖Jenkins宿主机环境或路径，在Jenkins上写了很多临时脚本等，另外 Jenkins 缺乏对容器更好的支持，如镜像管理，容器监控等。就运维层面来说，Jenkins 只是个 Trigger + Scripts，离真正的 Ops 工具还差很远。因此目前运维基于 Docker API 搞了一套 Web 持续集成工具，将前面提到的”可运维”指标标准化，流程化。</p>
+<p>从 CI 方面，保留 Trigger，WorkFlow，Stage 的概念:</p>
+<ul>
+<li>Trigger:  触发器，比如代码提交，定时触发，手动触发</li>
+<li>WorkFlow: 工作流，由 Trigger 触发，包含多个顺序执行的 Stage，比如某个工作流包含Build，Deploy，Test三个 Stage</li>
+<li>Stage: 阶段，包含多个可并行执行的 Task，比如Test Stage 包含多个可并发执行的 Test，其中一个失败，则整个 Stage 失败</li>
+<li>Task: 最小粒度的执行单位，目前支持构建，部署和测试</li>
+</ul>
+<p>从 Docker 方面，集成 Docker Swarm 的 Cluster, Service, Task(这个 Task 是 Swarm 中的概念，相当于一个 Container)及部署策略等，支持单容器部署，同时，基于 Docker API 提供容器和物理机的管理，监控以及报警机制。基于 Docker Swarm，可以实现:</p>
+<ul>
+<li>资源管理: 集群/主机/容器/镜像的查看和管理</li>
+<li>监控报警: 集群/主机/容器的资源占用，阈值和报警机制</li>
+<li>扩容收缩: 主要针对无状态容器，可以手动扩容或收缩</li>
+<li>故障转移: 基于 Docker Service 的容器级和主机级的故障转移</li>
+</ul>
+<p>这样，项目在开发过程中就可以通过这套工具去做持续集成，走运维标准的配置，部署，监控方案，项目在开发期间就去考虑和满足运维上的需求和规范，项目上线之后，服务器交付基本就是零成本的。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/08/gs-devops/" title="GS DevOps 实践">http://wudaijun.com/2018/08/gs-devops/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/gameserver/" rel="tag"><i class="fa fa-tag"></i> gameserver</a>
+              <a href="/tags/docker/" rel="tag"><i class="fa fa-tag"></i> docker</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/07/gameserver-communication-model/" rel="prev" title="游戏服务器中的通信模型">
+      <i class="fa fa-chevron-left"></i> 游戏服务器中的通信模型
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/08/go-is-not-good/" rel="next" title="Go 的一些"坑"">
+      Go 的一些"坑" <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8E%B0%E7%8A%B6-amp-%E5%A5%91%E6%9C%BA-amp-%E7%9B%AE%E6%A0%87"><span class="nav-text">现状&amp;契机&amp;目标</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%8E%B0%E7%8A%B6"><span class="nav-text">1. 现状</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%A5%91%E6%9C%BA"><span class="nav-text">2. 契机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%9B%AE%E6%A0%87"><span class="nav-text">3. 目标</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B7%E4%BD%93%E5%AE%9E%E8%B7%B5"><span class="nav-text">具体实践</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-GS-%E9%85%8D%E7%BD%AE"><span class="nav-text">1. GS 配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-GD-%E9%85%8D%E7%BD%AE"><span class="nav-text">2. GD 配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%97%A5%E5%BF%97%E8%A7%84%E8%8C%83"><span class="nav-text">3. 日志规范</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%BE%AE%E5%AE%B9%E5%99%A8"><span class="nav-text">4. 微容器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E7%BD%91%E7%BB%9C%E7%AE%A1%E7%90%86"><span class="nav-text">5. 网络管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E6%B5%8B%E8%AF%95"><span class="nav-text">6. 测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-CI-%E5%B7%A5%E5%85%B7"><span class="nav-text">7. CI 工具</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

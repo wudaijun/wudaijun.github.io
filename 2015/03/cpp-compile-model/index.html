@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="C++继承了C的编译模型，而C是一门古老的语言，它的编译链接模型受限于当时的硬件条件限制，并且该模型也足够用于简洁的C。而C++继承了这些机制之后，引发了更为复杂的一些问题。 C 编译模型首先简要介绍一下C的编译模型： 限于当时的硬件条件，C编译器不能够在内存里一次性地装载所有程序代码，而需要将代码分为多个源文件，并且分别编译。并且由于内存限制，编译器本身也不能太大，因此需要分为多个可执行文件，进">
+<meta property="og:type" content="article">
+<meta property="og:title" content="C++ 编译模型">
+<meta property="og:url" content="http://wudaijun.com/2015/03/cpp-compile-model/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="C++继承了C的编译模型，而C是一门古老的语言，它的编译链接模型受限于当时的硬件条件限制，并且该模型也足够用于简洁的C。而C++继承了这些机制之后，引发了更为复杂的一些问题。 C 编译模型首先简要介绍一下C的编译模型： 限于当时的硬件条件，C编译器不能够在内存里一次性地装载所有程序代码，而需要将代码分为多个源文件，并且分别编译。并且由于内存限制，编译器本身也不能太大，因此需要分为多个可执行文件，进">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2015-03-29T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.603Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="c&#x2F;c++">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2015/03/cpp-compile-model/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>C++ 编译模型 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/03/cpp-compile-model/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          C++ 编译模型
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-03-30 00:00:00" itemprop="dateCreated datePublished" datetime="2015-03-30T00:00:00+08:00">2015-03-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/03/cpp-compile-model/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/03/cpp-compile-model/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>C++继承了C的编译模型，而C是一门古老的语言，它的编译链接模型受限于当时的硬件条件限制，并且该模型也足够用于简洁的C。而C++继承了这些机制之后，引发了更为复杂的一些问题。</p>
+<h2 id="C-编译模型"><a href="#C-编译模型" class="headerlink" title="C 编译模型"></a>C 编译模型</h2><p>首先简要介绍一下C的编译模型：</p>
+<p>限于当时的硬件条件，C编译器不能够在内存里一次性地装载所有程序代码，而需要将代码分为多个源文件，并且分别编译。并且由于内存限制，编译器本身也不能太大，因此需要分为多个可执行文件，进行分阶段的编译。在早期一共包括7个可执行文件：cc(调用其它可执行文件)，cpp(预处理器)，c0(生成中间文件)，c1(生成汇编文件)，c2(优化，可选)，as(汇编器，生成目标文件)，ld(链接器)。</p>
+<h3 id="1-隐式函数声明"><a href="#1-隐式函数声明" class="headerlink" title="1. 隐式函数声明"></a>1. 隐式函数声明</h3><p>为了在减少内存使用的情况下实现分离编译，C语言还支持”隐式函数声明”，即代码在使用前文未定义的函数时，编译器不会检查函数原型，编译器假定该函数存在并且被正确调用，还假定该函数返回int，并且为该函数生成汇编代码。此时唯一不确定的，只是该函数的函数地址。这由链接器来完成。如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">	printf(&quot;ok\n&quot;);</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在gcc上会给出隐式函数声明的警告，但能编译运行通过。因为在链接时，链接器在libc中找到了printf符号的定义，并将其地址填到编译阶段留下的空白中。PS：用g++编译则会生成错误：<code>use of undeclared identifier &#39;printf&#39;</code>。而如果使用的是未经定义的函数，如上面的printf函数改为print，得到的将是链接错误，而不是编译错误。</p>
+<span id="more"></span>
+<h3 id="2-头文件"><a href="#2-头文件" class="headerlink" title="2. 头文件"></a>2. 头文件</h3><p>有了隐式函数声明，编译器在编译时应该就不需要头文件了，编译器可以按函数调用时的代码生成汇编代码，并且假定函数返回int。而C头文件的最初目的是用于方便文件之间共享数据结构定义，外部变量，常量宏。早期的头文件里，也只包含这三样东西。注意，没有提到函数声明。</p>
+<p>而如今在引入将函数声明放入头文件这一做法后，带来了哪些便利和缺陷：</p>
+<p>优点：</p>
+<ul>
+<li>项目不同的文件之间共享接口。</li>
+<li>头文件为第三方库提供了接口说明。</li>
+</ul>
+<p>缺点：</p>
+<ul>
+<li>效率性：为了使用一个简单的库函数，编译器可能要parse成千上万行预处理之后的头文件源码。</li>
+<li>传递性：头文件具有传递性。在头文件传递链中任一头文件变动，都将导致包含该头文件的所有源文件重新编译。哪怕改动无关紧要(没有源文件使用被改动的接口)。</li>
+<li>差异性：头文件在编译时使用，动态库在运行时使用，二者有可能因为版本不一致造成二进制兼容问题。</li>
+<li>一致性：头文件函数声明和源文件函数实现的参数名无需一致。这将可能导致函数声明的意思，和函数具体实现不一致。如声明为 <code>void draw(int height, int width)</code> 实现为 <code>void draw(int width, int height)</code>。</li>
+</ul>
+<h3 id="3-单遍编译-One-Pass"><a href="#3-单遍编译-One-Pass" class="headerlink" title="3. 单遍编译( One Pass )"></a>3. 单遍编译( One Pass )</h3><p>由于当时的编译器并不能将整个源文件的语法树保存在内存中，因此编译器实际上是”单遍编译”。即编译器从头到尾地编译源文件，一边解析，一边即刻生成目标代码，在单遍编译时，编译器只能看到已经解析过的部分。 意味着：</p>
+<ul>
+<li>C语言结构体需要先定义，才能访问。因为编译器需要知道结构体定义，才知道结构体成员类型和偏移量，并生成目标代码。</li>
+<li>局部变量必须先定义，再使用。编译器需要知道局部变量的类型和在栈中的位置。</li>
+<li>外部变量(全局变量)，编译器只需要知道它的类型和名字，不需要知道它的地址，就能生成目标代码。而外部变量的地址将留给连接器去填。</li>
+<li>对于函数，根据隐式函数声明，编译器可以立即生成目标代码，并假定函数返回int，留下空白函数地址交给连接器去填。</li>
+</ul>
+<p>C语言早期的头文件就是用来提供结构体定义和外部变量声明的，而外部符号(函数或外部变量)的决议则交给链接器去做。</p>
+<p>单遍编译结合隐式函数声明，将引出一个有趣的例子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">void bar()</span><br><span class="line">&#123;</span><br><span class="line">	foo(&#39;a&#39;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int foo(char a)</span><br><span class="line">&#123;</span><br><span class="line">	printf(&quot;foobar\n&quot;);</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">	bar();</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>gcc编译上面的代码，得到如下错误：</p>
+<pre><code>test.c:16:6: error: conflicting types for &#39;foo&#39;
+void foo(char a)
+ ^
+test.c:12:2: note: previous implicit declaration is here
+    foo(&#39;a&#39;);
+</code></pre><p>这是因为当编译器在bar()中遇到foo调用时，编译器并不能看到后面近在咫尺的foo函数定义。它只能根据隐式函数声明，生成<code>int foo(int)</code>的函数调用代码，注意隐式生成的函数参数为int而不是char，这应该是编译器做的一个向上转换，向int靠齐。在编译器解析到更为适合的<code>int foo(char)</code>时，它可不会认错，它会认为foo定义和编译器隐式生成的foo声明不一致，得到编译错误。将上面的foo函数替换为 <code>void foo(int a)</code>也会得到类似的编译错误，C语言严格要求一个符号只能有一种定义，包括函数返回值也要一致。</p>
+<p>而将foo定义放于bar之前，就编译运行OK了。</p>
+<h2 id="C-编译模型-1"><a href="#C-编译模型-1" class="headerlink" title="C++ 编译模型"></a>C++ 编译模型</h2><p>到目前为止，我们提到的3点关于C编译模型的特性，对C语言来说，都是利多于弊的，因为C语言足够简单。而当C++试图兼容这些特性时(C++没有隐式函数声明)，加之C++本身独有的重载，类，模板等特性，使得C++更加难以理解。</p>
+<h3 id="1-单遍编译"><a href="#1-单遍编译" class="headerlink" title="1. 单遍编译"></a>1. 单遍编译</h3><p>C++没有隐式函数声明，但它仍然遵循单遍编译，至少看起来是这样，单遍编译语义给C++带来的影响主要是重载决议和名字解析。</p>
+<h4 id="1-1-重载决议"><a href="#1-1-重载决议" class="headerlink" title="1.1 重载决议"></a>1.1 重载决议</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">#include&lt;stdio.h&gt;</span><br><span class="line"></span><br><span class="line">void foo(int a)</span><br><span class="line">&#123;</span><br><span class="line">	printf(&quot;foo(int)\n&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void bar()</span><br><span class="line">&#123;</span><br><span class="line">	foo(&#39;a&#39;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void foo(char a)</span><br><span class="line">&#123;</span><br><span class="line">	printf(&quot;foo(char)\n&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">	bar();</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以上代码通过g++编译运行结果为：<code>foo(int)</code>。尽管后面有更合适的函数原型，但C++在解析bar()时，只看到了<code>void foo(int)</code>。</p>
+<p>这是C++重载结合单遍编译造成的困惑之一，即使现在C++并非真的单遍编译(想一下前向声明)，但它要和C兼容语义，因此不得不”装傻”。对于C++类是个例外，编译器会先扫描类的定义，再解析成员函数，因此类中所有同名函数都能参加重载决议。</p>
+<p>关于重载还有一点就是C的隐式类型转换也给重载带来了麻烦：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; Case 1</span><br><span class="line">void f(int)&#123;&#125;</span><br><span class="line">void f(unsigned int)&#123;&#125;</span><br><span class="line">void test() &#123; f(5); &#125; &#x2F;&#x2F; call f(int)</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; Case 2</span><br><span class="line">void f(int)&#123;&#125;</span><br><span class="line">void f(long)&#123;&#125;</span><br><span class="line">void test() &#123; f(5); &#125; &#x2F;&#x2F; call f(int)</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; Case 3</span><br><span class="line">void f(unsigned int)&#123;&#125;</span><br><span class="line">void f(long)&#123;&#125;</span><br><span class="line">void test() &#123; f(5); &#125; &#x2F;&#x2F; error. 编译器也不知道你要干啥</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; Case 4</span><br><span class="line">void f(unsigned int)&#123;&#125;</span><br><span class="line">void test&#123; f(5); &#125; &#x2F;&#x2F; call f(unsigned int)...</span><br><span class="line">void f(long)&#123;&#125;</span><br></pre></td></tr></table></figure>
+<p>再加上C++子类到父类的隐式转换，转换运算符的重载… 你必须费劲心思，才能确保编译器按你预想的去做。</p>
+<h4 id="1-2-名字查找"><a href="#1-2-名字查找" class="headerlink" title="1.2 名字查找"></a>1.2 名字查找</h4><p>单遍编译给C++造成的另一个影响是名字查找，C++只能通过源码来了解名字的含义，比如 <code>AA BB(CC)</code>，这句话即可以是声明函数，也可以是定义变量。编译器需要结合它解析过的所有源代码，来判断这句话的确切含义。当结合了C++ template之后，这种难度几何攀升。因此不经意地改动头文件，或修改头文件包含顺序，都可能改变语句语义和代码的含义。</p>
+<h3 id="2-头文件-1"><a href="#2-头文件-1" class="headerlink" title="2. 头文件"></a>2. 头文件</h3><p>在初学C++时，函数声明放在.h文件，函数实现放在.cpp文件，似乎已经成了共识。C++没有C的隐式函数声明，也没有其它高级语言的包机制，因此，同一个项目中，头文件已经成了模块与模块之间，类与类之间，共享接口的主要方式。</p>
+<p>C中的效率性，传递性，差异性，一致性，C++都一个不落地继承了。除此之外，C++头文件还带来如下麻烦：</p>
+<h4 id="2-1-顺序性"><a href="#2-1-顺序性" class="headerlink" title="2.1 顺序性"></a>2.1 顺序性</h4><p>由于C++头文件包含更多的内容：template, typedef, #define, #pragma, class,等等，不同的头文件包含顺序，将可能导致完全不同的语义。或者直接导致编译错误。</p>
+<h4 id="2-2-又见重载"><a href="#2-2-又见重载" class="headerlink" title="2.2 又见重载"></a>2.2 又见重载</h4><p>由于C++支持重载，因此如果头文件中的函数声明和源文件中函数实现不一致(如参数个数，const属性等)，将可能构成重载，这个时候”聪明”的C++编译器不错报错，它将该函数的调用地址交给链接器去填，而源文件中写错了的实现将被认定为一个全新的重载。从而到链接阶段才报错。这一点在C中会得到编译错误，因为C没有重载，也就没有名字改编(name mangling)，将会在编译时得到符号冲突。</p>
+<h4 id="2-3-重复包含"><a href="#2-3-重复包含" class="headerlink" title="2.3 重复包含"></a>2.3 重复包含</h4><p>由于头文件的传递性，有可能造成某上层头文件的重复包含。重复包含的头文件在展开后，将可能导致符号重定义，如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; common.h</span><br><span class="line">class Common</span><br><span class="line">&#123;</span><br><span class="line">	&#x2F;&#x2F; ...</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; h1.h</span><br><span class="line">#include &quot;common.h&quot;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; h2.h</span><br><span class="line">#include &quot;common.h&quot;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; test.cpp</span><br><span class="line">#include &quot;h1.h&quot;</span><br><span class="line">#include &quot;h2.h&quot;</span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果common.h中，有函数定义，结构体定义，类声明，外部变量定义等等。test.cpp中将展开两份common.h，编译时得到符号重定义的错误。而如果common.h中只有外部函数声明，则OK，因为<strong>函数可在多处声明，但只能在一处定义</strong>。关于类声明，C++类保持了C结构体语义，因此叫做”类定义”更为适合。始终记得，<strong>头文件只是一个公共代码的整合，这些代码会在预编译期替换到源文件中</strong>。</p>
+<p>为了解决重复包含，C++头文件常用 <code>#ifndef #define #endif</code>或<code>#pragma once</code>来保证头文件不被重复包含。</p>
+<h4 id="2-4-交叉包含"><a href="#2-4-交叉包含" class="headerlink" title="2.4 交叉包含"></a>2.4 交叉包含</h4><p>C++中的类出现相互引用时，就会出现交叉包含的情况。如Parent包含一个Child对象，而Child类包含Parent的引用。因此相互包含对方的头文件，编译器展开Child.h需要展开Parent.h，展开Parent.h又要展开Child.h，如此无限循环，最终g++给出：<code>error: #include nested too deeply</code>的编译错误。</p>
+<p>解决这个问题的方案是前向声明，在Child类定义前面加上 <code>class Parent;</code> 声明Parent类，而无需包含其头文件。前向声明不止可以用于类，还可以用于函数(即显式的函数声明)。<strong>前向声明应该被大量使用，它可以解决头文件带来的绝大多数问题，如效率性，传递性，重复包含，交叉包含等等。</strong>这一点有点像包(package)机制，需要什么，就声明(导入)什么。<strong>前向声明也有局限：仅当编译器无需知道目标类完整定义时</strong>。如下情形，类A可使用 <code>class B;</code>：</p>
+<ul>
+<li>类A中使用B声明引用或指针；</li>
+<li>类A使用B作为函数参数类型或返回类型，而不使用该对象，即无需知道其构造函数和析构函数或成员函数；</li>
+</ul>
+<h4 id="2-5-如何使用头文件"><a href="#2-5-如何使用头文件" class="headerlink" title="2.5 如何使用头文件"></a>2.5 如何使用头文件</h4><p>关于头文件使用的建议：</p>
+<ul>
+<li>降低将文件间的编译依赖(如使用前向声明)；</li>
+<li>将头文件归类，按照特定顺序包含，如C语言系统头文件，C++系统头文件，项目基础头文件，项目头文件；</li>
+<li>防止头文件重复编译(#ifndef or #pragma)；</li>
+<li>确保头文件和源文件的一致；</li>
+</ul>
+<hr>
+<h3 id="3-总结"><a href="#3-总结" class="headerlink" title="3.总结"></a>3.总结</h3><p>C语言本身一些比较简单的特性，放在C++中却引起了很多麻烦，主要是因为C++复杂的语言特性：类，模板，各种宏… 举个例子来说，对于一个类A，它有一个私有函数，需要用到类B，而这个私有函数必须出现在类定义即头文件中，因此就增加了A头文件对B的不必要引用。这是因为C++类遵循C结构体的语义，所有类成员都必须出现在类定义中，”属于这个类的一部分”。这不仅在定义上造成不便，也在容易在语义上造成误解，事实上，C++类的成员函数不属于对象，它更像普通函数(虚函数除外)。</p>
+<p>而在C中，没有”类的捆绑”，实现起来就要简单多了，将该函数放在A.c中，函数不在A.h中声明。由A.c包含B.h，解除了A.h和B.h之间的关联，这也是C将数据和操作分离的优势之一。</p>
+<p>最后，看看其它语言是如何避免这些”坑”的：</p>
+<ul>
+<li>对于解释型语言，import的时候直接将对应模块的源文件解析一遍，而不是将文件包含进来；</li>
+<li>对于编译型语言，编译后的目标文件中包含了足够的元数据，不需要读取源文件(也就没有头文件一说了)；</li>
+</ul>
+<p>它们都避免了定义和声明不一致的问题，并且在这些语言里面，定义和声明是一体的。import机制可以确保只到处必要的名字符号，不会有多余的符号加进来。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/03/cpp-compile-model/" title="C++ 编译模型">http://wudaijun.com/2015/03/cpp-compile-model/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/c-c/" rel="tag"><i class="fa fa-tag"></i> c/c++</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/03/cpp-rvalue-referrence/" rel="prev" title="C++ 右值引用">
+      <i class="fa fa-chevron-left"></i> C++ 右值引用
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/04/erlang-mnesia/" rel="next" title="Erlang mnesia">
+      Erlang mnesia <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#C-%E7%BC%96%E8%AF%91%E6%A8%A1%E5%9E%8B"><span class="nav-text">C 编译模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E9%9A%90%E5%BC%8F%E5%87%BD%E6%95%B0%E5%A3%B0%E6%98%8E"><span class="nav-text">1. 隐式函数声明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%A4%B4%E6%96%87%E4%BB%B6"><span class="nav-text">2. 头文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%8D%95%E9%81%8D%E7%BC%96%E8%AF%91-One-Pass"><span class="nav-text">3. 单遍编译( One Pass )</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#C-%E7%BC%96%E8%AF%91%E6%A8%A1%E5%9E%8B-1"><span class="nav-text">C++ 编译模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%8D%95%E9%81%8D%E7%BC%96%E8%AF%91"><span class="nav-text">1. 单遍编译</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-1-%E9%87%8D%E8%BD%BD%E5%86%B3%E8%AE%AE"><span class="nav-text">1.1 重载决议</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#1-2-%E5%90%8D%E5%AD%97%E6%9F%A5%E6%89%BE"><span class="nav-text">1.2 名字查找</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%A4%B4%E6%96%87%E4%BB%B6-1"><span class="nav-text">2. 头文件</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-1-%E9%A1%BA%E5%BA%8F%E6%80%A7"><span class="nav-text">2.1 顺序性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2-%E5%8F%88%E8%A7%81%E9%87%8D%E8%BD%BD"><span class="nav-text">2.2 又见重载</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-3-%E9%87%8D%E5%A4%8D%E5%8C%85%E5%90%AB"><span class="nav-text">2.3 重复包含</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-4-%E4%BA%A4%E5%8F%89%E5%8C%85%E5%90%AB"><span class="nav-text">2.4 交叉包含</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-5-%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8%E5%A4%B4%E6%96%87%E4%BB%B6"><span class="nav-text">2.5 如何使用头文件</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%80%BB%E7%BB%93"><span class="nav-text">3.总结</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

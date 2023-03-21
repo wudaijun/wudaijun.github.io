@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="在计算机领域，谈到一致性这个词时，你会想到CAP理论的 consistency，或者数据 ACID 中的 consistency，或者 cache 一致性协议的 coherence，还是 Raft&#x2F;Paxos 中的 consensus？ 一致性大概是开发者最容易造成困惑的概念之一，在很多中文文献中，都将consistency，coherence，consensus 三个单词统一翻译为”一致性”，但">
+<meta property="og:type" content="article">
+<meta property="og:title" content="一致性杂谈">
+<meta property="og:url" content="http://wudaijun.com/2018/09/consistency/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="在计算机领域，谈到一致性这个词时，你会想到CAP理论的 consistency，或者数据 ACID 中的 consistency，或者 cache 一致性协议的 coherence，还是 Raft&#x2F;Paxos 中的 consensus？ 一致性大概是开发者最容易造成困惑的概念之一，在很多中文文献中，都将consistency，coherence，consensus 三个单词统一翻译为”一致性”，但">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201809/一致性.png">
+<meta property="article:published_time" content="2018-09-22T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.613Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="distributed">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201809/一致性.png">
+
+<link rel="canonical" href="http://wudaijun.com/2018/09/consistency/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>一致性杂谈 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/09/consistency/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          一致性杂谈
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-09-23 00:00:00" itemprop="dateCreated datePublished" datetime="2018-09-23T00:00:00+08:00">2018-09-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/distributed/" itemprop="url" rel="index"><span itemprop="name">distributed</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/09/consistency/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/09/consistency/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在计算机领域，谈到一致性这个词时，你会想到CAP理论的 consistency，或者数据 ACID 中的 consistency，或者 cache 一致性协议的 coherence，还是 Raft/Paxos 中的 consensus？</p>
+<p>一致性大概是开发者最容易造成困惑的概念之一，在很多中文文献中，都将consistency，coherence，consensus 三个单词统一翻译为”一致性”，但是它们的意义是有所不同的。本文尝试以”一致性”为线头，梳理下相关概念，以及它们之间的区别和联系。</p>
+<h4 id="Consensus"><a href="#Consensus" class="headerlink" title="Consensus"></a>Consensus</h4><p>更准确的翻译是共识，共识是容错分布式系统中的一个基本问题，共识的本质是多个节点就某个提议达成一致。在分布式系统下，由于节点故障，网络时延，网络分区等问题的存在，2PC/3PC这类强一致事务手段通常是不可取的: 任何节点故障或网络问题都会阻塞整个事务，降低系统的可用性，并且系统节点越多，可用性受影响越大。为了解决这个矛盾，分布式系统通常采用状态机复制+多数投票的机制来构建高可用容错系统:</p>
+<ul>
+<li>状态机复制(<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/State_machine_replication">State Machine Replication</a>): 它的理论基础是任何初始状态一样的状态机(如KV Store)，如果执行的命令日志(包括新增、修改、删除等任何操作本质都将转化为新的命令日志追加)一样，则它们的状态机最终状态也将一样(KV数据一致)。如此不需要强制这些命令在各个节点是同时开始、同步完成的，只需要将连续的命令日志同步给其他节点(这个步骤也叫日志复制Log Replication)，允许在此期间节点存在内部状态的不一致(只要这些不一致不被外观察到)，所有的分布式节点的最终状态会达成一致。</li>
+<li>投票机制(<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Quorum_(distributed_computing">Quorum</a>)): 少数服从多数原则，如果能在多数节点达成一致时就作出不可推翻的最终决策，那么就可以容忍少数节点的不可用，这也就打破了前面说的节点数越多，可用性越低的悖论</li>
+</ul>
+<p>在状态机复制的场景下，Paxos/Raft 等共识算法被用来确保各个复制状态机(节点)的日志是一致的，但Paxos/Raft 本身对外不直接体现出一致性(Consistency)，一致性是应用层的决策，比如Raft算法中，写操作成功，仅仅意味着超过半数节点对该写日志进行Commit(命令日志一致)，但不保证它们对该命令进行了Apply(状态机一致)，这一层就是交由应用层去灵活实现的，类似的应用层取舍点还包括Follower是否提供读服务，网络分区后Follower/Candidate是否对外提供读服务等等，因此不同的应用可以基于Raft算法实现不同的一致性，比如ETCD基于Raft支持线性一致性(后面会聊到这个概念)的读写操作。从另一个角度来说，共识算法可以理解为达成一致的一种算法手段。</p>
+<p>Paxos/Raft属于宕机容错(CFT，Crash Fault Tolerance)算法，因为它们只容忍了节点/网络故障，没有考虑节点不可信任，可能”作恶”的问题，如经典的<a target="_blank" rel="noopener" href="https://zh.m.wikipedia.org/zh-hans/%E6%8B%9C%E5%8D%A0%E5%BA%AD%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98">拜占庭将军问题</a>。能够(一定程度)容忍拜占庭问题的共识算法被称为拜占庭容错(Byzantine Fault Tolerance)算法，典型如POW(Proof of Work)、POS(Proof of Stake)、PBFT(Practical Byzantine Fault Tolerance)算法等，BFT算法通常比CFT算法实现成本更高，它通常适合用在公网，去中心化的情形下，如区块链场景。</p>
+<span id="more"></span>
+<h4 id="ACID-Consistency"><a href="#ACID-Consistency" class="headerlink" title="ACID Consistency"></a>ACID Consistency</h4><p>ACID 中的C指代Consistency or Correctness(From <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/ACID#Consistency_(Correctness">WIKI</a>))，但通常被译作事务的一致性，主流理解这里的一致性是指数据库的一致性约束，包括唯一键、外键约束，级联，触发器等。在事务开始之前和事务结束以后，都必须遵守这些不变量，保证<strong>数据库</strong>的一致性状态不被破坏。即ACID是数据为支持事务提供的四种正交的机制支撑。</p>
+<p>不过也有对ACID的另一种理解，将C纳入到通用的<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Consistency_model">一致性模型</a>(<a target="_blank" rel="noopener" href="https://jepsen.io/consistency">这篇文章</a>总结的一致性模型也不错，将事务一致性和分布式一致性整合到了一起)，从这个角度而言，ACID中的AID只是数据库提供的实现事务的手段，C是应用层使用事务的目的。前面说的数据库级联、触发器等相关约束，只是数据库系统为应用层提供的可选辅助机制。这种理解的本质是将DB数据一致性的概念和职责从数据库层提到了应用层，将事务一致性的概念拓宽了(从<strong>数据库</strong>的约束一致到<strong>应用层</strong>的状态一致)。应用层通过使用事务来获得数据一致性(广义的事务数据一致性)，而不是数据库通过一致性(狭义的数据库一致性约束，受限于具体数据库系统)去实现事务。我个人比较认可这种理解，因为事务虽然起源于数据库，而如今在其他各种分布式系统也推广开来，这种理解有助于在数据库事务(刚性事务)和后面提到的分布式事务(柔性事务)联系起来，相互借鉴学习。</p>
+<p>事务一致性后面提到的分布式一致性是有所不同的，分布式一致性讨论的粒度是单个读写操作，这些读写操作对外表现的读写预期如何。事务一致性讨论的粒度是单个事务，而单个事务包含多个读写操作，因此事务一致性还需要考虑原子性(单个事务会不会只生效了一半)和隔离性(不同事务会不会交织影响)。</p>
+<h4 id="CAP-Consistency"><a href="#CAP-Consistency" class="headerlink" title="CAP Consistency"></a>CAP Consistency</h4><p>CAP 理论中的 C 也就是我们常说的分布式系统中的一致性，更确切地说，指的是分布式一致性中的一种: 线性一致性(Linearizability)。</p>
+<p>谈到 CAP，网上各种理解也有很多版本，我个人更推荐的CAP资料来自于<a target="_blank" rel="noopener" href="https://www.the-paper-trail.org/page/cap-faq/">cap faq</a>。简单总结，在一个分布式的存储系统(即副本集)中，只能Consistency, Availability, Partition三选二，而由于在大规模的分布式系统中，网络不可靠几乎是不可避免的，即Partition网络分区容忍是必选项，因此对系统设计需要在AP(出现分区时可能响应过期的数据，即舍弃一致性)和CP(出现分区时阻塞请求直到故障恢复，在此期间整个系统不可用)之间权衡。</p>
+<p>很多时候我们会用 CAP 模型去评估一个分布式系统，但<a target="_blank" rel="noopener" href="https://blog.the-pans.com/cap/">这篇文章</a>提到了 CAP 理论的局限性，因为 CAP 理论是一个被过度简化的理论模型，按照 CAP 理论，很多系统包括 MongoDB，ZooKeeper 既不满足一致性(线性一致性)，也不满足可用性(任意一个工作中的节点都要可以处理请求)，但这并不意味着它们不是优秀的系统，而是 CAP 定理本身并没有考虑强弱一致性、处理时延、硬件故障、部分可用、SLA等等。这里不再展开，推荐阅读原文。</p>
+<p>正因为 CAP 中对C和A的定义过度理想化，后来又有人提出了BASE 理论，即基本可用(Basically Available）、软状态(Soft State)、最终一致性(Eventual Consistency)。BASE的核心思想是即使无法做到强一致性，但每个应用都可以根据自身的业务特点，采用适当的方法来使系统达到最终一致性(关于一致性和可用性的取舍，这篇亚马逊CTO <a target="_blank" rel="noopener" href="https://www.allthingsdistributed.com/2008/12/eventually_consistent.html">Werner Vogels的博客</a>值得一读)。显然，最终一致性弱于 CAP 中的 线性一致性。很多分布式系统都是基于 BASE 中的”基本可用”和”最终一致性”来实现的，比如 MySQL/PostgreSQL Replication 异步复制等。</p>
+<p>前面说到，CAP 中的 C 是分布式系统的一致性模型中的一种，这里的分布式一致性，更确切地说，应该是分布式多副本场景下，系统对用户/客户端保证的读写一致性约定。大部分时候我们说的分布式系统一致性模型，都是针对这种情形(我个人将其理解为读写一致性，对应的，还有事务一致性，文末会做个小结)，以下再展开说明下。</p>
+<p>在分布式共享内存系统或者分布式数据存储中，数据一致性模型指定程序员和系统之间的契约，系统保证如果程序员遵守规则，则存储器将是一致的，并且读取，写入或更新存储器的结果将是可预测的。我们最常用于讨论的便是复制状态机(Replicated state machines)的一致性问题，比如 etcd, zookeeper，当进程 A 执行 <code>set x 3</code> 时，进程 B 是否能在 A 执行完成后立即读到 x 的新值。这个问题在单节点上是显而易见的，但在分布式中，对进程 来说，则需要通过一致性模型来确保server 给出的结果可预测。分布式系统中的一致性有强弱之分，理想情况下，当进程写入 replicate 中的某个节点，其改变会被立即同步到集群其它节点，其它进程 能立即读取到该值。弱一些的一致性是最终一致性，即操作完成之后的某段时间内可能各个节点的数据副本不一致(导致不同进程 访问到的数据会不一致)，但最终会是一致的。比如 DNS 服务。</p>
+<p>要理解分布式一致性，先来谈谈分布式中几个必要的概念: 时间，事件，和顺序。</p>
+<p>分布式系统的时间主要分为物理时间和逻辑时间两种，物理时间是指程序能够直接获取到的 OS 时间，在分布式系统中，由于光速有限，你永远无法同步两台计算机的时间。想要在分布式中仅依靠物理时间来决定事件的客观先后顺序是不可能的。因此分布式系统中，通常使用<a target="_blank" rel="noopener" href="https://my.oschina.net/fileoptions/blog/1821958">逻辑时间</a>来处理事件的先后关系。</p>
+<p>分布式中的事件不是瞬间的概念，它有一个起始和结束时间，因此不同进程 发起的事件可能发生重叠，对于发生重叠的事件，我们说它们是并发执行的，在物理时间上是不分先后的。</p>
+<p>理想情况下，我们希望整个分布式系统中的所有事件都有先后顺序，这种顺序就是全序，即整个事件集合中任意两个事件都有先后顺序。但 1.物理时间是很难同步的，2. 网络是异步的，因此在分布式系统中，想要维持全序是非常困难的。不同的节点对两个事件谁先发生可能具有不同的看法，并且大部分时候我只需要知道偏序关系，用于确保因果关系。所谓偏序关系是指:</p>
+<ol>
+<li>如果a和b是同一个进程中的事件，并且a在b前面发生，那么 a-&gt;b </li>
+<li>如果a代表了某个进程的消息发送事件，b代表另一进程中针对这同一个消息的接收事件，那么a-&gt;b </li>
+<li>如果 a-&gt;b且b-&gt;c，那么a-&gt;c (传递性)</li>
+</ol>
+<p>逻辑时间中的 Lamport Clock和Vector Clock等都可以用于建立偏序关系。</p>
+<h5 id="顺序一致性-Sequential-Consistency"><a href="#顺序一致性-Sequential-Consistency" class="headerlink" title="顺序一致性(Sequential Consistency)"></a>顺序一致性(Sequential Consistency)</h5><p>Leslie Lamport 在1979年提出了Sequential Consistency, Leslie Lamport的定义如下:</p>
+<blockquote>
+<blockquote>
+<p>A multiprocessor is said to be sequentially consistent if the result of any execution is the same as if the operations of all the processors were executed in some sequential order, and the operations of each individual processor appear in this sequence in the order specified by its program.[How to Make a Multiprocessor Computer That Correctly Executes Multiprocess Programs by Leslie Lamport ,1979]</p>
+</blockquote>
+</blockquote>
+<p>这个定义比较晦涩，通常来讲，他可以分为两个部分:</p>
+<ol>
+<li>单个节点的事件历史在全局历史上看符合程序顺序</li>
+<li>事件历史在各个节点上看全局一致</li>
+</ol>
+<p>约束1保证了单个节点的所有事件是按照程序中指定的顺序执行的，约束2保证了所有的事件是原子的，不会相互干扰。更通俗的理解是，将整个分布式系统想象成一个调度器，将多个进程 的请求看做是多个FIFO请求队列， 调度器依次处理队列中的请求，并在多个队列中不断切换。是的，这和<a href="http://wudaijun.com/2018/01/go-scheduler/">Go调度器</a>原理类似，只不过我们探讨一致性模型时，会将系统规约为一个黑盒，从进程的角度来看这个黑盒对外表现出的一致性强弱。</p>
+<p>下面举个例子来加深理解，假设我们有个分布式 KV 系统，以下是四个进程 对其的操作顺序和结果:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">A: --W(x,1)--</span><br><span class="line">B:  --W(x,2)--</span><br><span class="line">C:                      -R(x,1)-   --R(x,2)-</span><br><span class="line">D:                 -R(x,1)-      --R(x,2)--</span><br></pre></td></tr></table></figure>
+<p>其中<code>W(x,1)</code>表示更新 x 的值为1，<code>R(x,1)</code>表示读出 x 的值为2，横向为物理时间，事件两边的’-‘代表事件持续时间，那么按照我们前面对顺序一致性的描述，显然这个 KV 系统是满足顺序一致性的。</p>
+<p>如果我们将进程 C 和 D 的 <code>R(x,1)</code> 和 <code>R(x,2)</code> 对换一下，也就是如果 C 和 D 都是先读出 x 为 2，再读出 x 为 1，那么还满足顺序一致性么，答案是肯定的，因为仍然能够找出一个全局的执行顺序: <code>B W(x,2) -&gt; A W(x,1) -&gt; C R(x,2) -&gt; D R(x,2) -&gt; C R(x,1) -&gt; D R(x,1)</code>，这个顺序满足前面提到的两点约束，即使直观上看来，这是”错误的一致性”。</p>
+<p>如果我们只是把进程 D 的两个 R 操作对换，那么我们说这个系统是不满足顺序一致性的，因为你无法找出一个全局顺序满足以上两点约束。同样，如果 <code>W(x,1)</code> 和 <code>W(x,2)</code> 都发生在进程 A 中，那么系统也不满足顺序一致性。</p>
+<h5 id="线性一致性-Linearizability"><a href="#线性一致性-Linearizability" class="headerlink" title="线性一致性(Linearizability)"></a>线性一致性(Linearizability)</h5><p>也叫做strong consistency或者atomic consistency，于 1987年提出，线性一致性强于顺序一致性，是程序能实现的最高的一致性模型，也是分布式系统用户最期望的一致性。 与顺序一致性相比，线性一致性只多了一条约束：<strong>如果事件A开始时间晚于事件B结束时间，则在最终事件历史中，要求B在A前。</strong>或者换句话说:<strong>事件生效时间是在事件开始时间到结束事件之间的某个时刻。</strong> 举个例子:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">A: --W(x,1)--</span><br><span class="line">B:  ---W(x,2)---</span><br><span class="line">C:         --R(x,2)-- -R(x,1)-</span><br><span class="line">D:               --R(x,1)-</span><br></pre></td></tr></table></figure>
+<p>这个案例是满足线性一致性的，因为<code>W(x,1)</code>和<code>W(x,2)</code>两个事件是同时发生的，因此事件生效点可能出现在开始和结束之间的任意点，就这个例子来讲，全局事件历史为: <code>B-W(x, 2), C-R(x,2), A-W(x,1), D-R(x,1), C-R(x,1)</code>，其中<code>D-R(x,1), C-R(x,1)</code>可以对换。</p>
+<p>如果将 D 的 <code>R(x,1)</code>改为 <code>R(x,2)</code>，则不满足线性一致性，因为 C 的 <code>R(x,1)</code> 和  D 的 <code>R(x,2)</code>都发生在 A, B 的 W 事件之后，因此它们应该对 x 的值结果具有相同的视角，不会读出不一致的结果。</p>
+<p>如果说顺序一致性只保证单节点事件先后顺序的话，线性一致性还保证节点间的事件先后顺序，因此线性一致性的实现是非常困难的，一方面它需要一个全局同步的时钟(顺序一致性不需要全局同步的时钟)，另一方面，越严格的一致性，会让分布式系统的复杂度更高，并且与之对应的，性能也会更差。</p>
+<p>除了线性一致性和顺序一致性外，还一些其它更弱的一致性模型，比如因果一致性，最终一致性等，这里不再赘述。理解一致性本身和一些基础概念之后，理解其它一致性都不难。</p>
+<h4 id="Cache-Coherence-amp-Meomory-Consistency"><a href="#Cache-Coherence-amp-Meomory-Consistency" class="headerlink" title="Cache Coherence &amp; Meomory Consistency"></a>Cache Coherence &amp; Meomory Consistency</h4><p><a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Cache_coherence">Cache Coherence</a> 被译为缓存一致性、缓存连贯性或缓存同调。我在<a href="https://wudaijun.com/2019/04/cache-coherence-and-memory-consistency/">Cache一致性和内存一致性</a>中详细聊了Cache Coherence 和 Memory Consistency，其中提到: Cache Conherence本质是多个CPU对同一内存地址的读写预期，这通常通过缓存一致性协议(如MESI)来保证，如果多CPU对同一内存地址的读写满足顺序一致性，那么我们就说该多CPU架构是缓存一致的。</p>
+<p>既然Cache Coherence的目标是顺序一致性，那么常见架构体系的 Memory Consistency 满足顺序一致性么，来看个例子:</p>
+<p>初始状态下，x = 0, y = 0</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>进程 A</th>
+<th>进程 B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>x=1</td>
+<td>y=1</td>
+</tr>
+<tr>
+<td>r1=y</td>
+<td>r2=x</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>按照顺序一致性的定义，我们将四条指令交叉任意排列，最终可能得到三种结果: <code>r1==1,r2==0</code>,<code>r1==0,r2=1</code>, <code>r1=1,r2=1</code> 三种结果，但不可能得到 <code>r1=0,r2=0</code> 的结果，因为这意味着全局执行顺序为 <code>r1=y, r2=x, x=1, y=1</code>，并不符合单个进程内部的执行顺序。那么实际上，这段程序会输出<code>r1=0,r2=0</code>的结果么？答案是会的，原因如下:</p>
+<ol>
+<li>编译器指令重排，编译器会在不影响程序语义的情况下，调整代码中的指令顺序。但编译器只能够解析显示语义，即单线程上下文，它无法(或者说非常难)解析程序的隐式语义，即程序的多线程上下文依赖。</li>
+<li>CPU指令乱序执行，由于内存读取非常慢，CPU在不影响单线程语义的情况下，会将数据提前加载到缓存，提高执行效率。这就可能造成CPU指令处理顺序和程序指令顺序不一致，由于CPU 乱序只保证单线程语义，因此同样无法解析程序逻辑隐私因果关系，也可能造成结果不符程序预期。</li>
+<li>缓存一致性，由于 LB/SB 的存在，缓存一致性是有极短延迟的，可能某个共享数据被CPU更新并写入到 SB(Store Buffer)中，其它 CPU 并不能即时看到。</li>
+</ol>
+<p>基于以上三点，现代 CPU 架构基本都是不支持顺序一致性的，因为其需要非常高昂的代价，严重限制编译器和硬件的优化能力。比如顺序一致性要求处理器按照程序序(program order)来执行程序，但在大部分情况下，这是没必要的。因此，现代硬件体系遵循的其实是: sequential consistency for data race free programs，即对没有 data race 的程序来说，是满足顺序一致性的(编译器能够分析上下文相关性)，但如果涉及到 data race，程序员需要使用 compile barrier 和 memory barrier 来限制编译器和 CPU 的乱序能力，以确保多线程程序执行结果如预期。</p>
+<p>另外，系统架构、编译器、编程语言通常会提供默认的不同强弱的内存一致性(也叫做内存模型，如<a target="_blank" rel="noopener" href="https://go.dev/ref/mem">Go Memory Model</a>)，以及相关并发同步机制。</p>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>按照个人理解，对以上提到的各种一致性做个小结:</p>
+<p><img src="/assets/image/201809/一致性.png" alt=""></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/09/consistency/" title="一致性杂谈">http://wudaijun.com/2018/09/consistency/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/distributed/" rel="tag"><i class="fa fa-tag"></i> distributed</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/08/go-is-not-good/" rel="prev" title="Go 的一些"坑"">
+      <i class="fa fa-chevron-left"></i> Go 的一些"坑"
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/10/linux-cgroup/" rel="next" title="Linux CGroup 基础">
+      Linux CGroup 基础 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#Consensus"><span class="nav-text">Consensus</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ACID-Consistency"><span class="nav-text">ACID Consistency</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#CAP-Consistency"><span class="nav-text">CAP Consistency</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E9%A1%BA%E5%BA%8F%E4%B8%80%E8%87%B4%E6%80%A7-Sequential-Consistency"><span class="nav-text">顺序一致性(Sequential Consistency)</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E7%BA%BF%E6%80%A7%E4%B8%80%E8%87%B4%E6%80%A7-Linearizability"><span class="nav-text">线性一致性(Linearizability)</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Cache-Coherence-amp-Meomory-Consistency"><span class="nav-text">Cache Coherence &amp; Meomory Consistency</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-text">小结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

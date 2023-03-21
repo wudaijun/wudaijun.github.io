@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="本文谈谈在函数式编程中的延迟计算，惰性求值等技术及其应用。 Racket本文将以 Racket 为例，以下是 Racket 的概要:  更广泛的函数概念: 什么 if define + myfunc 等，统统都是函数 前缀表达式: 同 Lisp, Scheme 等语言一样，Racket 使用前缀表达式，如(myfunc 1 2)，(+ 1 2 3)等 支持可变性: 可修改变量值(不建议)，如 (s">
+<meta property="og:type" content="article">
+<meta property="og:title" content="函数式中的延迟计算及惰性求值">
+<meta property="og:url" content="http://wudaijun.com/2019/02/lazy-evaluation/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="本文谈谈在函数式编程中的延迟计算，惰性求值等技术及其应用。 Racket本文将以 Racket 为例，以下是 Racket 的概要:  更广泛的函数概念: 什么 if define + myfunc 等，统统都是函数 前缀表达式: 同 Lisp, Scheme 等语言一样，Racket 使用前缀表达式，如(myfunc 1 2)，(+ 1 2 3)等 支持可变性: 可修改变量值(不建议)，如 (s">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-02-16T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.613Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="programing">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2019/02/lazy-evaluation/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>函数式中的延迟计算及惰性求值 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2019/02/lazy-evaluation/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          函数式中的延迟计算及惰性求值
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-02-17 00:00:00" itemprop="dateCreated datePublished" datetime="2019-02-17T00:00:00+08:00">2019-02-17</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/programing/" itemprop="url" rel="index"><span itemprop="name">programing</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2019/02/lazy-evaluation/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2019/02/lazy-evaluation/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文谈谈在函数式编程中的延迟计算，惰性求值等技术及其应用。</p>
+<h2 id="Racket"><a href="#Racket" class="headerlink" title="Racket"></a>Racket</h2><p>本文将以 Racket 为例，以下是 Racket 的概要:</p>
+<ol>
+<li>更广泛的函数概念: 什么 if define + myfunc 等，统统都是函数</li>
+<li>前缀表达式: 同 Lisp, Scheme 等语言一样，Racket 使用前缀表达式，如(myfunc 1 2)，(+ 1 2 3)等</li>
+<li>支持可变性: 可修改变量值(不建议)，如 (set! x 2)，并且支持修改 Pair，Map 的指定元素</li>
+</ol>
+<p>其它关于 Racket 的具体语法和 API 细节请参考<a target="_blank" rel="noopener" href="https://github.com/OnRoadZy/RacketGuideInChinese">Raccket 中文文档</a>。</p>
+<h2 id="Delay-Evaluation"><a href="#Delay-Evaluation" class="headerlink" title="Delay Evaluation"></a>Delay Evaluation</h2><p>Delay Evaluation 意为延迟计算，即表达式只在必要时才求值，而非被赋给某个变量时立即求值。</p>
+<span id="more"></span>
+<p>要理解延迟计算，我们先看一个小例子:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">(define (my-if e1 e2 e3)</span><br><span class="line">    (if e1 e2 e3))</span><br><span class="line">    </span><br><span class="line">(define (factorial x)</span><br><span class="line">  (my-if (&#x3D; x 0)</span><br><span class="line">         1</span><br><span class="line">         (* x (factorial (- x 1)))))  </span><br></pre></td></tr></table></figure>
+<p>上面的代码实现了一个 <code>my-if</code> 函数，它的作用和 if 一样，以及一个计算阶乘的函数 factorial，只不过使用 <code>my-if</code> 替代了 if，如果你运行<code>(factorial 1)</code>，将陷入死循环，因为在对 <code>(factorial 1)</code> 求值时，将会对<code>(my-if e1 e2 e3)</code>求值，而在大多数语言包括 Racket 中，实参表达式是在被传入时即会被求值的，因为 e3 中递归调用了 factorial，然后又会对 <code>(factorial 0)</code> 求值，如此递归，并且没有终止，因为要对 factorial 函数求值完成后，<code>my-if</code> 表达式才能求值，才能终止递归。而 if 则不同，它只有在 x 不为 0 时才会递归对 <code>(factorial (- x 1))</code> 求值，不会形成无限递归。</p>
+<p>要解决这种情况，我们需要让 <code>my-if</code> 在求值时，先不对 <code>(factorial (- x 1))</code> 求值，等到 <code>my-if</code> 判断 e1 为 false(x 不等于 0)，即确实需要对e3求值时才求值，这就是延迟计算，因此我们需要将以上函数改成这样:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">(define (my-if e1 e2 e3)</span><br><span class="line">    (if e1 (e2) (e3)))</span><br><span class="line">    </span><br><span class="line">(define (factorial x)</span><br><span class="line">  (my-if (&#x3D; x 0)</span><br><span class="line">         (lambda () 1)</span><br><span class="line">         (lambda () (* x (factorial (- x 1))))))</span><br></pre></td></tr></table></figure>
+<p><code>my-if</code> 的参数 e2, e3 只是个未被求值的表达式，通过不带参的匿名函数代入，由于函数只会在被调用的时候才会被求值，从而达到延迟计算的目的。这种通过函数传入表达式本身而不是具体值从而达成延迟计算的方式有个专业的计算机术语叫做<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Thunk">Thunk</a>(形实转换程序)。Thunk 的关键点在于将裸表达式 <code>e</code> (会被立即求值)包装为 p: <code>(lambda() e)</code>(将表达式包裹在函数中)，并且在使用时调用 p: <code>(p)</code>(在需要时才计算表达式求值)。</p>
+<p>有了 Thunk 之后，我们可以在某些情况下延迟函数参数的计算，但在另一些情况下，Thunk 反而会导致更多的计算:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">; 未使用 Thunk, 通过累加的方式计算 n*e，n &gt;&#x3D; 1</span><br><span class="line"> (define (my-mult1 e n)</span><br><span class="line">  (cond [(&#x3D; n 0) 0]</span><br><span class="line">       [(&#x3D; n 1) e]</span><br><span class="line">       [#t (+ e (my-mult2 e (- n 1)))]))</span><br><span class="line">      </span><br><span class="line">; 使用 Thunk, 通过累加的方式计算 n*(e)，n &gt;&#x3D; 1</span><br><span class="line"> (define (my-mult2 e n)</span><br><span class="line">  (cond [(&#x3D; n 0) 0]</span><br><span class="line">       [(&#x3D; n 1) (e)]</span><br><span class="line">       [#t (+ (e) (my-mult2 e (- n 1)))]))</span><br></pre></td></tr></table></figure>
+<p><code>my-mult1</code> 和 <code>my-mult2</code> 实现相同的功能，除了一个是直接传入表达式而另一个传入的是 Thunk，在这种情况下，<code>my-mult1</code> 只会计算表达式一次(即使 n==0)，而 <code>my-mult2</code> 会计算表达式 n 次(n==0时无需计算)。在 n 很大时，<code>my-mult1</code> 将明显优于 <code>my-mult2</code>。</p>
+<p>因此实际上我们需要的是这样一种机制，它兼具 <code>my-mult1</code>(不会重复计算表达式) 和 <code>my-mult2</code>(延迟求值，表达式可能无需计算)的优点:</p>
+<ol>
+<li>延迟计算</li>
+<li>避免重复计算，比如计算过一次之后就记住它的值</li>
+</ol>
+<p>这种机制被称为<em>惰性求值(Lazy Evaluation)</em>，天生具备惰性求值特性的语言称为<em>惰性语言(Lazy Language)</em>(如 Haskell)。。</p>
+<h2 id="Lazy-Evaluation"><a href="#Lazy-Evaluation" class="headerlink" title="Lazy Evaluation"></a>Lazy Evaluation</h2><p>下面我们来尝试在 Racket 中自己实现惰性求值，延迟计算的 Thunk 技术前面已经介绍过，现在我们来考虑如何记住表达式的值，避免重复计算，一种可选的方案是在表达式上再封装一层，其中记录了表达式的计算状态和计算值，我们可以用一个 Pair 来记录，其第一个字段为表达式是否已经被计算(bool 值)，另一个字段为计算结果或Thunk。</p>
+<p>在 Racket 中，Pair 分为可变和不可变两种，分别用 cons 和 mcons 构建，在这里，我们应该使用可变 Pair:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">; 在 thunk 上再一次封装，加上计算状态</span><br><span class="line">(define (my-delay thunk)</span><br><span class="line">  (mcons #f thunk)) ; 将 thunk 封到 Pair 中，并初始化为未被计算(false)</span><br><span class="line"></span><br><span class="line">; 计算 thunk，如果已经被计算，则不会再被计算  </span><br><span class="line">(define (my-force p)</span><br><span class="line">  (if (mcar p) ; 查看表达式是否已经被计算</span><br><span class="line">    (mcdr p)   ; 如果已经被计算，则直接返回 Pair 第二个元素 </span><br><span class="line">    (begin (set-mcar! p #t) ; 如果未被计算，则标记为已计算</span><br><span class="line">          (set-mcdr! p ((mcdr p))) ; 计算 Pair 中的表达式(第二个元素)，执行计算，并将计算结果存为Pair第二个元素</span><br><span class="line">          (mcdr p)))) ; 直接返回 Pair 中第二个元素</span><br></pre></td></tr></table></figure>
+<p>上面代码实现了两个函数 my-delay 和 my-force，与延迟计算中的<code>(lambda () e)</code> 和 <code>(e)</code> 类似，我们将表达式 e 变换为了p: <code>(my-delay (lambda () e))</code> 和 <code>(my-force p)</code>。现在我们可以用 my-delay 和 my-force 来优化 <code>my-mult2</code>，<code>my-mult2</code>无需任何修改，我们只需修改调用处:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">; 以下两个函数调用均为计算 (+ (factorial 2) (factorial 2))，结果均为 4</span><br><span class="line">; 延迟调用版本，会计算(factorial 2) 两次</span><br><span class="line">&gt; (my-mult2 (lambda () (factorial 2)) 2)</span><br><span class="line">&gt; 4</span><br><span class="line">; 惰性求值版本(延迟调用+避免重复计算)，会计算(factorial 2) 一次</span><br><span class="line">&gt; (my-mult2 (let ([p (my-delay (lambda () (factorial 2)))])</span><br><span class="line">              (lambda () (my-force p))) 2)</span><br><span class="line">&gt; 4              </span><br></pre></td></tr></table></figure>
+<p>惰性求值版本在最好情况下不会对表达式进行计算(n==0)，最差情况下也只会计算一次，兼具<code>my-mult1</code> 和 <code>my-mult2</code>的优点。</p>
+<h2 id="Stream"><a href="#Stream" class="headerlink" title="Stream"></a>Stream</h2><p>延迟计算除了优化作用外，另一个应用就是 Stream(流)，Stream 是指一个无限大小的值队列，比如:</p>
+<ol>
+<li>用户输入事件: 如鼠标点击</li>
+<li>Unix Pipes: <code>cmd1 | cmd2</code>，cmd2 从 cmd1 获取的处理结果，可能就是一个 Stream，如 cmd1为<code>tail -f ...</code></li>
+<li>数学计算中，可能需要一个无穷大的数队列(如斐波那契队列)，消费者可以不断地获取下一个数进行处理</li>
+</ol>
+<p>因此生产者无法事先穷举表示出来，另一方面，用多少数据通常由消费者决定，我们也就没有必要事先计算出所有的数据。因此，可以通过延迟计算实现 Stream。</p>
+<p>现在我们尝试用 Thunk 实现两个简单的整数队列:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">; 实现一个全是1的Stream [1,1,1,...]</span><br><span class="line">; 正确版本</span><br><span class="line">(define ones (lambda () (cons 1 ones)))</span><br><span class="line">; 错误版本1: 编译错误，在 ones-bad1 定义中使用了 ones-bad1定义</span><br><span class="line">; (define ones-bad1 (cons 1 ones-bad1))</span><br><span class="line">; 错误版本2: 无限递归，ones-bad2的求值需要对ones-bad2求值，没有终止</span><br><span class="line">; (define ones-bad2 (lambda () (cons 1 (ones-bad2))))</span><br><span class="line"></span><br><span class="line">; 实现一个递增的自然数Stream [1,2,3,...]</span><br><span class="line">; 辅助函数，f(x)，返回Pair: (x, Thunk-of-f(x+1))</span><br><span class="line">(define (f x) (cons x (lambda () (f (+ x 1)))))</span><br><span class="line">; 将 f(1) 封装为Thunk</span><br><span class="line">(define nats (lambda () (f 1)))</span><br></pre></td></tr></table></figure>
+<p>以下是使用示例:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&gt; (nats) ; 调用 nats 将返回一个 Pair，第一个元素是当前获取到的值，第二个元素是一个新的 Stream</span><br><span class="line">&#39;(1 . #&lt;procedure:...era&#x2F;racket&#x2F;a.rkt:29:22&gt;)</span><br><span class="line">&gt; (car (nats)) ; 取出第一个自然数</span><br><span class="line">1</span><br><span class="line">&gt; (car ((cdr (nats)))) ; 取出第二个自然数</span><br><span class="line">2</span><br></pre></td></tr></table></figure>
+<p>上面实现了两个Thunk, ones 和 nats，前者没有内部状态(每次返回值是一样的)，后者有内部状态。那么 nats 是如何保存状态的呢？函数式也可以有内部状态？不，函数式中的函数当然没有内部状态，状态是通过辅助函数 f 的参数来传递的，第 n 次调用 nats 会返回一个新的 f(n+1) Thunk，对外表现为调用 Stream 返回的 Pair 的第二个元素始终都是个Thunk(无参匿名函数)，但其实 Stream 每次返回的 Thunk 都是不一样的(封装了不同的 f 调用)，这也是为什么 Stream 每次都要返回 Thunk 的原因。</p>
+<p>如果是非函数式语言如 C，我们可以很方便地实现一个 <code>Counter()</code> 函数，通过静态局部变量来保存当前计数，而无需返回一个新的函数。但同时也失去了函数式的诸多好处，如延迟计算，因为程序员和编译器都很难判断<code>Counter()</code>是否有副作用(或者以后会改为具备副作用，比如修改了全局变量)，也就不能保证延迟计算是无痛的。</p>
+<h2 id="Memoization"><a href="#Memoization" class="headerlink" title="Memoization"></a>Memoization</h2><p>我最初接触<a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/%E8%AE%B0%E5%BF%86%E5%8C%96">Memoization</a>是在动态规划中，指的是如果一个问题具有最优子结构，并且会对多个子问题重复计算，那么我们应该将子问题的结果保存下来(Memoization)，避免对子问题的重复计算。Memoization 适用于很多使用递归并且会有大量重复计算的问题，比如背包问题，找零钱问题，最短路径问题，斐波那契数列问题等等。</p>
+<p>这里我们以最简单的斐波那契数列为例，以下是几个求第 n 个斐波那契数的函数:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">; fib1: 原始方案，直接自上而下递归</span><br><span class="line">(define (fib1 x)</span><br><span class="line">  (if (or (&#x3D; x 1) (&#x3D; x 2))</span><br><span class="line">      1</span><br><span class="line">      (+ (fib1 (- x 1))</span><br><span class="line">         (fib1 (- x 2)))))</span><br><span class="line"></span><br><span class="line">; fib2: 自下而上递归，避免子问题重复计算</span><br><span class="line">; 将子问题的计算结果通过函数参数传到上层问题，思路类似于迭代</span><br><span class="line">(define (fib2 x)</span><br><span class="line">  (letrec ([f (lambda (acc1 acc2 y)</span><br><span class="line">                (if (&#x3D; y x)</span><br><span class="line">                    (+ acc1 acc2)</span><br><span class="line">                    (f (+ acc1 acc2) acc1 (+ y 1))))])</span><br><span class="line">    (if (or (&#x3D; x 1) (&#x3D; x 2))</span><br><span class="line">        1</span><br><span class="line">        (f 1 1 3))))</span><br><span class="line"></span><br><span class="line">; fib3: 自上而下递归，使用我们前面的 my-delay my-force 技术</span><br><span class="line">(define (fib3 x)</span><br><span class="line">  (my-delay (lambda () (if (or (&#x3D; x 1) (&#x3D; x 2))</span><br><span class="line">      1</span><br><span class="line">      (+ (my-force (fib3 (- x 1)))</span><br><span class="line">         (my-force (fib3 (- x 2))))))))</span><br><span class="line"></span><br><span class="line">; fib4: 自上而下递归，使用 Memoization 技术</span><br><span class="line">; 用一个 map 保存计算过的子问题结果</span><br><span class="line">(define fib4</span><br><span class="line">  (let ((memo (make-hash &#39;((0 . 0) (1 . 1))))) ; 创建 map，key 为fib4函数参数 n</span><br><span class="line">    (lambda (n)</span><br><span class="line">      (unless (hash-has-key? memo n) ; 查看 memo map，是否已经计算过该子问题</span><br><span class="line">        (hash-set! memo n (+ (fib4 (- n 1)) (fib4 (- n 2))))) ; 如果没有计算过，则计算，并将结果存入 memo map</span><br><span class="line">      (hash-ref memo n)))) ; 此时肯定已经计算过了，直接取出 memo map 中的结果</span><br><span class="line"></span><br><span class="line">; 测试代码执行时间</span><br><span class="line">&gt; (time (fib1 35))</span><br><span class="line">cpu time: 518 real time: 519 gc time: 0</span><br><span class="line">9227465</span><br><span class="line">&gt; (time (fib2 35))</span><br><span class="line">cpu time: 0 real time: 0 gc time: 0</span><br><span class="line">9227465</span><br><span class="line">&gt; (time (my-force(fib3 35)))</span><br><span class="line">cpu time: 2784 real time: 2957 gc time: 912</span><br><span class="line">9227465</span><br><span class="line">&gt; (time (fib4 35))</span><br><span class="line">cpu time: 0 real time: 0 gc time: 0</span><br><span class="line">9227465</span><br></pre></td></tr></table></figure>
+<p>现在我们来分析测试结果，fib1 和 fib2 的结果没什么意外，毕竟原始的 fib1 函数是一个指数增长的函数，其复杂度为即O(2^n)，而 fib2 通过自下而上求解，用迭代的思路将其优化为 O(n)，提升效果明显。 </p>
+<p>fib3 的运行时间有些意外，它竟然比原始的 fib1 还慢了数倍，my-delay 和 my-force 不是只会计算一次结果么？需要注意的是，我们的 fib3 虽然用了 my-delay，但是却没有真正实现避免重复计算，因为我们没有将 <code>my-delay(fib(x))</code> 作为所有递归 <code>fib(x)</code> 的替代， 而是在每次调用 <code>fib(x)</code> 是生成了一个新的my-delay，已有的计算过的 <code>my-delay(fib(x))</code> 并没有保存下来，因此仍然会递归再次求解，再加上 my-delay 和 my-force 本身的开销，也就出现了比 fib1 还慢的结果。严格意义上说，fib3 不只是没有避免重复计算，就连延迟计算的优势也没有发挥出来，因为 my-force 总是在封装返回后立即被 my-force 使用。</p>
+<p>fib4 通过 Memoization 技术来避免重复计算，性能表现和 fib2 一样优秀，当然，实际上会比 fib2 慢一些，毕竟多了 hash map 存取。但 fib2 本身是基于斐波那契数列特性的优化，对类似找零钱问题，背包问题等，自下而上的递归就不那么好用了，并且也会传递更多的计算上下文，而 Memoization 贵在它是一种更通用，甚至可以做进编译器的优化方案，具备更好的可读性和扩展性。</p>
+<p>Memoization 和惰性求值虽然都可以避免重复计算，但惰性求值是依靠将单个表达式封装后的结果(如 my-delay 的 Pair)到处传递来实现的，Memoization 则考虑在表达式外部的上下文(闭包)中，对计算结果进行保存，因此对复杂的问题来说，实现 Memoization 要比惰性求值更简单直观。</p>
+<h2 id="Lazy-Language"><a href="#Lazy-Language" class="headerlink" title="Lazy Language"></a>Lazy Language</h2><p>我们前面讨论的惰性求值都是以在 Racket 中手动实现来阐述的，而事实上像柯里化一样，某些语言可能内置惰性求值，这类语言被称为惰性语言。最出名的惰性语言如 Haskell，在 Haskell 中你可以用 <code>[1..]</code> 来表示1到无穷大的列表，当你需要时，可以通过<code>[1..] !! 999</code>取出其中第1000个元素(值即为1000)。另外，假如我有一个列表 xs，doubleMe 会将 xs 中的元素<code>*2</code> ，那么在Haskell中，<code>doubleMe(doubleMe(doubleMe(xs)))</code> 只会遍历列表一次。</p>
+<p>另外，Racket 语言虽然不是天生的惰性语言，和 Scheme 一样，它也通过内置 delay 和 force 来支持手动惰性，并且使用比my-delay 更简单快捷:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&gt; (define laz (delay (fib1 10))) ; delay 后面只需跟表达式即可，无需是个 Thunk</span><br><span class="line">&gt; laz</span><br><span class="line">#&lt;promise:laz&gt;</span><br><span class="line">&gt; (promise? laz) ; 判断 laz 是否是个 promise，即惰性表达式</span><br><span class="line">#t</span><br><span class="line">&gt; (force laz)</span><br><span class="line">55</span><br></pre></td></tr></table></figure>
+<p>有意思的是，Racket 将 delay 封装后的惰性表达式(类似my-delay返回的 Pair) 称作 promise，我猜它的意思是，我在创建时不会立即求值，但是我给你个”承诺”，当你需要值时我会计算给你，并且内部保证不会重复计算。<a href="http://wudaijun.com/2018/07/javascript-async-programing/">JS 异步编程</a>中，用于保存异步执行结果，状态以及回调的结构体也叫 Promise，它的意思是: 你发起一个异步调用，我承诺将来一定会给出个结果(成功/失败)，你挂载上去的回调函数我也会在将来结果揭晓后进行调用。这两个 Promise 的”命名撞衫”非常有意思，它们虽然出自不同的语言，用于不同的领域，但都有延迟意思，只不过本文的 delay 由创建者决定何时取值，而 JS 中的 Promise 由异步过程决定何时返回值。</p>
+<h2 id="At-Last"><a href="#At-Last" class="headerlink" title="At Last"></a>At Last</h2><p>前面的讨论各种技术本质上是为了延迟计算和避免重复计算，这些技术绝大部分(除了 Memoization) 都只应用在函数式语言中，因为只有函数式语言才能更好地确保函数没有副作用，从而确保函数求值的时机和次数对整个计算的正确性不会有影响，更进一步甚至将这些技术做到了语言内部。而对于过程式来说，由于其本身的可变性和副作用，这方面的路还很长。本文用 Racket 实现的 my-delay 和 Memozation 技术都用到了可变语义，因为我们需要这样一个上下文来辅助我们优化计算，使用了这些可变语义的函数从计算语义上来说仍然是”无副作用的”(PS: 严格意义上的无副作用不存在，CPU，内存都是有状态的全局上下文)。这主要是指，虽然函数有了自己的状态(通过闭包实现)，但对函数使用者来说，从计算结果上来讲并无区别。</p>
+<p>换句话说，过程式羡慕函数式的无状态无副作用带来的优化空间和健壮性，而函数式有时候也未尝不羡慕过程式可变性带来的灵活性和便利。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2019/02/lazy-evaluation/" title="函数式中的延迟计算及惰性求值">http://wudaijun.com/2019/02/lazy-evaluation/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/programing/" rel="tag"><i class="fa fa-tag"></i> programing</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/02/gs-mesh-nav/" rel="prev" title="GS 中的 Mesh 寻路">
+      <i class="fa fa-chevron-left"></i> GS 中的 Mesh 寻路
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/02/gameserver-challenge/" rel="next" title="游戏服务器的挑战">
+      游戏服务器的挑战 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Racket"><span class="nav-text">Racket</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Delay-Evaluation"><span class="nav-text">Delay Evaluation</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Lazy-Evaluation"><span class="nav-text">Lazy Evaluation</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Stream"><span class="nav-text">Stream</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Memoization"><span class="nav-text">Memoization</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Lazy-Language"><span class="nav-text">Lazy Language</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#At-Last"><span class="nav-text">At Last</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

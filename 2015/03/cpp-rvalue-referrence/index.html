@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. 定义通常意义上，在C++中，可取地址，有名字的即为左值。不可取地址，没有名字的为右值。右值主要包括字面量，函数返回的临时变量值，表达式临时值等。右值引用即为对右值进行引用的类型，在C++98中的引用称为左值引用。 如有以下类和函数: 123456789101112class A&amp;#123;private:	int* _p;&amp;#125;;A ReturnValue()&amp;#123;	return">
+<meta property="og:type" content="article">
+<meta property="og:title" content="C++ 右值引用">
+<meta property="og:url" content="http://wudaijun.com/2015/03/cpp-rvalue-referrence/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. 定义通常意义上，在C++中，可取地址，有名字的即为左值。不可取地址，没有名字的为右值。右值主要包括字面量，函数返回的临时变量值，表达式临时值等。右值引用即为对右值进行引用的类型，在C++98中的引用称为左值引用。 如有以下类和函数: 123456789101112class A&amp;#123;private:	int* _p;&amp;#125;;A ReturnValue()&amp;#123;	return">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2015-03-18T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.603Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="c&#x2F;c++">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2015/03/cpp-rvalue-referrence/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>C++ 右值引用 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/03/cpp-rvalue-referrence/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          C++ 右值引用
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-03-19 00:00:00" itemprop="dateCreated datePublished" datetime="2015-03-19T00:00:00+08:00">2015-03-19</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/03/cpp-rvalue-referrence/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/03/cpp-rvalue-referrence/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一-定义"><a href="#一-定义" class="headerlink" title="一. 定义"></a>一. 定义</h2><p>通常意义上，在C++中，可取地址，有名字的即为左值。不可取地址，没有名字的为右值。右值主要包括字面量，函数返回的临时变量值，表达式临时值等。右值引用即为对右值进行引用的类型，在C++98中的引用称为左值引用。</p>
+<p>如有以下类和函数:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">class A</span><br><span class="line">&#123;</span><br><span class="line">private:</span><br><span class="line">	int* _p;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">A ReturnValue()</span><br><span class="line">&#123;</span><br><span class="line">	return A();</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p><code>ReturnValue()</code>的返回值即为右值，它是一个不具名的临时变量。在C++98中，只有常量左值引用才能引用这个值。 </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">A&amp; a &#x3D; ReturnValue(); &#x2F;&#x2F; error: non-const lvalue reference to type &#39;A&#39; cannot bind to a temporary of type &#39;A&#39;</span><br><span class="line">      </span><br><span class="line">const A&amp; a2 &#x3D; ReturnValue(); &#x2F;&#x2F; ok</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>通过常量左值引用，可以延长ReturnValue()返回值的生命周期，但是不能修改它。C++11的右值引用出场了：</p>
+<p><code>A&amp;&amp; a3 = ReturnValue();</code></p>
+<p>右值引用通过”&amp;&amp;”来声明， a3引用了ReturnValue()的返回值，延长了它的生命周期，并且可以对该临时值进行修改。</p>
+<span id="more"></span>
+<h2 id="二-移动语义"><a href="#二-移动语义" class="headerlink" title="二. 移动语义"></a>二. 移动语义</h2><p>右值引用可以引用并修改右值，但是通常情况下，修改一个临时值是没有意义的。然而在对临时值进行拷贝时，我们可以通过右值引用来将临时值内部的资源移为己用，从而避免了资源的拷贝：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">#include&lt;iostream&gt;</span><br><span class="line"></span><br><span class="line">class A</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">	A(int a)</span><br><span class="line">		:_p(new int(a))</span><br><span class="line">	&#123;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; 移动构造函数 移动语义</span><br><span class="line">	A(A&amp;&amp; rhs)</span><br><span class="line">		: _p(rhs._p)</span><br><span class="line">	&#123;</span><br><span class="line">		&#x2F;&#x2F; 将临时值资源置空 避免多次释放 现在资源的归属权已经转移</span><br><span class="line">		rhs._p &#x3D; nullptr; </span><br><span class="line">		std::cout&lt;&lt;&quot;Move Constructor&quot;&lt;&lt;std::endl;</span><br><span class="line">	&#125;</span><br><span class="line">	&#x2F;&#x2F; 拷贝构造函数 复制语义</span><br><span class="line">	A(const A&amp; rhs)</span><br><span class="line">		: _p(new int(*rhs._p))</span><br><span class="line">	&#123;</span><br><span class="line">		std::cout&lt;&lt;&quot;Copy Constructor&quot;&lt;&lt;std::endl;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">private:</span><br><span class="line">	int* _p;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">A ReturnValue() &#123; return A(5); &#125;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">	A a &#x3D; ReturnValue();</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>运行该代码，发现Move Constructor被调用(在g++中会对返回值进行优化，不会有任何输出。可以通过<code>-fno-elide-constructors</code>关闭这个选项)。在用右值构造对象时，编译器会调用<code>A(A&amp;&amp; rhs)</code>形式的移动构造函数，在移动构造函数中，你可以实现自己的<strong>移动语义</strong>，这里将临时对象中_p指向内存直接移为己用，避免了资源拷贝。当资源非常大或构造非常耗时时，效率提升将非常明显。如果A没有定义移动构造函数，那么像在C++98中那样，将调用拷贝构造函数，执行<strong>拷贝语义</strong>。移动不成，还可以拷贝。</p>
+<h3 id="std-move"><a href="#std-move" class="headerlink" title="std::move"></a>std::move</h3><p>C++11提供一个函数std::move()来将一个左值强制转化为右值：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">A a1(5);</span><br><span class="line">A a2 &#x3D; std::move(a1);</span><br></pre></td></tr></table></figure>
+<p>上面的代码在构造a2时将会调用移动构造函数，并且a1的_p会被置空，因为资源已经被移动了。而a1的生命周期和作用域并没有变，仍然要等到main函数结束后再析构，因此之后对a1的_p的访问将导致运行错误。</p>
+<p>std::move乍一看没什么用。它主要用在两个地方：</p>
+<ol>
+<li>帮助更好地实现移动语义</li>
+<li>实现完美转发(下面会提到)</li>
+</ol>
+<p>考虑如下代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">class B</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">	B(B&amp;&amp; rhs)</span><br><span class="line">		: _pb(rhs._pb)</span><br><span class="line">	&#123;</span><br><span class="line">		&#x2F;&#x2F; how can i move rhs._a to this-&gt;_a ?</span><br><span class="line">		rhs._pb &#x3D; nullptr;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">private:</span><br><span class="line">	A _a;</span><br><span class="line">	int * pb;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>对于B的移动构造函数来说，由于rhs是右值，即将被释放，因此我们不只希望将_pb的资源移动过来，还希望利用A类的移动构造函数，将A的资源也执行移动语义。然而问题出在如果我们直接在初始化列表中使用：<code>_a(rhs._a)</code> 将调用A的拷贝构造函数。因为参数 rhs._a 此时是一个具名值，并且可以取址。实际上，B的移动构造函数的参数rhs也是一个左值，因为它也具名，并且可取址。这是在C++11右值引用中让人很迷惑的一点：<strong>可以接受右值的右值引用本身却是个左值</strong></p>
+<p>这一点在后面的完美转发还会提到。现在我们可以用std::move来将rhs._a转换为右值：<code>_a(std::move(rhs._a))</code>，这样将调用A的移动构造。实现移动语义。当然这里我们确信rhs._a之后不会在使用，因为rhs即将被释放。</p>
+<h2 id="三-完美转发"><a href="#三-完美转发" class="headerlink" title="三. 完美转发"></a>三. 完美转发</h2><p>如果仅仅为了实现移动语义，右值引用是没有必要被提出来的，因为我们在调用函数时，可以通过传引用的方式来避免临时值的生成，尽管代码不是那么直观，但效率比使用右值引用只高不低。</p>
+<p>右值引用的另一个作用是完美转发，完美转发出现在泛型编程中，将模板函数参数传递给该函数调用的下一个模板函数。如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">template&lt;typename T&gt;</span><br><span class="line">void Forward(T t)</span><br><span class="line">&#123;</span><br><span class="line">	Do(t);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面的代码中，我们希望Forward函数将传入参数类型原封不动地传递给Do函数，即Forward函数接收的左值，则Do接收到左值，Forward接收到右值，Do也将得到右值。上面的代码能够正确转发参数，但是是不完美的，因为Forward接收参数时执行了一次拷贝。</p>
+<p>考虑到避免拷贝，我们可以传递引用，形如<code>Forward(T&amp; t)</code>，但是这种形式的Forward并不能接收右值作为参数，如Forward(5)。因为非常量左值不能绑定到右值。考虑常量左值引用：<code>Forward(const T&amp; t)</code>，这种形式的Forward能够接收任何类型(常量左值引用是万能引用)，但是由于加上了常量修饰符，因此无法正确转发非常量左值引用：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">void Do(int&amp; i)</span><br><span class="line">&#123;</span><br><span class="line">	&#x2F;&#x2F; do something...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename T&gt;</span><br><span class="line">void Forward(const T&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	Do(t);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">	int a &#x3D; 8;</span><br><span class="line">	Forward(a); &#x2F;&#x2F; error. &#39;void Do(int&amp;)&#39; : cannot convert argument 1 from &#39;const int&#39; to &#39;int&amp;&#39;</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>基于这种情况， 我们可以对Forward的参数进行const重载，即可正确传递左值引用。但是当Do函数参数为右值引用时，Forward(5)仍然不能正确传递，因为Forward中的参数都是左值引用。</p>
+<p>下面介绍在 C++11 中的解决方案。</p>
+<h3 id="引用折叠"><a href="#引用折叠" class="headerlink" title="引用折叠"></a>引用折叠</h3><p>C++11引入了引用折叠规则，结合右值引用来解决完美转发问题：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">typedef const int T;</span><br><span class="line">typedef T&amp; TR;</span><br><span class="line">TR&amp; v &#x3D; 1; &#x2F;&#x2F; 在C++11中 v的实际类型为 const int&amp;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>如上代码中，发生了引用折叠，将TR展开，得到 T&amp; &amp; v = 1(注意这里不是右值引用)。 这里的 T&amp; + &amp; 被折叠为 T&amp;。更为详细的，根据TR的类型定义，以及v的声明，发生的折叠规则如下：</p>
+<pre><code>T&amp;  + &amp;   = T&amp;
+T&amp;  + &amp;&amp;  = T&amp;
+T&amp;&amp; + &amp;   = T&amp;
+T&amp;&amp; + &amp;&amp;  = T&amp;&amp;
+</code></pre><p>上面的规则被简化为：只要出现左值引用，规则总是优先折叠为左值引用。仅当出现两个右值引用才会折叠为右值引用。</p>
+<h3 id="再谈转发"><a href="#再谈转发" class="headerlink" title="再谈转发"></a>再谈转发</h3><p>那么上面的引用折叠规则，对完美转发有什么用呢？我们注意到，对于T&amp;&amp;类型，它和左值引用折叠为左值引用，和右值引用折叠为右值引用。基于这种特性，我们可以用 T&amp;&amp; 作为我们的转发函数模板参数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">template&lt;typename T&gt;</span><br><span class="line">void Forward(T&amp;&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	Do(static_cast&lt;T&amp;&amp;&gt;(t));</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>这样，无论Forward接收到的是左值，右值，常量，非常量，t都能保持为其正确类型。</p>
+<p>当传入左值引用 X&amp; 时：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">void Forward(X&amp; &amp;&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	Do(static_cast&lt;X&amp; &amp;&amp;&gt;(t));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>折叠后：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">void Forward(X&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	Do(static_cast&lt;X&amp;&gt;(t));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里的static_cast看起来似乎是没有必要，而它实际上是为右值引用准备的：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">void Forward(X&amp;&amp; &amp;&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	Do(static_cast&lt;X&amp;&amp; &amp;&amp;&gt;(t));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>折叠后：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">void Forward(X&amp;&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	Do(static_cast&lt;X&amp;&amp;&gt;(t));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>前面提到过，可以接收右值的右值引用本身却是个左值，因为它具名并且可以取值。因此在<code>Forward(X&amp;&amp; t)</code>中，参数t已经是一个左值了，此时我们需要将其转换为它本身传入的类型，即为右值。由于static_cast中引用折叠的存在，我们总能还原参数本来的类型。</p>
+<p>在C++11中，<code>static_cast&lt;T&amp;&amp;&gt;(t)</code> 可以通过 <code>std::forward&lt;T&gt;(t)</code> 来替代，<code>std::forward</code>是C++11用于实现完美转发的一个函数，它和<code>std::move</code>一样，都通过static_cast来实现。我们的Forward函数最终变成了：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">template&lt;typename T&gt;</span><br><span class="line">void Forward(T&amp;&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	Do(std::forward&lt;T&gt;(t));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以通过如下代码来测试：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">#include&lt;iostream&gt;</span><br><span class="line">using namespace std;</span><br><span class="line"></span><br><span class="line">void Do(int&amp; i)       &#123; cout &lt;&lt; &quot;左值引用&quot;    &lt;&lt; endl; &#125;</span><br><span class="line">void Do(int&amp;&amp; i)      &#123; cout &lt;&lt; &quot;右值引用&quot;    &lt;&lt; endl; &#125;</span><br><span class="line">void Do(const int&amp; i)  &#123; cout &lt;&lt; &quot;常量左值引用&quot; &lt;&lt; endl; &#125;</span><br><span class="line">void Do(const int&amp;&amp; i) &#123; cout &lt;&lt; &quot;常量右值引用&quot; &lt;&lt; endl; &#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename T&gt;</span><br><span class="line">void PerfectForward(T&amp;&amp; t)&#123; Do(forward&lt;T&gt;(t)); &#125;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">	int a;</span><br><span class="line">	const int b;</span><br><span class="line">	</span><br><span class="line">	PerfectForward(a);			&#x2F;&#x2F; 左值引用</span><br><span class="line">	PerfectForward(move(a));		&#x2F;&#x2F; 右值引用</span><br><span class="line">	PerfectForward(b);			&#x2F;&#x2F; 常量左值引用</span><br><span class="line">	PerfectForward(move(b));		&#x2F;&#x2F; 常量右值引用</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="四-附注"><a href="#四-附注" class="headerlink" title="四. 附注"></a>四. 附注</h2><p>左值和左值引用，右值和右值引用都是同一个东西，引用不是一个新的类型，仅仅是一个别名。这一点对于理解模板推导很重要。对于以下两个函数<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">template&lt;typename T&gt;</span><br><span class="line">void Fun(T t)</span><br><span class="line">&#123;</span><br><span class="line">	&#x2F;&#x2F; do something...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename T&gt;</span><br><span class="line">void Fun(T&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">	&#x2F;&#x2F; do otherthing...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><br><code>Fun(T t)</code>和<code>Fun(T&amp; t)</code>他们都能接受左值(引用)，它们的区别在于对参数作不同的语义，前者执行拷贝语义，后者只是取个新的别名。因此调用<code>Fun(a)</code>编译器会报错，因为它不知道你要对a执行何种语义。另外，对于<code>Fun(T t)</code>来说，由于它执行拷贝语义，因此它还能接受右值。因此调用<code>Fun(5)</code>不会报错，因为左值引用无法引用到右值，因此只有<code>Fun(T t)</code>能执行拷贝。</p>
+<p>最后，附上VS中 <code>std::move</code> 和 <code>std::forward</code> 的源码:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; move</span><br><span class="line">template&lt;class _Ty&gt; </span><br><span class="line">inline typename remove_reference&lt;_Ty&gt;::type&amp;&amp; move(_Ty&amp;&amp; _Arg) _NOEXCEPT</span><br><span class="line">&#123;	</span><br><span class="line">	return ((typename remove_reference&lt;_Ty&gt;::type&amp;&amp;)_Arg);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; forward</span><br><span class="line">template&lt;class _Ty&gt; </span><br><span class="line">inline _Ty&amp;&amp; forward(typename remove_reference&lt;_Ty&gt;::type&amp; _Arg)</span><br><span class="line">&#123;	&#x2F;&#x2F; forward an lvalue</span><br><span class="line">	return (static_cast&lt;_Ty&amp;&amp;&gt;(_Arg));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template&lt;class _Ty&gt; </span><br><span class="line">inline 	_Ty&amp;&amp; forward(typename remove_reference&lt;_Ty&gt;::type&amp;&amp; _Arg) _NOEXCEPT</span><br><span class="line">&#123;	&#x2F;&#x2F; forward anything</span><br><span class="line">	static_assert(!is_lvalue_reference&lt;_Ty&gt;::value, &quot;bad forward call&quot;);</span><br><span class="line">	return (static_cast&lt;_Ty&amp;&amp;&gt;(_Arg));</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/03/cpp-rvalue-referrence/" title="C++ 右值引用">http://wudaijun.com/2015/03/cpp-rvalue-referrence/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/c-c/" rel="tag"><i class="fa fa-tag"></i> c/c++</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/02/skynet-gateserver/" rel="prev" title="skynet gateserver">
+      <i class="fa fa-chevron-left"></i> skynet gateserver
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/03/cpp-compile-model/" rel="next" title="C++ 编译模型">
+      C++ 编译模型 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-%E5%AE%9A%E4%B9%89"><span class="nav-text">一. 定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C-%E7%A7%BB%E5%8A%A8%E8%AF%AD%E4%B9%89"><span class="nav-text">二. 移动语义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#std-move"><span class="nav-text">std::move</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89-%E5%AE%8C%E7%BE%8E%E8%BD%AC%E5%8F%91"><span class="nav-text">三. 完美转发</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%95%E7%94%A8%E6%8A%98%E5%8F%A0"><span class="nav-text">引用折叠</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%8D%E8%B0%88%E8%BD%AC%E5%8F%91"><span class="nav-text">再谈转发</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B-%E9%99%84%E6%B3%A8"><span class="nav-text">四. 附注</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="不定参数&amp;多返回值不定参数只能是最后一个参数，它实际上是数组切片参数的语法糖： &#x2F;&#x2F; 语法糖 相当于 func myfunc(args []interface&amp;#123;&amp;#125;) func myfunc(args ...interface&amp;#123;&amp;#125;)&amp;#123;     for _, arg :&#x3D; range args &amp;#123;     fmt.Println(ar">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go 笔记(2) 顺序编程">
+<meta property="og:url" content="http://wudaijun.com/2016/09/go-notes-2-procedural-programming/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="不定参数&amp;多返回值不定参数只能是最后一个参数，它实际上是数组切片参数的语法糖： &#x2F;&#x2F; 语法糖 相当于 func myfunc(args []interface&amp;#123;&amp;#125;) func myfunc(args ...interface&amp;#123;&amp;#125;)&amp;#123;     for _, arg :&#x3D; range args &amp;#123;     fmt.Println(ar">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201609/go-func-call.png">
+<meta property="article:published_time" content="2016-09-08T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.608Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="go">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201609/go-func-call.png">
+
+<link rel="canonical" href="http://wudaijun.com/2016/09/go-notes-2-procedural-programming/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Go 笔记(2) 顺序编程 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/09/go-notes-2-procedural-programming/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Go 笔记(2) 顺序编程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-09-09 00:00:00" itemprop="dateCreated datePublished" datetime="2016-09-09T00:00:00+08:00">2016-09-09</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/go/" itemprop="url" rel="index"><span itemprop="name">go</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/09/go-notes-2-procedural-programming/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/09/go-notes-2-procedural-programming/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="不定参数-amp-多返回值"><a href="#不定参数-amp-多返回值" class="headerlink" title="不定参数&amp;多返回值"></a>不定参数&amp;多返回值</h2><p>不定参数只能是最后一个参数，它实际上是数组切片参数的语法糖：</p>
+<pre><code>// 语法糖 相当于 func myfunc(args []interface&#123;&#125;)
+func myfunc(args ...interface&#123;&#125;)&#123;
+    for _, arg := range args &#123;
+    fmt.Println(arg)
+&#125;
+
+// 参数会被打包为 []&#123;arg1,arg2,arg3&#125;
+myfunc(arg1,arg2,arg3)
+// 要完成可变参数的完美传递 需要用...将Slice打散
+func myfunc2(args ...interface&#123;&#125;)
+    // 此时args已经是Slice 如果不打散将作为一个参数 不能完美传递
+    myfunc(args)
+    // 编译器在此处有优化 最终会直接将args传入 不会打散再打包 参考: http://www.jianshu.com/p/94710d8ab691
+    myfunc(args...) 
+end
+</code></pre><p>多返回值为函数提供了更大的便利性，无需传引用或者专门构造返回值结构体，并且在错误处理方面也更简便，在前面的示例代码中已经初尝甜头。</p>
+<span id="more"></span>
+<pre><code>// 定义多返回值函数时，可以为返回值指定名字
+func (file *File) Read(b []byte) (n int, err Error)&#123;
+    // n和err在函数开始时，被自动初始化为空
+    ...
+    ... n = xxx
+    ...
+    ... err = xxx
+    ...
+    // 直接执行return时，将返回n和err变量的值
+    return
+&#125;
+</code></pre><p>多返回值的在Plan9 C编译器上的实现是由调用者在其栈上分配n和err的内存，由被调用方修改调用方栈上的n和err的值：</p>
+<p><img src="/assets/image/201609/go-func-call.png" alt=""></p>
+<h2 id="匿名函数-amp-闭包"><a href="#匿名函数-amp-闭包" class="headerlink" title="匿名函数&amp;闭包"></a>匿名函数&amp;闭包</h2><p>匿名函数允许函数像变量一样被定义，传递，和使用。Go语言支持随时在代码里定义匿名函数。</p>
+<pre><code>// 赋给变量
+F = func (a, b int) int &#123;
+    return a + b
+&#125;
+F(1,2)
+// 直接执行
+func (a, b int) int &#123;
+    return a + b
+&#125;(1,2)
+</code></pre><h3 id="1-闭包的概念"><a href="#1-闭包的概念" class="headerlink" title="1. 闭包的概念"></a>1. 闭包的概念</h3><p>闭包是可以包含自由(未绑定到特定对象)变量的代码块，这些变量不在这个代码块内或者任何全局上下文中定义，而是在定义代码块的环境中定义。要执行的代码块(由于自由变量包含在代码块中，所以这些自由变量以及它们所引用的对象没有被释放)为自由变量提供绑定的计算环境(作用域)。</p>
+<h3 id="2-闭包的价值"><a href="#2-闭包的价值" class="headerlink" title="2. 闭包的价值"></a>2. 闭包的价值</h3><p>闭包的价值在于可以作为函数对象或者匿名函数，对于类型系统而言，这意味着不仅要表示数据还要表示代码。支持闭包的多数语言都将函数作为第一类对象，就是说这些函数可以存储到变量中作为参数传递给其它函数，最重要的是能够被函数动态创建和返回。</p>
+<h3 id="3-Go语言中的闭包"><a href="#3-Go语言中的闭包" class="headerlink" title="3. Go语言中的闭包"></a>3. Go语言中的闭包</h3><p>Go语言中的闭包同样也会引用到函数外的变量，闭包的实现确保只要闭包还被使用，那么闭包引用的变量会一直存在。 </p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line">	</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">var</span> j <span class="keyword">int</span> = <span class="number">5</span></span><br><span class="line">    return_closure := <span class="function"><span class="keyword">func</span><span class="params">()</span><span class="params">(<span class="keyword">func</span>()</span>)</span> &#123;</span><br><span class="line">        <span class="keyword">var</span> i <span class="keyword">int</span> = <span class="number">10</span></span><br><span class="line">        <span class="keyword">return</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">            i = i + <span class="number">1</span></span><br><span class="line">            j = j + <span class="number">1</span></span><br><span class="line">            fmt.Printf(<span class="string">&quot;i, j: %d, %d\n&quot;</span>, i, j)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">	</span><br><span class="line">    <span class="comment">// 同一个闭包c1 共享所有外部环境 i, j</span></span><br><span class="line">    c1 := return_closure()</span><br><span class="line">    c1()</span><br><span class="line">    c1()</span><br><span class="line">	</span><br><span class="line">    j = j + <span class="number">1</span></span><br><span class="line">    <span class="comment">// c1 c2 只共享return_closure作用域之外的变量 j</span></span><br><span class="line">    <span class="comment">// return_closure之内定义的变量i将在每次调用时重新生成，因此只对同一个closure有效</span></span><br><span class="line">    c2 := return_closure()</span><br><span class="line">    c2()</span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="comment">// 输出：</span></span><br><span class="line">i, j: <span class="number">11</span>, <span class="number">6</span></span><br><span class="line">i, j: <span class="number">12</span>, <span class="number">7</span></span><br><span class="line">i, j: <span class="number">11</span>, <span class="number">9</span></span><br></pre></td></tr></table></figure>
+<p>为了实现闭包:</p>
+<ul>
+<li>Go必须有能力识别闭包函数的引用变量(这里的j)，并将它们分配在堆上而不是栈上(escape analyze技术)</li>
+<li>用一个闭包结构体保存函数和其引用环境</li>
+</ul>
+<p>下面分别阐述这两点：</p>
+<h4 id="escape-analyze"><a href="#escape-analyze" class="headerlink" title="escape analyze"></a>escape analyze</h4><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> test</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">F</span><span class="params">()</span> *<span class="title">int</span></span> &#123;</span><br><span class="line">	<span class="keyword">var</span> i <span class="keyword">int</span></span><br><span class="line">	i = <span class="number">5</span></span><br><span class="line">	<span class="keyword">return</span> &amp;i</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在C语言中，在函数中返回该函数栈上的地址是不被允许的，因为当函数调用完成后函数栈会被回收。Go当然也有函数栈和栈回收的概念，因此它将i分配在堆上而不是栈上，通过<code>go tool compile -S x.go</code>查看汇编代码:</p>
+<pre><code>...
+0x001d 00029 (tmp.go:3) LEAQ    type.int(SB), AX
+0x0024 00036 (tmp.go:3) MOVQ    AX, (SP)
+0x0028 00040 (tmp.go:3) PCDATA  $0, $0
+0x0028 00040 (tmp.go:3) CALL    runtime.newobject(SB) // 相当于new(int)
+0x002d 00045 (tmp.go:3) MOVQ    8(SP), AX // 将i的地址放入AX
+0x0032 00050 (tmp.go:4) MOVQ    $5, (AX) // 将AX存放的内存地址值设为5
+...
+</code></pre><p>也可通过<code>-gcflags=-m</code>选项编译来查看:</p>
+<pre><code>▶ go build --gcflags=-m x.go
+./tmp.go:2: can inline F
+./tmp.go:5: &amp;i escapes to heap
+./tmp.go:3: moved to heap: i
+</code></pre><p>Go编译器依靠escape analyze来识别局部变量的作用范围，来决定变量分配在堆上还是栈上，这与GC技术是相辅相成的。</p>
+<h4 id="闭包结构体"><a href="#闭包结构体" class="headerlink" title="闭包结构体"></a>闭包结构体</h4><p>闭包结构体在src/cmd/compile/internal/gc/closure.go的walkclosure函数生成，具体实现太过复杂，其注释简要地说明了实现方式：</p>
+<pre><code>// Create closure in the form of a composite literal.
+// supposing the closure captures an int i and a string s
+// and has one float64 argument and no results,
+// the generated code looks like:
+//
+//    clos = &amp;struct&#123;.F uintptr; i *int; s *string&#125;&#123;func.1, &amp;i, &amp;s&#125;
+//
+// The use of the struct provides type information to the garbage
+// collector so that it can walk the closure. We could use (in this case)
+// [3]unsafe.Pointer instead, but that would leave the gc in the dark.
+// The information appears in the binary in the form of type descriptors;
+// the struct is unnamed so that closures in multiple packages with the
+// same struct type can share the descriptor.
+</code></pre><p>比如对我们闭包例子中return_closure生成的闭包，其闭包结构体表示为:</p>
+<pre><code>type.struct&#123;
+     .F uintptr//闭包调用的函数指针
+     j *int// 指向闭包的上下文数据，c1,c2指向不同的堆地址
+&#125;
+</code></pre><h3 id="3-错误处理"><a href="#3-错误处理" class="headerlink" title="3. 错误处理"></a>3. 错误处理</h3><p>Go的错误处理主要依靠 <code>panic</code>，<code>recover</code>，<code>defer</code>，前两者相当于throw和catch，而defer则是Go又一个让人惊喜的特性，defer确保语句在函数结束(包括异常中断)前执行，更准备地说，<strong>defer语句的执行时机是在返回值赋值之后，函数返回之前</strong>:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">f1</span><span class="params">()</span> <span class="params">(r <span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">	<span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">		r++</span><br><span class="line">	&#125;()</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">/* 函数返回: 1</span></span><br><span class="line"><span class="comment">f1等价于:</span></span><br><span class="line"><span class="comment">func f1() (r int)&#123;</span></span><br><span class="line"><span class="comment">	r = 0 // 返回值赋值</span></span><br><span class="line"><span class="comment">	func() &#123; 	 // 执行defer函数</span></span><br><span class="line"><span class="comment">		r++</span></span><br><span class="line"><span class="comment">	&#125;()</span></span><br><span class="line"><span class="comment">	return 	 // 函数返回</span></span><br><span class="line"><span class="comment">&#125;</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">f2</span><span class="params">()</span> <span class="params">(r <span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">	t := <span class="number">5</span></span><br><span class="line">	<span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123;</span><br><span class="line">		t = t + <span class="number">5</span></span><br><span class="line">	&#125;()</span><br><span class="line">	<span class="keyword">return</span> t</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">/*函数返回: 5</span></span><br><span class="line"><span class="comment">f2等价于:</span></span><br><span class="line"><span class="comment">func f2() (r int) &#123;</span></span><br><span class="line"><span class="comment">	t := 5</span></span><br><span class="line"><span class="comment">	r = t</span></span><br><span class="line"><span class="comment">	func() &#123;</span></span><br><span class="line"><span class="comment">		t = t + 5</span></span><br><span class="line"><span class="comment">	&#125;()</span></span><br><span class="line"><span class="comment">	return</span></span><br><span class="line"><span class="comment">&#125;</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">f3</span><span class="params">()</span> <span class="params">(r <span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">	<span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">(r <span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">		r = r + <span class="number">5</span></span><br><span class="line">	&#125;(r)</span><br><span class="line">	<span class="keyword">return</span> <span class="number">1</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">/*函数返回: 5</span></span><br><span class="line"><span class="comment">f3等价于:</span></span><br><span class="line"><span class="comment">func f3()(r int)&#123;</span></span><br><span class="line"><span class="comment">	r = 1</span></span><br><span class="line"><span class="comment">	func(r int) &#123;</span></span><br><span class="line"><span class="comment">		r = r + 5</span></span><br><span class="line"><span class="comment">	&#125;(r) // 值传参 不会影响返回的r的值</span></span><br><span class="line"><span class="comment">	return</span></span><br><span class="line"><span class="comment">&#125;</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p>因此，<code>return x</code>其实不是”原子操作”，在其中会插入defer函数执行，在<a target="_blank" rel="noopener" href="https://golang.org/ref/spec#Defer_statements">Go官方文档</a>中也提到了这点。</p>
+<p>defer还有如下特性：</p>
+<ol>
+<li>一个函数可定义多个defer语句</li>
+<li>多个defer语句按照先入后出的顺序执行</li>
+<li>defer表达式中的变量值在defer表达式定义时就已经明确</li>
+<li>defer表达式可以修改函数中的命名返回值</li>
+</ol>
+<p>defer的作用：</p>
+<ol>
+<li>简化异常处理(在defetr中recover)，避免异常与控制流程混合(try … catch … finally)</li>
+<li>在defer中做环境清理和资源释放</li>
+</ol>
+<p>更多阅读:</p>
+<ol>
+<li>多返回值和闭包: <a target="_blank" rel="noopener" href="https://www.teakki.com/p/57df64ccda84a0c45338154e">https://www.teakki.com/p/57df64ccda84a0c45338154e</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/09/go-notes-2-procedural-programming/" title="Go 笔记(2) 顺序编程">http://wudaijun.com/2016/09/go-notes-2-procedural-programming/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/go/" rel="tag"><i class="fa fa-tag"></i> go</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/09/go-notes-3-object-oriented/" rel="prev" title="Go 笔记(3) 面向对象和接口">
+      <i class="fa fa-chevron-left"></i> Go 笔记(3) 面向对象和接口
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/09/erlang-rebar3/" rel="next" title="Rebar3 Erlang/OTP构建利器">
+      Rebar3 Erlang/OTP构建利器 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8D%E5%AE%9A%E5%8F%82%E6%95%B0-amp-%E5%A4%9A%E8%BF%94%E5%9B%9E%E5%80%BC"><span class="nav-text">不定参数&amp;多返回值</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0-amp-%E9%97%AD%E5%8C%85"><span class="nav-text">匿名函数&amp;闭包</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E9%97%AD%E5%8C%85%E7%9A%84%E6%A6%82%E5%BF%B5"><span class="nav-text">1. 闭包的概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E9%97%AD%E5%8C%85%E7%9A%84%E4%BB%B7%E5%80%BC"><span class="nav-text">2. 闭包的价值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E9%97%AD%E5%8C%85"><span class="nav-text">3. Go语言中的闭包</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#escape-analyze"><span class="nav-text">escape analyze</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%97%AD%E5%8C%85%E7%BB%93%E6%9E%84%E4%BD%93"><span class="nav-text">闭包结构体</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86"><span class="nav-text">3. 错误处理</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

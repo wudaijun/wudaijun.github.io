@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="探索Go类型扩展，类和继承，以及接口的用法和实现。 面向对象1. 类型扩展12345678910package main	import &quot;fmt&quot;	&#x2F;&#x2F; 定义了一个新类型:Integer，与int不能直接比较&#x2F;赋值type Integer int	func (a *Integer) Add(b Integer) Integer&amp;#123;    return *a + b&amp;#1">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go 笔记(3) 面向对象和接口">
+<meta property="og:url" content="http://wudaijun.com/2016/09/go-notes-3-object-oriented/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="探索Go类型扩展，类和继承，以及接口的用法和实现。 面向对象1. 类型扩展12345678910package main	import &quot;fmt&quot;	&#x2F;&#x2F; 定义了一个新类型:Integer，与int不能直接比较&#x2F;赋值type Integer int	func (a *Integer) Add(b Integer) Integer&amp;#123;    return *a + b&amp;#1">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2016-09-08T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.608Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="go">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2016/09/go-notes-3-object-oriented/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Go 笔记(3) 面向对象和接口 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/09/go-notes-3-object-oriented/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Go 笔记(3) 面向对象和接口
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-09-09 00:00:00" itemprop="dateCreated datePublished" datetime="2016-09-09T00:00:00+08:00">2016-09-09</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/go/" itemprop="url" rel="index"><span itemprop="name">go</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/09/go-notes-3-object-oriented/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/09/go-notes-3-object-oriented/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>探索Go类型扩展，类和继承，以及接口的用法和实现。</p>
+<h2 id="面向对象"><a href="#面向对象" class="headerlink" title="面向对象"></a>面向对象</h2><h3 id="1-类型扩展"><a href="#1-类型扩展" class="headerlink" title="1. 类型扩展"></a>1. 类型扩展</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line">	</span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line">	</span><br><span class="line"><span class="comment">// 定义了一个新类型:Integer，与int不能直接比较/赋值</span></span><br><span class="line"><span class="keyword">type</span> Integer <span class="keyword">int</span></span><br><span class="line">	</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(a *Integer)</span> <span class="title">Add</span><span class="params">(b Integer)</span> <span class="title">Integer</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> *a + b</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="2-类和继承"><a href="#2-类和继承" class="headerlink" title="2. 类和继承"></a>2. 类和继承</h3><p>在Go中，传统意义上的类相当于是对struct的类型扩展：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line">	</span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line">	</span><br><span class="line"><span class="keyword">type</span> Rect <span class="keyword">struct</span>&#123;</span><br><span class="line">    x, y <span class="keyword">float64</span></span><br><span class="line">    w, l <span class="keyword">float64</span></span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(r Rect)</span> <span class="title">Area</span><span class="params">()</span> <span class="title">float64</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> r.l * r.w</span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    c := Rect&#123;<span class="number">1</span>,<span class="number">1</span>,<span class="number">4</span>,<span class="number">4</span>&#125;</span><br><span class="line">    fmt.Println(c.Area())</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<!--more->
+
+Go中的继承通过匿名组合实现：
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line">	</span><br><span class="line"><span class="keyword">import</span> <span class="string">&quot;fmt&quot;</span></span><br><span class="line">	</span><br><span class="line"><span class="keyword">type</span> Base <span class="keyword">struct</span> &#123;</span><br><span class="line">    Name <span class="keyword">string</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(base *Base)</span> <span class="title">Foo</span><span class="params">()</span></span> &#123;</span><br><span class="line">    fmt.Println(<span class="string">&quot;Base Foo()&quot;</span>)</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(base *Base)</span> <span class="title">Bar</span><span class="params">()</span></span> &#123;</span><br><span class="line">    fmt.Println(<span class="string">&quot;Base Bar()&quot;</span>)</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 以组合的方式 定义继承</span></span><br><span class="line"><span class="comment">// 当derive.xxx在Derive中未找到时，将从基类Base中查找</span></span><br><span class="line"><span class="comment">// 也可通过derive.Base.xxx直接引用基类Base的方法或成员</span></span><br><span class="line"><span class="keyword">type</span> Derive <span class="keyword">struct</span> &#123;</span><br><span class="line">    Base</span><br><span class="line">    age <span class="keyword">int</span> <span class="comment">// 这里的同名成员将覆盖Base中的成员</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 重写基类方法</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(d *Derive)</span> <span class="title">Bar</span><span class="params">()</span></span> &#123;</span><br><span class="line">    fmt.Println(<span class="string">&quot;Derive Bar()&quot;</span>)</span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    b := Base&#123;<span class="string">&quot;name&quot;</span>&#125;</span><br><span class="line">    d := Derive&#123;b, <span class="number">99</span>&#125;</span><br><span class="line">    d.Foo() <span class="comment">// == d.Base.Foo() 语法糖，Foo()函数的接收者只能是Base*</span></span><br><span class="line">    d.Bar()</span><br><span class="line">    fmt.Println(d.Name,d.age)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>还可以以指针的方式从一个类型派生：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> Derive <span class="keyword">struct</span> &#123;</span><br><span class="line">    *Base</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个时候Derive的初始化需要提供一个Base的指针，它存在的意义类似于C++中的虚基类，Go将C++面向对象中一些”黑盒子”放到了台面上来，如this指针(作为一个特殊的参数显现出来)，虚函数表(Go中不允许派生类指针到基类指针的隐式转换，也就无需虚函数表来实现多态)，虚基类(通过显式基类指针，简洁明了的实现了这一需求)。</p>
+<p>Go中没有private public等关键字，要使符号对其它包可见，则需要将该符号定义为大写字母开头。如Base中的Name能被其它引用了Base所在包的代码访问到，而Derive中age则不能。Go中没有类级别的访问控制。</p>
+<h2 id="接口"><a href="#接口" class="headerlink" title="接口"></a>接口</h2><p>接口(interface)是一系列方法声明的组合，同时它本身也是一个类型。</p>
+<h3 id="1-非侵入式接口"><a href="#1-非侵入式接口" class="headerlink" title="1. 非侵入式接口"></a>1. 非侵入式接口</h3><p>侵入式接口是指实现类需要明确声明实现了某个接口，目前C++/Java等语言均为侵入式接口。这类接口的缺点是类的实现方需要知道需求方需要的接口，并提前实现这些接口。这给类设计带来很大困难，因为设计类的时候，你并不知道也不应该关心它会被怎么使用。</p>
+<p>GO中的接口是非侵入式的，接口与类分离，类只需要关心它应该有那些功能(函数)，而无需操心其应该满足哪些接口(契约)，<strong>一个类只要实现了某个接口的所有函数，那么它就实现了这个接口</strong>：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> IReader <span class="keyword">interface</span>&#123;</span><br><span class="line">    Read(buf []<span class="keyword">byte</span>) (n <span class="keyword">int</span>, err error)</span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="keyword">type</span> IWriter <span class="keyword">interface</span>&#123;</span><br><span class="line">    Write(buf []<span class="keyword">byte</span>) (n <span class="keyword">int</span>, err error)</span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="keyword">type</span> IFile <span class="keyword">interface</span>&#123;</span><br><span class="line">    Read(buf []<span class="keyword">byte</span>) (n <span class="keyword">int</span>, err error)</span><br><span class="line">    Write(buf []<span class="keyword">byte</span>) (n <span class="keyword">int</span>, err error)</span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="keyword">type</span> IStream <span class="keyword">interface</span>&#123;</span><br><span class="line">    Read(buf []<span class="keyword">byte</span>) (n <span class="keyword">int</span>, err error)</span><br><span class="line">    Write(buf []<span class="keyword">byte</span>) (n <span class="keyword">int</span>, err error)</span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="keyword">type</span> IDevice <span class="keyword">interface</span>&#123;</span><br><span class="line">    Name() <span class="keyword">string</span></span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="comment">// File定义无需指定实现接口，直接实现其方法即可</span></span><br><span class="line"><span class="comment">// 根据File类的实现，可以得到：</span></span><br><span class="line"><span class="comment">// File类实现了 IDevice接口</span></span><br><span class="line"><span class="comment">// File*类实现了以上所有接口</span></span><br><span class="line"><span class="keyword">type</span> File <span class="keyword">struct</span> &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(f *File)</span> <span class="title">Read</span><span class="params">(buf []<span class="keyword">byte</span>)</span> <span class="params">(n <span class="keyword">int</span>, err error)</span></span>&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(f *File)</span> <span class="title">Write</span><span class="params">(buf []<span class="keyword">byte</span>)</span> <span class="params">(n <span class="keyword">int</span>, err error)</span></span>&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(f File)</span> <span class="title">Name</span><span class="params">()</span> <span class="params">(s <span class="keyword">string</span>)</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Go的非侵入式接口的意义：</p>
+<ol>
+<li>Go语言的标准库，没有复杂的继承树，接口与类之间是平坦的，无需绘制类库的继承树图。</li>
+<li>实现类的时候，只需要关心自己应该提供哪些方法(自身功能)，不用再纠结实现哪些接口，接口由使用方按需定义，而不用事前规划。</li>
+<li>不用为了实现一个接口而导入一个包，因为多引用一个外部的包，就意味着更多的耦合。接口由使用方按自身需求来定义，使用方无需关心是否有其他模块定义过类似的接口。</li>
+</ol>
+<h3 id="2-接口赋值"><a href="#2-接口赋值" class="headerlink" title="2. 接口赋值"></a>2. 接口赋值</h3><p>由于接口本身是一种类型，因此它可被赋值。接口赋值分为两种：将对象赋值给接口和将接口赋值给接口：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 将对象赋值给接口</span></span><br><span class="line"><span class="comment">// 赋值条件：对象需实现该接口</span></span><br><span class="line">f := File&#123;&#125;</span><br><span class="line"><span class="comment">// ok</span></span><br><span class="line"><span class="keyword">var</span> I1 IDevice = f</span><br><span class="line"><span class="comment">// ok. Go会根据 func (f File) Name() 自动生成 func (f *file) Name()方法</span></span><br><span class="line"><span class="keyword">var</span> I2 IDevice = &amp;f</span><br><span class="line"><span class="comment">// error. File类实现的IFile接口中，有函数的接收者为File*</span></span><br><span class="line"><span class="comment">// func (f *File) Read(buf []byte) 不能转化为 func (f File) Read(buf []byte)</span></span><br><span class="line"><span class="comment">// 因为前者可能在函数中改变f，后者不能，可能造成语义上的不一致</span></span><br><span class="line"><span class="keyword">var</span> I3 IFile = f</span><br><span class="line"><span class="comment">// ok</span></span><br><span class="line"><span class="keyword">var</span> I4 IFile = &amp;f</span><br><span class="line"><span class="comment">// 赋值完成之后 可通过接口直接调用对象方法</span></span><br><span class="line">I1.Name()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 将接口赋值给接口</span></span><br><span class="line"><span class="comment">// 赋值条件：左值接口需是右值接口的子集</span></span><br><span class="line"><span class="keyword">var</span> I5 IReader = I1 <span class="comment">// error</span></span><br><span class="line"><span class="keyword">var</span> I6 IFile   = I3 <span class="comment">// ok</span></span><br><span class="line"><span class="keyword">var</span> I7 IReader = I3 <span class="comment">// ok</span></span><br></pre></td></tr></table></figure>
+<h3 id="3-接口查询"><a href="#3-接口查询" class="headerlink" title="3. 接口查询"></a>3. 接口查询</h3><p>既然我们可以将对象或者接口赋值给接口，那么也应该有方法能让我们从一个接口查询出其指向对象的类型信息和接口信息：</p>
+<pre><code>f := File&#123;&#125;
+// 接口查询
+var I1 IDevice = f
+// 判断接口I1指向的对象是否实现了IFile接口
+I2, ok := I1.(IFile) // ok = false File类型没有实现IFile接口 File*类型实现了
+
+// 类型查询
+// 方法一 type assertions
+f2, ok := I1.(File) // ok = true
+// 方法二 type switch
+// X.(type)方法只能用在switch语句中
+switch(I1.(type))&#123;
+    case int:       // 如果I1指向的对象为int
+    case File:      // 如果I1指向的对象为File
+    ...
+&#125;
+</code></pre><h3 id="4-接口组合"><a href="#4-接口组合" class="headerlink" title="4. 接口组合"></a>4. 接口组合</h3><p>前面的IFile接口定义等价于：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> IFile <span class="keyword">interface</span>&#123;</span><br><span class="line">    IReader</span><br><span class="line">    IWriter</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>接口组合可以以更简便的方式复用接口类似于类继承，只不过没有成员变量。</p>
+<h3 id="5-空接口"><a href="#5-空接口" class="headerlink" title="5. 空接口"></a>5. 空接口</h3><p>在Go中的任何对象都满足空接口<code>interface&#123;&#125;</code>，所以<code>interface&#123;&#125;</code>可以指向任何对象：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> v1 <span class="keyword">interface</span>&#123;&#125; = <span class="number">1</span></span><br><span class="line"><span class="keyword">var</span> v2 <span class="keyword">interface</span>&#123;&#125; = <span class="string">&quot;abc&quot;</span></span><br><span class="line"><span class="keyword">var</span> v3 <span class="keyword">interface</span>&#123;&#125; = <span class="keyword">struct</span>&#123; x <span class="keyword">int</span> &#125;&#123;<span class="number">1</span>&#125;</span><br><span class="line"><span class="keyword">var</span> v4 <span class="keyword">interface</span>&#123;&#125; = v3</span><br></pre></td></tr></table></figure>
+<p><code>interface&#123;&#125;</code>比C++中的<code>void*</code>更强大，比<code>template&lt;&gt;</code>更灵活，结合接口查询和反射，构建底层代码变得非常容易。</p>
+<h3 id="6-反射"><a href="#6-反射" class="headerlink" title="6. 反射"></a>6. 反射</h3><p>简单概括，反射一种检查存储在接口变量(任意类型值)中的“类型-值对”的机制。任何接口变量(包括空接口变量)都包含了其对应的具体类型和值信息：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> f = <span class="built_in">new</span>(File)</span><br><span class="line"><span class="keyword">var</span> r IReader</span><br><span class="line">r = f</span><br><span class="line">fmt.Println(reflect.TypeOf(r), reflect.ValueOf(r))</span><br><span class="line"><span class="comment">// 输出: *main.File &amp;&#123;&#125;</span></span><br><span class="line"><span class="keyword">var</span> w IWriter</span><br><span class="line">w = r.(IWriter)</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>IReader接口变量只提供了访问Read方法的能力，但其接口变量仍然保存了有关该值的所有类型信息，因此我们可以通过接口查询得到IWriter接口变量。接口的静态类型决定了哪些方法可以通过接口变量调用，但接口变量本身可能包含更大的方法集。</p>
+<p>有了这个机制，我们才能通过反射从任意接口变量，获取对象完整的属性。关于反射的API都在reflect包中提供，通过<code>reflect.TypeOf</code>和<code>reflect.ValueOf</code>获取接口变量的Type和Value，reflect为Type和Value提供了大量的方法，如<code>Type.Kind()</code>,<code>Value.Interface()</code>等。</p>
+<p>现在我们尝试通过反射修改接口变量的值：</p>
+<pre><code>var x float64 = 3.4
+v := reflect.ValueOf(x)
+v.Set(4.1) // error: cannot use 4.1 (type float64) as type reflect.Value in argument to v.Set
+</code></pre><p>由于在<code>refect.ValueOf(x)</code>中操作的是x的拷贝，因此实际上v.Set即使能操作成功，也不能如我们预期一般修改x的值。因此reflect提供<code>Value.CanSet()</code>来辨别这类不能成功修改的值：</p>
+<blockquote>
+<blockquote>
+<p>CanSet reports whether the value of v can be changed. A Value can be changed only if it is addressable and was not obtained by the use of unexported struct fields. If CanSet returns false, calling Set or any type-specific setter (e.g., SetBool, SetInt) will panic.</p>
+</blockquote>
+</blockquote>
+<p>我们可以通过*float64类型的反射来修改x的值:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> x <span class="keyword">float64</span> = <span class="number">3.4</span></span><br><span class="line">p := reflect.ValueOf(&amp;x)</span><br><span class="line">fmt.Println(<span class="string">&quot;type of p:&quot;</span>, p.Type())</span><br><span class="line">fmt.Println(<span class="string">&quot;CanSet of p:&quot;</span> , p.CanSet())</span><br><span class="line">v := p.Elem()</span><br><span class="line">fmt.Println(<span class="string">&quot;CanSet of v:&quot;</span> , v.CanSet())</span><br><span class="line"><span class="comment">// v的地址是有效的(保存在p.Value()中) 因此可以修改</span></span><br><span class="line">v.SetFloat(<span class="number">7.1</span>)</span><br><span class="line">fmt.Println(v.Interface())</span><br><span class="line">fmt.Println(x)</span><br><span class="line"><span class="comment">// 输出:</span></span><br><span class="line"><span class="comment">// type of p: *float64</span></span><br><span class="line"><span class="comment">// CanSet of p: false</span></span><br><span class="line"><span class="comment">// CanSet of v: true</span></span><br><span class="line"><span class="comment">// 7.1</span></span><br><span class="line"><span class="comment">// 7.1</span></span><br></pre></td></tr></table></figure>
+<p>推荐阅读:</p>
+<ol>
+<li>接口和反射的好文：<a target="_blank" rel="noopener" href="https://blog.go-zh.org/laws-of-reflection">https://blog.go-zh.org/laws-of-reflection</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/09/go-notes-3-object-oriented/" title="Go 笔记(3) 面向对象和接口">http://wudaijun.com/2016/09/go-notes-3-object-oriented/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/go/" rel="tag"><i class="fa fa-tag"></i> go</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/09/go-notes-1-datastructures/" rel="prev" title="Go 笔记(1) 常用数据结构及实现">
+      <i class="fa fa-chevron-left"></i> Go 笔记(1) 常用数据结构及实现
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/09/go-notes-2-procedural-programming/" rel="next" title="Go 笔记(2) 顺序编程">
+      Go 笔记(2) 顺序编程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1"><span class="nav-text">面向对象</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%B1%BB%E5%9E%8B%E6%89%A9%E5%B1%95"><span class="nav-text">1. 类型扩展</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%B1%BB%E5%92%8C%E7%BB%A7%E6%89%BF"><span class="nav-text">2. 类和继承</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

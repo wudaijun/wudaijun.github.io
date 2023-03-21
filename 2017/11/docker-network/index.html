@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="以Docker为平台部署服务器时，最应该理解透彻的便是网络配置。离上次学习，Docker网络又更新了不少内容，重新温习一下。 通过docker run的--network选项可配置容器的网络，Docker提供了多种网络工作模式，none, host, bridge, overlay 等。 none不为Docker容器进行任何网络配置，容器将不能访问任何外部的路由(容器内部仍然有loopback接口">
+<meta property="og:type" content="article">
+<meta property="og:title" content="docker 网络">
+<meta property="og:url" content="http://wudaijun.com/2017/11/docker-network/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="以Docker为平台部署服务器时，最应该理解透彻的便是网络配置。离上次学习，Docker网络又更新了不少内容，重新温习一下。 通过docker run的--network选项可配置容器的网络，Docker提供了多种网络工作模式，none, host, bridge, overlay 等。 none不为Docker容器进行任何网络配置，容器将不能访问任何外部的路由(容器内部仍然有loopback接口">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201711/docker-bridge.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201711/docker-overlay.png">
+<meta property="article:published_time" content="2017-11-20T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.610Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="docker">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201711/docker-bridge.png">
+
+<link rel="canonical" href="http://wudaijun.com/2017/11/docker-network/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>docker 网络 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2017/11/docker-network/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          docker 网络
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-11-21 00:00:00" itemprop="dateCreated datePublished" datetime="2017-11-21T00:00:00+08:00">2017-11-21</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/tool/" itemprop="url" rel="index"><span itemprop="name">tool</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2017/11/docker-network/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2017/11/docker-network/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>以Docker为平台部署服务器时，最应该理解透彻的便是网络配置。离上次学习，Docker网络又更新了不少内容，重新温习一下。</p>
+<p>通过<code>docker run</code>的<code>--network</code>选项可配置容器的网络，Docker提供了多种网络工作模式，none, host, bridge, overlay 等。</p>
+<h3 id="none"><a href="#none" class="headerlink" title="none"></a>none</h3><p>不为Docker容器进行任何网络配置，容器将不能访问任何外部的路由(容器内部仍然有loopback接口)，需要手动为其配置网卡，指定IP等，否则与外部只能通过文件IO和标准输入输出交互，或通过<code>docker attach 容器ID</code>进入容器。</p>
+<h3 id="host"><a href="#host" class="headerlink" title="host"></a>host</h3><p>与宿主机共用网络栈，IP和端口，容器本身看起来就像是个普通的进程，它暴露的端口可直接通过宿主机访问。相比于bridge模式，host模式有显著的性能优势(因为走的是宿主机的网络栈，而不是docker deamon为容器虚拟的网络栈)。</p>
+<h3 id="bridge"><a href="#bridge" class="headerlink" title="bridge"></a>bridge</h3><p>默认网络模式，此模式下，容器有自己的独立的Network Namespace。简单来说，Docker在宿主机上虚拟了一个子网络，宿主机上所有容器均在这个子网络中获取IP，这个子网通过网桥挂在宿主机网络上。Docker通过NAT技术确保容器可与宿主机外部网络交互。</p>
+<span id="more"></span>
+<p><img src="/assets/image/201711/docker-bridge.png" alt=""></p>
+<p>Docker服务默认会创建一个docker0网桥，并为网桥指定IP和子网掩码(通常为172.17.0.1/16)。当启动bridge模式的容器时，Docker Daemon利用veth pair技术，在宿主机上创建两个虚拟网络接口设备。veth pair技术保证无论哪一个veth收到报文，都将转发给另一方。veth pair的一端默认挂在docker0网桥上，另一端添加到容器的namespace下，并重命名为eth0，保证容器独享eth0，做到网络隔离。连接在同一个Docker网桥上的容器可以通过IP相互访问。如此实现了宿主机到容器，容器与容器之间的联通性。</p>
+<p>关于网桥:</p>
+<ul>
+<li><p>网桥(Bridges):<br>  工作在数据链路层，连接多个端口，负责转发数据帧。网桥知道它的各个端口的数据链路协议(目前几乎都是以太网)，将来自一个端口的数据帧转发到其它所有端口。有多个端口的网桥又叫做交换机，目前这两个概念没有本质区别。</p>
+<p>  网桥可以用来连接不同的局域网(LAN)，按照最简单的方法，网桥会将某个端口收到的数据无脑转发给其它所有端口，这种泛洪(Flooding)算法效率过低，网桥依靠转发表来转发数据帧，通过自学习算法，记录各个Mac地址在对应哪个端口(转发表数据库)，辅之超时遗忘(Aging)和无环拓扑算法(Loop-Free Topology，典型地如Spanning Tree Protocol, STP)。</p>
+</li>
+<li><p>Linux网桥:</p>
+<p>  Linux下网桥是一个虚拟设备，你可以通过命令创建它，并且为其挂载设备(物理或虚拟网卡)。可通过<code>brctl</code>命令来创建和Linux网桥。管理Linux bridge的具体用法参考: <a target="_blank" rel="noopener" href="https://wiki.linuxfoundation.org/networking/bridge。">https://wiki.linuxfoundation.org/networking/bridge。</a></p>
+</li>
+<li><p>Docker网桥:</p>
+<p>  Docker网桥通过Linux网桥实现，加上NAT, veth pair, 网络命名空间等技术，实现网络隔离和容器互联。可通过<code>sudo docker network inspect bridge</code>查看Docker网桥配置以及状态。</p>
+</li>
+</ul>
+<p>当容器需要和宿主机外部网络交互时，会在宿主机上分配一个可用端口，通过这个端口做SNAT转换(将容器IP:Port换为宿主机IP:Port)，再向外部网络发出请求。当外部响应到达时，Docker再根据这一层端口映射关系，将响应路由给容器IP:Port。</p>
+<p>外部网络要访问容器Port0，需要先将Port0与宿主机Port1绑定(外部网络无法直接访问宿主机二级网络)，将宿主机IP:Port1暴露给外部网络，外部网络请求到达宿主机时，会进行DNAT转换(将宿主机IP:Port1换为容器IP:Port0)。</p>
+<p>从实现上来讲，Docker的这种NAT(实际上是NATP，包含IP,Port的转换)规则，是Docker Daemon通过修改ipatables规则来实现的，ubuntu下可通过<code>sudo ipatbles -t nat -L</code>来查看和NAT相关的规则。</p>
+<p>总之，Docker容器在bridge模式下不具有一个公有IP，即和宿主机的eth0不处于同一个网段。导致的结果是宿主机以外的世界不能直接和容器进行通信。虽然NAT模式经过中间处理实现了这一点，但是NAT模式仍然存在问题与不便，如：容器均需要在宿主机上竞争端口，容器内部服务的访问者需要使用服务发现获知服务的外部端口等。另外NAT模式会一定程度的影响网络传输效率。</p>
+<p>默认设置下，Docker允许容器之间的互联，可通过<code>--icc=false</code>关闭容器互联(通过iptables DROP实现)，此时容器间相互访问只能通过<code>--link</code>选项链接容器来实现容器访问。<code>—link</code> 选项实际在链接容器的/etc/hosts中添加了一行被链接容器名和其IP的映射，并且会在被链接容器重启后更新该行(这样即使IP有变动也可以通过容器名正确连接)，此外还会添加一条针对两个容器允许连接的iptables规则。但Docker官方文档说<code>--link</code>已经是遗留的选项，更推荐通过已有或自定义网络模式实现互连。</p>
+<h3 id="overlay"><a href="#overlay" class="headerlink" title="overlay"></a>overlay</h3><p>前面提到的网络模式，主要解决同一个主机上容器与容器，容器与主机，容器与外界的连接方案。overlay网络可以实现跨主机的容器VLAN，主要用于 docker swarm 上，docker 文档中也基本是两者同时出现，因此docker swarm是跨主机的容器与容器之间的官方标准通信方案。<a href="wudaijun.com/2018/03/08/docker-swarm/">这里</a>有关于 docker swarm 的更多介绍。当初始化 swarm 时，会生成如下东西:</p>
+<ul>
+<li>docker_gwbridge: 用于实现 host 上的 container 互联，类似 docker0，以及对swarm container暴露端口的SNAT, DNAT转换</li>
+<li>ingress: 用于实现跨主机的 swarm 网络，相同集群的不同节点上的 swarm cotainer 属于同一个 ingress</li>
+<li>ingress-sbox: 一个隐藏的 container，连接 ingress 和 docker_gwbridge，实现 routing mesh (ipvs)</li>
+</ul>
+<p>比如我们有两个host，node1, node2, 在node2上启动了ngnix，并通过<code>-p 80:8080</code>将端口暴露到 host:8080，当我们对 node1:1080发起请求时:</p>
+<ol>
+<li>通过 iptables DNAT 转换，将 node1:1080 通过 docker_gwbridge 转到 node1 上的ingress_sbox:1080</li>
+<li>ingress-sbox PREROUTING Chain 将目的端口1080 转换为 80</li>
+<li>ingress-sbox POSTROUTING Chain 将该请求路由到 ngnix 的 vip(ingress 上), <a target="_blank" rel="noopener" href="http://www.zsythink.net/archives/2134">ipvs</a> 是 Linux 内核提供的四层负载均衡器</li>
+<li>ipvs 中记录了vip -&gt; 真实ip 的映射，比如目前只有 node1上ingress:1080 可用，则转发到该地址。</li>
+</ol>
+<p><img src="/assets/image/201711/docker-overlay.png" alt=""></p>
+<p><a target="_blank" rel="noopener" href="https://neuvector.com/network-security/docker-swarm-container-networking/">图片出处</a></p>
+<p>关于 overlay 更多实现细节推荐阅读参考4和5。</p>
+<h3 id="网络管理"><a href="#网络管理" class="headerlink" title="网络管理"></a>网络管理</h3><p>同一个容器可以加入多个不同的网络，并在每个网络中获得一个 IP，由 Docker Daemon 充当 DHCP Server 角色:</p>
+<pre><code># 容器启动时，它默认只能连接到一个网络
+docker run --name alpine1 --network bridge -dit alpine ash
+
+# 通过`docker network create`可创建一个指定类型的网络
+# 如果创建的是 overlay 网络，则需要添加--attachable选项后才能加入其它独立容器
+docker network create -d bridge my_bridge
+
+# 手动将容器添加到其它已有网络
+docker network connect my_bridge alpine1
+
+# 查看容器网络配置，可发现其存在于bridge 和 my_bridge 两个网络中
+# ip 分别为 172.17.0.2，172.18.0.2
+docker inspect alpine1 
+
+# 将容器移除网络
+docker network disconnect my_bridge alpine1
+
+# 删除网络
+docker network rm alpine1
+</code></pre><h3 id="其它"><a href="#其它" class="headerlink" title="其它"></a>其它</h3><p>在使用Docker时，要注意平台之间实现的差异性，如[Docker For Mac]的实现和标准Docker规范有区别，Docker For Mac的Docker Daemon是运行于虚拟机(xhyve)中的(而不是像Linux上那样作为进程运行于宿主机)，因此Docker For Mac没有docker0网桥，不能实现host网络模式，host模式会使Container复用Daemon的网络栈(在xhyve虚拟机中)，而不是与Host主机网络栈，这样虽然其它容器仍然可通过xhyve网络栈进行交互，但却不是用的Host上的端口(在Host上无法访问)。bridge网络模式 -p 参数不受此影响，它能正常打开Host上的端口并映射到Container的对应Port。文档在这一点上并没有充分说明，容易踩坑。参考<a target="_blank" rel="noopener" href="https://docs.docker.com/docker-for-mac/networking/">Docker文档</a> 和 <a target="_blank" rel="noopener" href="https://forums.docker.com/t/should-docker-run-net-host-work/14215">这篇帖子</a></p>
+<h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><ol>
+<li><a target="_blank" rel="noopener" href="http://www.infoq.com/cn/articles/docker-source-code-analysis-part7">Docker源码分析(七)：Docker Container网络(上)</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.docker.com/engine/userguide/networking/">Docker networking</a></li>
+<li><a target="_blank" rel="noopener" href="http://tonybai.com/2016/02/15/understanding-docker-multi-host-networking/">理解Docker跨多主机容器网络</a></li>
+<li><a target="_blank" rel="noopener" href="https://neuvector.com/network-security/docker-swarm-container-networking/">How Docker Swarm Container Networking Works</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.octo.com/en/how-does-it-work-docker-part-3-load-balancing-service-discovery-and-security/">How does it work? Docker! Part 3</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2017/11/docker-network/" title="docker 网络">http://wudaijun.com/2017/11/docker-network/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/docker/" rel="tag"><i class="fa fa-tag"></i> docker</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017/10/go-select/" rel="prev" title="go select机制与常见的坑">
+      <i class="fa fa-chevron-left"></i> go select机制与常见的坑
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2017/12/hexo-with-mathjax/" rel="next" title="Hexo使用mathjax渲染公式">
+      Hexo使用mathjax渲染公式 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#none"><span class="nav-text">none</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#host"><span class="nav-text">host</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bridge"><span class="nav-text">bridge</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#overlay"><span class="nav-text">overlay</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E7%AE%A1%E7%90%86"><span class="nav-text">网络管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B6%E5%AE%83"><span class="nav-text">其它</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%82%E8%80%83"><span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

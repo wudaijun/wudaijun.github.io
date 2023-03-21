@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. 依赖管理1. 包依赖和源码依赖Rebar3支持两种依赖： &amp;#123;deps,[   %% 包依赖   rebar,   &amp;#123;rebar,&quot;1.0.0&quot;&amp;#125;,   &amp;#123;rebar, &amp;#123;pkg, rebar_fork&amp;#125;&amp;#125;, % rebar app under a different pkg name   &amp;#123;r">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Rebar3 Erlang&#x2F;OTP构建利器">
+<meta property="og:url" content="http://wudaijun.com/2016/09/erlang-rebar3/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. 依赖管理1. 包依赖和源码依赖Rebar3支持两种依赖： &amp;#123;deps,[   %% 包依赖   rebar,   &amp;#123;rebar,&quot;1.0.0&quot;&amp;#125;,   &amp;#123;rebar, &amp;#123;pkg, rebar_fork&amp;#125;&amp;#125;, % rebar app under a different pkg name   &amp;#123;r">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2016-09-09T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.608Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2016/09/erlang-rebar3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Rebar3 Erlang/OTP构建利器 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/09/erlang-rebar3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Rebar3 Erlang/OTP构建利器
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-09-10 00:00:00" itemprop="dateCreated datePublished" datetime="2016-09-10T00:00:00+08:00">2016-09-10</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/09/erlang-rebar3/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/09/erlang-rebar3/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="一-依赖管理"><a href="#一-依赖管理" class="headerlink" title="一. 依赖管理"></a>一. 依赖管理</h3><h4 id="1-包依赖和源码依赖"><a href="#1-包依赖和源码依赖" class="headerlink" title="1. 包依赖和源码依赖"></a>1. 包依赖和源码依赖</h4><p>Rebar3支持两种依赖：</p>
+<pre><code>&#123;deps,[
+  %% 包依赖
+  rebar,
+  &#123;rebar,&quot;1.0.0&quot;&#125;,
+  &#123;rebar, &#123;pkg, rebar_fork&#125;&#125;, % rebar app under a different pkg name
+  &#123;rebar, &quot;1.0.0&quot;, &#123;pkg, rebar_fork&#125;&#125;,
+  %% 源码依赖
+  &#123;rebar, &#123;git, &quot;git://github.com/erlang/rebar3.git&quot;&#125;&#125;,
+  &#123;rebar, &#123;git, &quot;http://github.com/erlang/rebar3.git&quot;&#125;&#125;,
+  &#123;rebar, &#123;git, &quot;https://github.com/erlang/rebar3.git&quot;&#125;&#125;,
+  &#123;rebar, &#123;git, &quot;git@github.com:erlang/rebar3.git&quot;&#125;&#125;,
+  &#123;rebar, &#123;hg, &quot;https://othersite.com/erlang/rebar3&quot;&#125;&#125;,
+  &#123;rebar, &#123;git, &quot;git://github.com/erlang/rebar3.git&quot;, &#123;ref, &quot;aef728&quot;&#125;&#125;&#125;,
+  &#123;rebar, &#123;git, &quot;git://github.com/erlang/rebar3.git&quot;, &#123;branch, &quot;master&quot;&#125;&#125;&#125;,
+  &#123;rebar, &#123;git, &quot;git://github.com/erlang/rebar3.git&quot;, &#123;tag, &quot;3.0.0&quot;&#125;&#125;&#125;
+  ]&#125;
+</code></pre><span id="more"></span>
+<p>Rebar3通过<a target="_blank" rel="noopener" href="https://hex.pm">hex.pm</a>来管理包依赖，在使用之前，需要通过<code>rebar3 update</code>从hex.pm更新包索引，并将包索引信息缓存到本地(<code>~/.cache/rebar3/</code>)。之后Rebar3便能正确解析包依赖，对应用程序使用上来说，两者没有明显区别。</p>
+<h4 id="2-升级依赖"><a href="#2-升级依赖" class="headerlink" title="2. 升级依赖"></a>2. 升级依赖</h4><p>在使用Rebar2的时候，如果项目依赖一个指向分支的dep，就会出现这种情况：</p>
+<ul>
+<li>这个dep有远程分支更新时，rebar get-deps不会自动拉取更新，通常你只能进入dep目录执行<code>git pull</code>，或者删除该dep重新执行rebar get-deps。</li>
+<li>项目成员各自的工作目录deps版本可能不一致，并且一些很久没更新的依赖可能在你部署新环境时(此时所有依赖都指向最新)出现问题。</li>
+</ul>
+<p>所以在Rebar2的reabr.config中定义deps，都应该尽量使用tag, commitid来指定，而不是直接指向分支。那么Rebar3是如何解决这个问题的呢？</p>
+<p>Rebar3解决此问题的核心在rebar.lock文件，该文件内容如下：</p>
+<pre><code>&#123;&quot;1.1.0&quot;,
+[&#123;&lt;&lt;&quot;goldrush&quot;&gt;&gt;,&#123;pkg,&lt;&lt;&quot;goldrush&quot;&gt;&gt;,&lt;&lt;&quot;0.1.8&quot;&gt;&gt;&#125;,1&#125;,
+ &#123;&lt;&lt;&quot;lager&quot;&gt;&gt;,&#123;pkg,&lt;&lt;&quot;lager&quot;&gt;&gt;,&lt;&lt;&quot;3.2.1&quot;&gt;&gt;&#125;,0&#125;]&#125;.
+[
+&#123;pkg_hash,[
+ &#123;&lt;&lt;&quot;goldrush&quot;&gt;&gt;, &lt;&lt;&quot;2024BA375CEEA47E27EA70E14D2C483B2D8610101B4E852EF7F89163CDB6E649&quot;&gt;&gt;&#125;,
+ &#123;&lt;&lt;&quot;lager&quot;&gt;&gt;, &lt;&lt;&quot;EEF4E18B39E4195D37606D9088EA05BF1B745986CF8EC84F01D332456FE88D17&quot;&gt;&gt;&#125;]&#125;
+].
+</code></pre><p>该文件是项目当前使用依赖库的一个版本快照。当一个依赖被获取和锁定，Rebar3将从依赖中提取版本信息并写入rebar.lock文件中，该文件应该加入GIt仓库，并且由专人维护，这样只要rebar.lock一致，各本地仓库的依赖库版本就是一致的。</p>
+<p>依赖升级分为两种，一种是直接通过<code>rebar upgrade [dep]</code>进行源码更新或包更新(只能更新Top Level依赖)。另一种是rebar.config发生变动，比如去除了某个依赖，此时需要<code>rebar unlock [dep]</code>命令来清理rebar.lock文件。</p>
+<p>相关命令：</p>
+<pre><code>rebar3 update  // 更新包索引
+rebar3 pkgs // 列出所有可用的包
+rebar3 deps  // 列出所有一级(Top Level)依赖
+rebar3 tree  // 以树形结构查看依赖
+rebar3 compile // 获取并编译依赖
+rebar3 upgrade [dep] // 升级依赖
+rebar3 lock [dep] // 锁定依赖
+rebar3 unlock [dep] // 解锁依赖
+</code></pre><h3 id="二-构建"><a href="#二-构建" class="headerlink" title="二. 构建"></a>二. 构建</h3><pre><code>rebar3 new app [appname]
+rebar3 new lib [libname]
+</code></pre><p>Rebar3建议应用程序按照OTP规范目录进行组织：</p>
+<pre><code>├── LICENSE
+├── README.md
+├── apps
+│   └── myapp
+│       └── src
+│           ├── myapp.app.src
+│           ├── myapp_app.erl
+│           └── myapp_sup.erl
+├── config
+│   ├── sys.config
+│   └── vm.args
+├── lib
+│   └── mylib
+│       ├── LICENSE
+│       ├── README.md
+│       ├── rebar.config
+│       └── src
+│           ├── mylib.app.src
+│           └── mylib.erl
+└── rebar.config
+</code></pre><p>这样无需在rebar.config中指定sub_dirs，Rebar3会自动将lib和apps作为搜索路径。</p>
+<p>Rebar3没有get-deps命令，通过<code>rebar3 compile</code>即可编译项目，并自动获取和编译不存在的依赖，Rebar3将所有编译文件和Release信息都置于<code>_build</code>目录下。默认apps，deps和lib下的应用都被编译到<code>_build/default/lib</code>中。要指定应用目录和输出目录等选项，请参考：<a target="_blank" rel="noopener" href="http://www.rebar3.org/docs/configuration">Rebar3配置</a>。</p>
+<h3 id="三-发布"><a href="#三-发布" class="headerlink" title="三. 发布"></a>三. 发布</h3><h4 id="1-发布环境"><a href="#1-发布环境" class="headerlink" title="1. 发布环境"></a>1. 发布环境</h4><p>Rebar3放弃了<a target="_blank" rel="noopener" href="http://erlang.org/doc/man/reltool.html">reltool</a>而使用<a target="_blank" rel="noopener" href="https://github.com/erlware/relx">relx</a>作为发布工具。并且将relx.config内容集成到rebar.config当中，通过<code>rebar new release [appname]</code>可创建一个发布，rebar.config内容如下：</p>
+<pre><code>&#123;erl_opts, [debug_info]&#125;.
+&#123;deps, []&#125;.
+
+%% 定义默认发布环境(default环境)
+&#123;relx, [&#123;release, &#123; myapp, &quot;0.1.0&quot; &#125;,
+         [myapp,
+          sasl]&#125;,
+
+        &#123;sys_config, &quot;./config/sys.config&quot;&#125;,
+        &#123;vm_args, &quot;./config/vm.args&quot;&#125;,
+
+    %% 当dev_mode==true时 _build/default/rel/myapp/lib/目录下的库其实是_build/default/lib目录下对应lib的软链接，这样重新编译后，无需重新发布，重启或热加载代码即可
+        &#123;dev_mode, true&#125;,
+        %% 是否在发布目录中包含虚拟机 即为一个独立的运行环境
+        &#123;include_erts, false&#125;,
+
+        &#123;extended_start_script, true&#125;]
+&#125;.
+
+%% 定义其它发布环境
+%% 参数使用覆盖(override)机制，即这里面没有定义的参数，将使用默认发布环境(default)配置
+&#123;profiles, [&#123;prod, [&#123;relx, [&#123;dev_mode, false&#125;,
+                            &#123;include_erts, true&#125;]&#125;]
+            &#125;]
+&#125;
+</code></pre><p>Rebar3中有发布环境(profiles)的概念，如开发环境(default)，生产环境(prod)，它们可以独立定义编译参数(erl_opts)，发布参数(dev_mode, include_erts)，甚至依赖应用(deps)。目前Rebar3支持四种环境定义：</p>
+<ul>
+<li>default：默认环境，也就是rebar.config中最外部定义的环境</li>
+<li>prod：生产环境，通常在此环境下将使用库的完整发布包(而不是软链接)，有更严格的编译选项，并且可能还要包含Erlang运行时所需要的所有环境</li>
+<li>native：原生环境，强制使用<a target="_blank" rel="noopener" href="http://erlang.org/doc/man/HiPE_app.html">HiPE</a>编译，从而得到更快的编译速度</li>
+<li>test：测试环境，将加载一些额外的库(如<a target="_blank" rel="noopener" href="https://github.com/eproxus/meck">meck</a>)，打开调试信息，用于跑测试代码</li>
+</ul>
+<p>不同发布环境将发布在不同的目录下，如prod环境默认将生成在<code>_build/prod/</code>下，无论顶层应用采用何种发布环境，依赖将始终只能使用prod环境发布。并且只有顶层依赖的default环境，可以被保存到rebar.lock中。</p>
+<p><code>rebar3 release</code>将按照default环境发布应用，通过<code>rebar3 as prod release</code>可以将应用在生产环境发布。具体环境配置及命令参考<a target="_blank" rel="noopener" href="http://www.rebar3.org/docs/profiles">Rebar3环境</a>。</p>
+<h4 id="2-发布多个应用"><a href="#2-发布多个应用" class="headerlink" title="2. 发布多个应用"></a>2. 发布多个应用</h4><p>Rebar3支持在rebar.config中定义多个应用的发布，多个应用可以共享配置：</p>
+<pre><code>&#123;relx, [&#123;release, &#123;myapp1, &quot;0.0.1&quot;&#125;,
+     [myapp1]&#125;,
+    &#123;release, &#123;myapp2, &quot;0.1.0&quot;&#125;,
+     [myapp2]&#125;,
+
+     % 共用配置
+&#123;sys_config, &quot;config/sys.config&quot;&#125;,
+&#123;vm_args, &quot;config/vm.args&quot;&#125;,
+
+    &#123;dev_mode, true&#125;,
+    &#123;include_erts, false&#125;,
+    &#123;extended_start_script, true&#125;]&#125;.
+</code></pre><p>也可以独立配置：</p>
+<pre><code>&#123;relx, [
+    &#123;release, &#123;myapp1, &quot;0.0.1&quot;&#125;,
+             [myapp1],
+             % 注意配置顺序和格式 各应用的独立配置是一个PropList
+             [&#123;sys_config, &quot;config/sys1.config&quot;&#125;,
+        &#123;vm_args, &quot;config/vm1.args&quot;&#125;]
+    &#125;,
+        &#123;release, &#123;myapp2, &quot;0.1.0&quot;&#125;,
+             [myapp2],
+             [&#123;sys_config, &quot;config/sys1.config&quot;&#125;,
+        &#123;vm_args, &quot;config/vm1.args&quot;&#125;,
+        &#123;overlay&#125;]
+    &#125;,    
+
+    &#123;dev_mode, true&#125;,
+    &#123;include_erts, false&#125;,
+
+    &#123;extended_start_script, true&#125;]&#125;.
+</code></pre><h4 id="3-应用依赖"><a href="#3-应用依赖" class="headerlink" title="3. 应用依赖"></a>3. 应用依赖</h4><p>定义于rebar.config deps中的依赖被获取后放在<code>_build/default/lib</code>目录下，默认并不会打包到应用的发布目录<code>_build/default/rel/myapp/lib</code>中，你需要在relbar.config的relx中指定应用依赖：</p>
+<pre><code>&#123;relx, [&#123;release, &#123; myapp, &quot;0.1.0&quot; &#125;,
+         [
+         % 指定应用依赖 mylib会先于myapp被启动
+         mylib, 
+         myapp]
+         &#125;,
+
+        &#123;sys_config, &quot;./config/sys.config&quot;&#125;,
+        &#123;vm_args, &quot;./config/vm.args&quot;&#125;,
+
+        &#123;dev_mode, true&#125;,
+        &#123;include_erts, false&#125;,
+
+        &#123;extended_start_script, true&#125;]
+&#125;.
+</code></pre><p>那么对于一些辅助lib呢，我们希望它被打包在应用发布目录中，但不希望它们被启动(它们可能根本不能启动)，一种方法是将mylib指定为<code>&#123;mylib, load&#125;</code>(参见<a target="_blank" rel="noopener" href="https://github.com/erlware/relx/issues/483">Issue1</a>, <a target="_blank" rel="noopener" href="https://github.com/erlware/relx/issues/149">Issue2</a>)，列表中的依赖项默认被relx解释为<code>&#123;mylib, permanent&#125;</code>，即以常驻的方式启动应用。</p>
+<h4 id="4-Overlays"><a href="#4-Overlays" class="headerlink" title="4. Overlays"></a>4. Overlays</h4><p>Overlay允许用户定义一些文件模板和部署准备工作，如拷贝文件，创建文件夹等：</p>
+<pre><code>&#123;relx, [
+    &#123;overlay_vars, &quot;vars.config&quot;&#125;,
+    &#123;overlay, [&#123;mkdir, &quot;log/sasl&quot;&#125;,
+               &#123;template, &quot;priv/app.config&quot;, &quot;etc/app.config&quot;&#125;，
+               % root_dir是relx提供的变量 代表项目根目录
+               &#123;copy, &quot;\&#123;\&#123;root_dir\&#125;\&#125;/configures&quot;, &quot;./&quot;&#125;]&#125;
+]&#125;.
+</code></pre><p>Overlay可以如sys_config和vm_config一样，放在各应用的独立发布配置中。</p>
+<p>更多关于Rebar3发布流程，发布配置，以及库升级等，参考<a target="_blank" rel="noopener" href="http://www.rebar3.org/v3/docs/releases">Rebar3发布</a>。</p>
+<h3 id="四-总结"><a href="#四-总结" class="headerlink" title="四. 总结"></a>四. 总结</h3><p>Rebar3无疑是个好东西，更先进的依赖管理，多节点发布，发布环境的概念，都是Rebar2 + Reltool所不能实现的，当前我们项目就使用的Rebar2.x，用于部署一个多节点的集群，遇到的问题：</p>
+<ul>
+<li>依赖管理：各本地版本不一致问题，Rebar3的lock为依赖的一致性提供了保证。</li>
+<li>多节点部署：Rebar2.x需要为每个节点创建release(create-node)，需要维护N份reltool.config和一份rebar.config。在Rebar3中只需一个rebar.config文件。并且可以灵活定义各节点配置文件(vm.args, sys.config)路径，更有利于项目结构管理和可读性。</li>
+<li>开发模式：在本地开发时，Rebar2.x的generate和upgrade太慢了，前者可用二进制发布自己写脚本替代(用erl_call和节点通信)，后者可用reloader实现热更，这样提高了部署速度，却要自己维护节点交互脚本。Rebar3的dev_mode完美解决了这个问题。</li>
+<li>环境管理：这一块的用处还有待挖掘和摸索。</li>
+</ul>
+<p>Rebar3目前主要的缺点，在于relx文档匮乏，提供了很多好东西，但能传达到用户让用户理解和用上的很少。翻遍了<a target="_blank" rel="noopener" href="https://github.com/erlware/relx/wiki">relx wiki</a>，也没有找到应用独立配置环境(sys_config, vm_args等)的方法，最后是看了其配置解析模块<a href="hub.com/erlware/relx/blob/master/src/rlx_config.erl">rlx_config.erl</a>才猜出来的格式= =。</p>
+<h3 id="五-参考："><a href="#五-参考：" class="headerlink" title="五. 参考："></a>五. 参考：</h3><ol>
+<li><a target="_blank" rel="noopener" href="http://www.rebar3.org/docs/getting-started">Rebar3文档</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/zyuyou/rebar3_docs">Rebar3文档中文翻译(部分)</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/erlware/relx/wiki">relx wiki</a></li>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/design_principles/release_structure.html">OTP Release 结构</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/09/erlang-rebar3/" title="Rebar3 Erlang&#x2F;OTP构建利器">http://wudaijun.com/2016/09/erlang-rebar3/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/09/go-notes-2-procedural-programming/" rel="prev" title="Go 笔记(2) 顺序编程">
+      <i class="fa fa-chevron-left"></i> Go 笔记(2) 顺序编程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/09/goa-intro/" rel="next" title="goa - go web框架">
+      goa - go web框架 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E4%BE%9D%E8%B5%96%E7%AE%A1%E7%90%86"><span class="nav-text">一. 依赖管理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%8C%85%E4%BE%9D%E8%B5%96%E5%92%8C%E6%BA%90%E7%A0%81%E4%BE%9D%E8%B5%96"><span class="nav-text">1. 包依赖和源码依赖</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%8D%87%E7%BA%A7%E4%BE%9D%E8%B5%96"><span class="nav-text">2. 升级依赖</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E6%9E%84%E5%BB%BA"><span class="nav-text">二. 构建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E5%8F%91%E5%B8%83"><span class="nav-text">三. 发布</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%8F%91%E5%B8%83%E7%8E%AF%E5%A2%83"><span class="nav-text">1. 发布环境</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%8F%91%E5%B8%83%E5%A4%9A%E4%B8%AA%E5%BA%94%E7%94%A8"><span class="nav-text">2. 发布多个应用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E5%BA%94%E7%94%A8%E4%BE%9D%E8%B5%96"><span class="nav-text">3. 应用依赖</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Overlays"><span class="nav-text">4. Overlays</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-%E6%80%BB%E7%BB%93"><span class="nav-text">四. 总结</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%94-%E5%8F%82%E8%80%83%EF%BC%9A"><span class="nav-text">五. 参考：</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

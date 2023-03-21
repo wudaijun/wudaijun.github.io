@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. 分布式计算的八大谬论1. 网络总是可靠的在分布式系统中，你可能最容易犯下的错误就是认为远程节点是永远可用的，尽管这可以通过添加更多的硬件(比如主从)来实现，但这也带来了冗余性。网络可能随时因为断电，硬件故障，自然因素，人为因素等不可用，在这种情况下，保证你的程序能够在远程节点或者第三方服务不可用时，能够正常运行是非常重要的。Erlang除了能够监测到外部服务失去连接(或者不能响应)之外，没有">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang 分布式系统(1)">
+<meta property="og:url" content="http://wudaijun.com/2016/03/erlang-distribution-1/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. 分布式计算的八大谬论1. 网络总是可靠的在分布式系统中，你可能最容易犯下的错误就是认为远程节点是永远可用的，尽管这可以通过添加更多的硬件(比如主从)来实现，但这也带来了冗余性。网络可能随时因为断电，硬件故障，自然因素，人为因素等不可用，在这种情况下，保证你的程序能够在远程节点或者第三方服务不可用时，能够正常运行是非常重要的。Erlang除了能够监测到外部服务失去连接(或者不能响应)之外，没有">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2016-03-16T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.606Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta property="article:tag" content="distributed">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2016/03/erlang-distribution-1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Erlang 分布式系统(1) | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/03/erlang-distribution-1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Erlang 分布式系统(1)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-03-17 00:00:00" itemprop="dateCreated datePublished" datetime="2016-03-17T00:00:00+08:00">2016-03-17</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/distributed/" itemprop="url" rel="index"><span itemprop="name">distributed</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/03/erlang-distribution-1/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/03/erlang-distribution-1/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="一-分布式计算的八大谬论"><a href="#一-分布式计算的八大谬论" class="headerlink" title="一. 分布式计算的八大谬论"></a>一. 分布式计算的八大谬论</h3><h4 id="1-网络总是可靠的"><a href="#1-网络总是可靠的" class="headerlink" title="1. 网络总是可靠的"></a>1. 网络总是可靠的</h4><p>在分布式系统中，你可能最容易犯下的错误就是认为远程节点是永远可用的，尽管这可以通过添加更多的硬件(比如主从)来实现，但这也带来了冗余性。网络可能随时因为断电，硬件故障，自然因素，人为因素等不可用，在这种情况下，保证你的程序能够在远程节点或者第三方服务不可用时，能够正常运行是非常重要的。Erlang除了能够监测到外部服务失去连接(或者不能响应)之外，没有任何的其它措施，毕竟，除了你自己以外，谁也不知道某个组件有多重要。</p>
+<p>注意，Erlang跨节点的monitor和link操作是比较危险的，因为一旦远程节点不可用，将触发关于该节点所有的远程monitor和link，这可能会引起一场网络风暴，给系统带来意料之外的高负载。在不可靠的网络上构建可靠的分布式应用，需要你随时准备面临这种突发状况，并且保证系统能够继续正常稳定地工作。</p>
+<span id="more"></span>
+<h4 id="2-可忽略的延迟"><a href="#2-可忽略的延迟" class="headerlink" title="2. 可忽略的延迟"></a>2. 可忽略的延迟</h4><p>一个好的分布式系统的特性之一就是隐藏函数调用为远程调用的事实，然而这是一把双刃剑，一些本地上执行非常快的函数，通过网络调用时，会与预期大不相同。在这一点上，Erlang的通信模型处理得很好，Erlang的每个进程是孤立的，通过异步消息进行通信，这使得我们考虑超时，以及外部服务不可用的情况。将Erlang程序改造为分布式程序只需要做很少的工作，异步通信模型，超时，监视，链接等都可以保留。因此，Erlang在设计之初，并不忽略延迟的存在。但是作为设计者，在设计上，你需要对此留意。</p>
+<h4 id="3-带宽是无限的"><a href="#3-带宽是无限的" class="headerlink" title="3. 带宽是无限的"></a>3. 带宽是无限的</h4><p>尽管现在网络越来越快，每个字节在网络上传输的成本也越来越便宜，但是对网络负载过于乐观的假设仍然是具有风险的。关于这一点的一个小技巧是发送当前的事件，而不是当前的整个状态。如果在一些情况下，你不得不发送大消息，一定要小心，由于Erlang保证两个进程间的消息次序(即使是通过网络)，因此一个大消息可能会阻塞该通道上的其它消息。更糟糕的是，这可能会阻塞节点间的正常心跳，导致节点误以为对方节点无法响应并且断开连接。要避免这种情况发生的唯一方案就是控制消息的大小，这也是一条好的Erlang设计实践。</p>
+<h4 id="4-网络是安全的"><a href="#4-网络是安全的" class="headerlink" title="4. 网络是安全的"></a>4. 网络是安全的</h4><p>当你在分布式环境下，信任你所接收到的任何消息是非常危险的，消息可能被刻意伪造或抓包改写，甚至外部节点可能已经完全被其他人控制。遗憾的是，Erlang做了这种假设，Erlang分布式系统的网络安全是非常薄弱的，这和它的历史有关。这意味着Erlang程序很少被部署在不同的数据中心，Erlang也不建议你这么做。你可以将你的系统分为很多小的，相互隔离的节点，并且部署在可靠的地方(一台物理机，或者安全的局域网)。但任何除此之外的东西，都需要开发者自己去实现，例如切换到SSL，或者实现你自己的更高层次的通信协议，或重写节点之间的通信协议等。关于这些主题可以参见<a target="_blank" rel="noopener" href="http://erlang.org/doc/apps/erts/alt_dist.html">How to implement an alternative carrier for the Erlang distribution</a>和<a target="_blank" rel="noopener" href="http://erlang.org/doc/apps/erts/erl_dist_protocol.html">Distribution Protocol</a>。即使做了更多的安全工作，也要非常小心，因为一旦有人获取了你的远程节点的访问权限，他就可以获取到节点上的一切，并且在该节点上执行任何命令。</p>
+<h4 id="5-网络拓扑是不变的"><a href="#5-网络拓扑是不变的" class="headerlink" title="5. 网络拓扑是不变的"></a>5. 网络拓扑是不变的</h4><p>在分布式系统构建之初，你的系统原型可能有指定数量的节点并且确定了它们的网络位置(IP+Port)，但硬件错误，人为部署，负载均衡等，都会导致节点的动态添加和删除，这时集群的网络拓扑结构就会变化，如果你在程序中对集群节点位置有任何依赖，都将很难适应这种变化。在Erlang中，每个节点都有其名字(相当于IP+Port)，如果在程序中对这些节点地址硬编码，将会使程序很难动态扩展。</p>
+<h4 id="6-只有一个管理员"><a href="#6-只有一个管理员" class="headerlink" title="6. 只有一个管理员"></a>6. 只有一个管理员</h4><p>这是从系统运维上来说的，你可能只管理着整个系统的一部分，一方面你需要诊断系统问题的工具，这一点上来说，Erlang提供了比较完善的调试诊断系统，并且支持热更。另一方面，你需要做好系统各个部分间的通讯协议，以管理各个子系统的不同版本的兼容问题。</p>
+<h4 id="7-数据传输代价为零"><a href="#7-数据传输代价为零" class="headerlink" title="7. 数据传输代价为零"></a>7. 数据传输代价为零</h4><p>这里的代价包括时间代价和金钱代价，前者指数据的序列化和反序列化时间，后者指数据对带宽的占用，从这个角度来看，将消息优化得小而短又一次被证明是很重要的。基于Erlang的历史，Erlang并没有对网络传输数据做任何压缩处理(尽管提供了这样的函数)，Erlang的设计者选择让开发者自己按需实现其通讯协议，减小数据传输的代价。</p>
+<h4 id="8-集群是同质的"><a href="#8-集群是同质的" class="headerlink" title="8. 集群是同质的"></a>8. 集群是同质的</h4><p>这里的同质(Homogeneous)指的是同一种语言(或协议)，在分布式集群中，你不能对所有节点都是同质的作出假设，集群中的节点可能由不同的语言实现，或者遵从其它通讯协议。你应该对集群持开放原则而不是封闭原则。对Erlang来说，分布式协议是公开的，但所有的Erlang节点都假设其它节点都是同质的，外部节点想要将自己整合在Erlang集群中，有两种方式：</p>
+<p>第一种方式是使自己看起来像Erlang节点，实现Erlang节点的通讯协议，比如<a target="_blank" rel="noopener" href="http://erlang.org/doc/tutorial/cnode.html">Erlang C-nodes</a>，这样其它语言实现的节点也能像Erlang节点一样运行于Erlang集群中。</p>
+<p>另一种方式是使用其它的数据交换协议，如<a target="_blank" rel="noopener" href="http://bert-rpc.org/">BERT-RPC</a>，一种类似于XML或JSON的数据交换格式，但与<a target="_blank" rel="noopener" href="http://erlang.org/doc/apps/erts/erl_ext_dist.html">Erlang External Term Format</a>更为契合。</p>
+<p>关于以上8点更多请参考：<a target="_blank" rel="noopener" href="http://www.rgoarchitects.com/Files/fallacies.pdf">Fallacies of Distributed Computing Explained</a>。</p>
+<h3 id="二-节点检活"><a href="#二-节点检活" class="headerlink" title="二. 节点检活"></a>二. 节点检活</h3><p>对于分布式系统来说，其中最让人头疼的事情之一就是当节点不可响应(或网络错误)时的处理流程。一个节点不可响应的因素有很多：网络故障，网络拥塞，硬件错误，应用崩溃，节点忙碌等，几乎没有方式能够对问题节点当时的状态进行确认和诊断，这个时候，其它节点有几种处理方式：继续等待响应，再次发起请求，或者假设问题节点已经挂掉并且继续后续事宜。如果真是问题节点挂掉了，那你可以忽略这个节点，整个集群继续运转。而更差的情况下，问题节点此时仍然运行于孤立的环境中，从该节点的视角来看，其它节点都挂掉了，整个集群只剩自己一个节点。</p>
+<p>Erlang集群默认即视不可达的节点为死节点，这是一种悲观的方案，这可以让我们对灾难性故障迅速作出反应。Erlang假设网络故障的概率比硬件或应用故障的概率低，Erlang最初就是这么设计的(为电信通讯平台服务)。另一种乐观的方案(假设失连节点仍然存活)可能或延迟故障恢复相关的处理，因为它假设网络故障的可能性要比硬件或应用故障的可能性更大，因此它会重试等待更长的时间，以便失连节点重返集群。</p>
+<p>那么问题来了，在悲观的解决方案中，如果失连节点突然回归集群(比如网络恢复)又会怎么样呢？此时失连节点可能已经运行在孤立的环境数日，有自己的数据，连接，状态等。这个时候想要协调数据和状态的一致性是很困难的，并且你的集群可能已经启动了失连节点的备用节点，而直接忽略节点也不可取，也许该节点已经处理了很多外部请求，甚至向DB写入了数据。总之，会有一些非常奇怪的事情发生。</p>
+<p>那么，是否有一个方案可以在节点失连的时候保持应用正常运行，并且不会出现数据丢失或不一致呢？</p>
+<h3 id="三-CAP理论"><a href="#三-CAP理论" class="headerlink" title="三. CAP理论"></a>三. CAP理论</h3><p>在CAP理论中，关于上一个问题的答案是”没有”，你没有办法让一个分布式系统在网络断开的时候保持正常运行并且正确地运行。CAP理论在<a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/CAP%E5%AE%9A%E7%90%86">Wiki</a>中解释：</p>
+<ul>
+<li>一致性（Consistence) (等同于所有节点访问同一份最新的数据副本）</li>
+<li>可用性（Availability）（对数据更新具备高可用性）</li>
+<li>容忍网络分区（Partition tolerance）（以实际效果而言，分区相当于对通信的时限要求。系统如果不能在时限内达成数据一致性，就意味着发生了分区的情况，必须就当前操作在C和A之间做出选择)</li>
+</ul>
+<p>根据定理，分布式系统只能满足三项中的两项而不可能满足全部三项。理解CAP理论的最简单方式是想象两个节点分处分区两侧。允许至少一个节点更新状态会导致数据不一致，即丧失了C性质。如果为了保证数据一致性，将分区一侧的节点设置为不可用，那么又丧失了A性质。除非两个节点可以互相通信，才能既保证C又保证A，这又会导致丧失P性质。</p>
+<p>关于CAP理论的另一篇很有意思的文章：<a target="_blank" rel="noopener" href="http://www.infoq.com/cn/articles/cap-twelve-years-later-how-the-rules-have-changed">CAP理论十二年回顾：”规则”变了</a>。</p>
+<p>从CAP理论来看，我们只有三种选择: CA, CP, AP，通常情况下，CA是我们无需考虑的，除非你可以保证你的网络不会出现故障，抑或集群是部署在同一台主机上。剩下的CP, AP需要根据你自己的系统进行取舍。</p>
+<h3 id="四-待续"><a href="#四-待续" class="headerlink" title="四. 待续"></a>四. 待续</h3><p>尽管在Erlang中构建分布式系统是非常Easy的一件事情，但是分布式系统本身的复杂度，需要你根据系统需求，从多个维度去设计，考量和评估整个分布式系统，同时理解分布式系统的常见误区，注重底层细节。本文内容参考：<a target="_blank" rel="noopener" href="http://learnyousomeerlang.com/distribunomicon">http://learnyousomeerlang.com/distribunomicon</a></p>
+<p>之后可能详细整理一下Erlang本身在分布式方面提供的具体支持，并且评估一下当前项目用到的服务器集群系统。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/03/erlang-distribution-1/" title="Erlang 分布式系统(1)">http://wudaijun.com/2016/03/erlang-distribution-1/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+              <a href="/tags/distributed/" rel="tag"><i class="fa fa-tag"></i> distributed</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/03/3d-mapping/" rel="prev" title="3D贴图基础">
+      <i class="fa fa-chevron-left"></i> 3D贴图基础
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/03/erlang-distribution-2/" rel="next" title="Erlang 分布式系统(2)">
+      Erlang 分布式系统(2) <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%A1%E7%AE%97%E7%9A%84%E5%85%AB%E5%A4%A7%E8%B0%AC%E8%AE%BA"><span class="nav-text">一. 分布式计算的八大谬论</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E7%BD%91%E7%BB%9C%E6%80%BB%E6%98%AF%E5%8F%AF%E9%9D%A0%E7%9A%84"><span class="nav-text">1. 网络总是可靠的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%8F%AF%E5%BF%BD%E7%95%A5%E7%9A%84%E5%BB%B6%E8%BF%9F"><span class="nav-text">2. 可忽略的延迟</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E5%B8%A6%E5%AE%BD%E6%98%AF%E6%97%A0%E9%99%90%E7%9A%84"><span class="nav-text">3. 带宽是无限的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E7%BD%91%E7%BB%9C%E6%98%AF%E5%AE%89%E5%85%A8%E7%9A%84"><span class="nav-text">4. 网络是安全的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-%E7%BD%91%E7%BB%9C%E6%8B%93%E6%89%91%E6%98%AF%E4%B8%8D%E5%8F%98%E7%9A%84"><span class="nav-text">5. 网络拓扑是不变的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-%E5%8F%AA%E6%9C%89%E4%B8%80%E4%B8%AA%E7%AE%A1%E7%90%86%E5%91%98"><span class="nav-text">6. 只有一个管理员</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#7-%E6%95%B0%E6%8D%AE%E4%BC%A0%E8%BE%93%E4%BB%A3%E4%BB%B7%E4%B8%BA%E9%9B%B6"><span class="nav-text">7. 数据传输代价为零</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#8-%E9%9B%86%E7%BE%A4%E6%98%AF%E5%90%8C%E8%B4%A8%E7%9A%84"><span class="nav-text">8. 集群是同质的</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E8%8A%82%E7%82%B9%E6%A3%80%E6%B4%BB"><span class="nav-text">二. 节点检活</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-CAP%E7%90%86%E8%AE%BA"><span class="nav-text">三. CAP理论</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-%E5%BE%85%E7%BB%AD"><span class="nav-text">四. 待续</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

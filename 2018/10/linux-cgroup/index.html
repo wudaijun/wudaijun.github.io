@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="CGroup V11. CGroup 概念 Task: 任务，也就是进程，但这里的进程和我们通常意义上的 OS 进程有些区别，在后面会提到。 CGroup: 控制组，一个 CGroup 就是一组按照某种标准划分的Tasks。这里的标准就是 Subsystem 配置。换句话说，同一个CGroup 的 Tasks 在一个或多个 Subsystem 上使用同样的配置。 Hierarchy: 树形结构的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux CGroup 基础">
+<meta property="og:url" content="http://wudaijun.com/2018/10/linux-cgroup/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="CGroup V11. CGroup 概念 Task: 任务，也就是进程，但这里的进程和我们通常意义上的 OS 进程有些区别，在后面会提到。 CGroup: 控制组，一个 CGroup 就是一组按照某种标准划分的Tasks。这里的标准就是 Subsystem 配置。换句话说，同一个CGroup 的 Tasks 在一个或多个 Subsystem 上使用同样的配置。 Hierarchy: 树形结构的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201810/cgroup-base.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201810/cgroup-example-htop.png">
+<meta property="article:published_time" content="2018-10-13T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.613Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201810/cgroup-base.png">
+
+<link rel="canonical" href="http://wudaijun.com/2018/10/linux-cgroup/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Linux CGroup 基础 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/10/linux-cgroup/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Linux CGroup 基础
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-10-14 00:00:00" itemprop="dateCreated datePublished" datetime="2018-10-14T00:00:00+08:00">2018-10-14</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/os/" itemprop="url" rel="index"><span itemprop="name">os</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/10/linux-cgroup/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/10/linux-cgroup/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="CGroup-V1"><a href="#CGroup-V1" class="headerlink" title="CGroup V1"></a>CGroup V1</h3><h4 id="1-CGroup-概念"><a href="#1-CGroup-概念" class="headerlink" title="1. CGroup 概念"></a>1. CGroup 概念</h4><ul>
+<li>Task: 任务，也就是进程，但这里的进程和我们通常意义上的 OS 进程有些区别，在后面会提到。</li>
+<li>CGroup: 控制组，一个 CGroup 就是一组按照某种标准划分的Tasks。这里的标准就是 Subsystem 配置。换句话说，同一个CGroup 的 Tasks 在一个或多个 Subsystem 上使用同样的配置。</li>
+<li>Hierarchy: 树形结构的 CGroup 层级，每个子 CGroup 节点会继承父 CGroup 节点的子系统配置，每个 Hierarchy 在初始化时会有默认的 CGroup(Root CGroup)。</li>
+<li>Subsystem: 子系统，具体的物理资源配置，比如 CPU 使用率，内存占用，磁盘 IO 速率等。一个 Subsystem 只能附加在一个 Hierarchy 上，一个 Hierarchy 可以附加多个 Subsystem。</li>
+</ul>
+<span id="more"></span>
+<p><img src="/assets/image/201810/cgroup-base.png" alt=""></p>
+<h4 id="2-CGroup-文件系统"><a href="#2-CGroup-文件系统" class="headerlink" title="2. CGroup 文件系统"></a>2. CGroup 文件系统</h4><p>在具体实现中，CGroup 通过虚拟文件系统实现，一个 CGroup 就是一个文件夹，Hierarchy 层级结构通过文件夹结构实现，而每个 CGroup 的 Subsystem 配置和 Tasks 则通过文件来配置。在 Ubuntu 下，可通过<code>lssubsys -m</code>(需要安装cgroup-tools包)，查看已有的 Subsystem:</p>
+<pre><code>root# lssubsys -m
+cpuset /sys/fs/cgroup/cpuset
+cpu,cpuacct /sys/fs/cgroup/cpu,cpuacct
+blkio /sys/fs/cgroup/blkio
+memory /sys/fs/cgroup/memory
+devices /sys/fs/cgroup/devices
+freezer /sys/fs/cgroup/freezer
+net_cls,net_prio /sys/fs/cgroup/net_cls,net_prio
+perf_event /sys/fs/cgroup/perf_event
+hugetlb /sys/fs/cgroup/hugetlb
+pids /sys/fs/cgroup/pids
+</code></pre><p>这些是 Ubuntu16.04 上已实现的 Subsystem 和对应 Hierarchy。各个Subsystem 的作用可参考 <a target="_blank" rel="noopener" href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01">RedHat CGroup Doc</a>。在其它系统，你可以需要手动挂载虚拟文件系统并建立 Subsystem 和 Hierarchy 的关系:</p>
+<pre><code>root# mount -t tmpfs cgroup_root /sys/fs/cgroup
+root# mkdir /sys/fs/cgroup/cpu
+root# mount -t cgroup cpu -ocpu /sys/fs/cgroup/cpu
+</code></pre><p><code>/sys/fs/cgroup/cpu</code> 即成为附加(attach)了 CPU Subsystem 的 Hierarchy 的根目录，即 Root CGroup，我们可以在该 CGroup 下创建一个 Child CGroup:</p>
+<pre><code>root# mkdir /sys/fs/cgroup/cpu/demo
+root# ls /sys/fs/cgroup/cpu/demo
+cgroup.clone_children  cgroup.procs  cpuacct.stat  cpuacct.usage  cpuacct.usage_percpu  cpu.cfs_period_us  cpu.cfs_quota_us  cpu.shares  cpu.stat  notify_on_release  tasks  
+</code></pre><p>在创建 CGroup 时，就已经生成了一堆文件，一个 CGroup 目录中的内容大概可以分为四类: </p>
+<ul>
+<li>Subsystem Conf: 如附加了 CPU Subsystem 的 CGroup 目录下的 cpu* 文件均为 CPU Subsystem 配置</li>
+<li>Tasks: 在该 CGroup 下的 Tasks，分为两个文件，tasks 和 cgroup.procs，两者记录的都是在该进程 PID 列表，但是有所区别。</li>
+<li>CGroup Conf: CGroup 的一些通用配置，比如 notify_on_release 用于在 CGroup 结构变更时执行 release_agent 中的命令，cgroup.clone_children 用于在 Child CGroup 创建时，自动继承父 Child CGroup 的配置，目前只有 cpuset SubSystem 支持</li>
+<li>Child CGroups: 除以上三种文件外的子目录，如Ubuntu16.04中，每个 Root CGroup 下都有个 docker 目录，它由 Docker 创建，用于管理Docker容器的资源配置</li>
+</ul>
+<p>关于 tasks 和 cgroup.procs，网上很多文章将 cgroup 的 Task 简单解释为 OS 进程，这其实不够准确，更精确地说，cgroup.procs 文件中的 PID 列表才是我们通常意义上的进程列表，而 tasks 文件中包含的 PID 实际上可以是 <a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/%E8%BD%BB%E9%87%8F%E7%BA%A7%E8%BF%9B%E7%A8%8B">Linux 轻量级进程(LWP)</a> 的 PID，而由于 Linux pthread 库的线程实际上轻量级进程实现的(Linux 内核不支持真正的线程，可通过<code>getconf GNU_LIBPTHREAD_VERSION</code>查看使用的 pthread 线程库版本，Ubuntu16.04上是NPTL2.23(Native Posix Thread Lib)，简单来说，Linux 进程主线程 PID = 进程 PID，而其它线程的 PID (LWP PID)则是独立分配的，可通过<code>syscall(SYS_gettid)</code>得到。LWP 在 ps 命令中默认是被隐藏的，在/proc/目录下可以看到。为了区分方便，我们将以 Proc 来表示传统意义上的进程，以 Thread 表示 LWP 进程。</p>
+<p>我们可以通过 ps 命令的 -T 参数将 LWP 在 SPID 列显示出来:</p>
+<pre><code>root# ps -ef | wc -l
+218
+root# ps -efT | wc -l
+816
+root# ps -p 28051 -lfT                                                  
+F S UID        PID  SPID  PPID  C PRI  NI ADDR SZ WCHAN  STIME TTY          TIME CMD               
+0 Z root     28051 28051 26889  0  80   0 -     0 exit   10:30 pts/10   00:00:00 [a.out] &lt;defunct&gt; 
+1 R root     28051 28054 26889 99  80   0 - 12409 -      10:30 pts/10   00:00:10 [a.out] &lt;defunct&gt; 
+1 R root     28051 28055 26889 99  80   0 - 12409 -      10:30 pts/10   00:00:10 [a.out] &lt;defunct&gt;
+</code></pre><p>以上示例中，Proc 28051 下有两个 Thread (28054,28055)，即开了两个子线程。总的来说，Linux 下这种通过 LWP 来实现线程的方式，在一些时候会给用户一些困惑，比如如果我 <code>kill -9 28055</code>(默认在 ps 下看不到)，按照 POSIX 标准，28055 “线程”所在的进程会被 Kill掉，因此28051,28054,28055三个进程都会被杀掉，感觉就很诡异。感兴趣的可以看看<a target="_blank" rel="noopener" href="https://blog.csdn.net/tianyue168/article/details/7403693">这篇文章</a>)。</p>
+<p>当要向某个 CGroup 加入 Thread 时，将Thread PID 写入 tasks 或 cgroup.procs 即可，cgroup.procs 会自动变更为该 Task 所属的 Proc PID。如果要加入 Proc 时，则只能写入到 cgroup.procs 文件(未解)，tasks 文件会自动更新为该 Proc 下所有的 Thread PID。可以通过<code>cat /proc/PID/cgroup</code>查看某个 Proc/Thread 的 CGroup 信息，</p>
+<h4 id="3-一个实例"><a href="#3-一个实例" class="headerlink" title="3. 一个实例"></a>3. 一个实例</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> _GNU_SOURCE         <span class="comment">/* See feature_test_macros(7) */</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;pthread.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/stat.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/syscall.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> NUM_THREADS = <span class="number">5</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> *<span class="title">thread_main</span><span class="params">(<span class="keyword">void</span> *threadid)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">long</span> tid;</span><br><span class="line">    tid = (<span class="keyword">long</span>)threadid;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;sub thread#%ld, pid #%ld!\n&quot;</span>, tid, syscall(SYS_gettid));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> a=<span class="number">0</span>;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>) &#123;</span><br><span class="line">        a++;</span><br><span class="line">    &#125;</span><br><span class="line">    pthread_exit(<span class="literal">NULL</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span> <span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> *argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;main thread, pid #%ld!\n&quot;</span>, syscall(SYS_gettid));</span><br><span class="line">    <span class="keyword">int</span> num_threads;</span><br><span class="line">    <span class="keyword">if</span> (argc &gt; <span class="number">1</span>)&#123;</span><br><span class="line">        num_threads = atoi(argv[<span class="number">1</span>]);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (num_threads&lt;=<span class="number">0</span> || num_threads&gt;=<span class="number">100</span>)&#123;</span><br><span class="line">        num_threads = NUM_THREADS;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">pthread_t</span>* threads = (<span class="keyword">pthread_t</span>*) <span class="built_in">malloc</span> (<span class="keyword">sizeof</span>(<span class="keyword">pthread_t</span>)*num_threads);</span><br><span class="line">    <span class="keyword">int</span> rc;</span><br><span class="line">    <span class="keyword">long</span> t;</span><br><span class="line">    <span class="keyword">for</span>(t=<span class="number">0</span>; t&lt;num_threads; t++)&#123;</span><br><span class="line">        rc = pthread_create(&amp;threads[t], <span class="literal">NULL</span>, thread_main, (<span class="keyword">void</span> *)t);</span><br><span class="line">        <span class="keyword">if</span> (rc)&#123;</span><br><span class="line">            <span class="built_in">printf</span>(<span class="string">&quot;ERROR; return code from pthread_create() is %d\n&quot;</span>, rc);</span><br><span class="line">            <span class="built_in">exit</span>(<span class="number">-1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    pthread_exit(<span class="literal">NULL</span>);</span><br><span class="line">    <span class="built_in">free</span>(threads);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这段代码简单创建了四个死循环线程，运行:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">root# gcc -pthread t.c &amp;&amp; .&#x2F;a.out</span><br><span class="line">main thread, pid #30354</span><br><span class="line">sub thread#0, pid #30355</span><br><span class="line">sub thread#2, pid #30357</span><br><span class="line">sub thread#3, pid #30358 </span><br><span class="line">sub thread#1, pid #30356</span><br></pre></td></tr></table></figure>
+<p>通过 htop/top(top 默认不会显示 LWP) 看到现在四个 CPU 会被吃满，为了限制资源，我们创建一个 CGroup:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">root# mkdir &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;cpu&#x2F;wdj</span><br><span class="line"># 创建 CGroup 之后，会自动生成相关文件</span><br><span class="line">root# ls &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;cpu&#x2F;wdj&#x2F;</span><br><span class="line">cgroup.clone_children  cgroup.procs  cpuacct.stat  cpuacct.usage  cpuacct.usage_percpu  cpu.cfs_period_us  cpu.cfs_quota_us  cpu.shares  cpu.stat  notify_on_release  tasks</span><br><span class="line"># 配置该 CGroup，CPU 使用率不能超过 50%</span><br><span class="line">root# echo 50000 &gt; &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;cpu&#x2F;wdj&#x2F;cpu.cfs_quota_us</span><br><span class="line"># 将 Proc PID 写入 procs</span><br><span class="line">root# echo 30354 &gt; &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;cpu&#x2F;wdj&#x2F;cgroup.procs</span><br><span class="line"># tasks 已经自动更新, # 此时 CPU 占用率会立即下降到 50%</span><br><span class="line">root# cat &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;cpu&#x2F;wdj&#x2F;tasks</span><br><span class="line">30355</span><br><span class="line">30356</span><br><span class="line">30357</span><br><span class="line">30358</span><br><span class="line"></span><br><span class="line"># 同样的方式，再来限制下 CPU 核的使用</span><br><span class="line">root# mkdir &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;cpuset&#x2F;wdj</span><br><span class="line"># 限制只能使用 CPU 2,3 两个核</span><br><span class="line"># 在使用前需要先执行，参考https:&#x2F;&#x2F;stackoverflow.com&#x2F;questions&#x2F;28348627&#x2F;echo-tasks-gives-no-space-left-on-device-when-trying-to-use-cpuset</span><br><span class="line">#root echo 0 &gt; cpuset&#x2F;wdj&#x2F;cpuset.mems</span><br><span class="line">#root echo 0 &gt; cpuset&#x2F;wdj&#x2F;cpuset.cpus</span><br><span class="line">echo 2,3 &gt; &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;cpuset&#x2F;wdj&#x2F;cpuset.cpu</span><br><span class="line"># 这次我们将 Thread PID 写入 cgroup.procs</span><br><span class="line">root# echo 30355 &gt; &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;cpu&#x2F;wdj&#x2F;cgroup.procs</span><br><span class="line"># tasks 会自动更新为该 Proc下所有的 Thread PID</span><br><span class="line">root# cat &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;cpu&#x2F;wdj&#x2F;tasks</span><br><span class="line">30355</span><br><span class="line">30356</span><br><span class="line">30357</span><br><span class="line">30358</span><br></pre></td></tr></table></figure>
+<p>最终我们通过 htop 得到的效果如下:</p>
+<p><img src="/assets/image/201810/cgroup-example-htop.png" alt=""></p>
+<p>如果我们只将 Thread PID 如30356写入 /sys/fs/cgroup/cpu/wdj/tasks，则只会限制thread#1的CPU使用率。总结一下:</p>
+<ul>
+<li>将 Thread PID 写入 tasks: 仅对该”线程”(LWP) 生效</li>
+<li>将 Thread PID 写入 cgroup.procs: 会加入整个 Proc PID</li>
+<li>将 Proc PID 写入 tasks: 没有效果，写不进去</li>
+<li>将 Proc PID 写入 cgroup.procs: 会加入整个 Proc PID</li>
+</ul>
+<p>表现有点怪异，还没找到具体原因，总的来说，目前的 CGroup 还有点乱:</p>
+<ol>
+<li>Subsystem, Hierarchy, CGroup 三者的结构有点乱，将对进程的分组和对资源的控制混在了一起</li>
+<li>由于 Linux 通过 LWP 实现 Thread，导致 CGroup 看起来可以对线程实现控制，但这方面机制不够健全，比如前面提到的加入机制</li>
+</ol>
+<h3 id="CGroup-V2"><a href="#CGroup-V2" class="headerlink" title="CGroup V2"></a>CGroup V2</h3><p>CGroup V2 在 Linux Kernel 4.5中被引入，并且考虑到其它已有程序的依赖，V2 会和 V1 并存几年。针对于 CGroup V1 中 Subsystem, Herarchy, CGroup 的关系混乱，CGroup V2 中，引入 unified hierarchy 的概念，即只有一个 Hierarchy，仍然通过 mount 来挂载 CGroup V2:</p>
+<pre><code>mount -t cgroup2 none $MOUNT_POINT
+</code></pre><p>挂载完成之后，目录下会有三个 CGroup 核心文件:</p>
+<ul>
+<li>cgroup.controllers: 该文件列出当前 CGroup 支持的所有 Controller，如: cpu io memory</li>
+<li>cgroup.procs: 在刚挂载时，Root CGroup 目录下的 cgroup.procs 文件中会包含系统当前所有的Proc PID(除了僵尸进程)。同样，可以通过将 Proc PID 写入 cgroup.procs 来将 Proc 加入到 CGroup</li>
+<li>cgroup.subtree_control: 用于控制该 CGroup 下 Controller 开关，只有列在 cgroup.controllers 中的 Controller 才可以被开启，默认情况下所有的 Controller 都是关闭的。</li>
+</ul>
+<p>这三个文件在所有的 CGroup 中都会生成，除此之外，在非 Root CGroup 下，还会有一个 cgroup.events 文件，该文件的 populated 字段会指出当前 CGroup 下的所有存活的 Proc PID，为1则表示其下存活的 Proc PID 数量&gt;1，否则populated为0。这用于 CGroup V1的 release_agent 等事件通知，因为当最后一个进程退出 CGroup 时，cgroup.events 文件会被修改，从而触发事件。</p>
+<pre><code># 查看当前 CGroup 支持的所有 Controllers
+root# cat cgroup.controllers
+cpu io memory
+# 开启和关闭 Controller
+root# echo &quot;+cpu +memory -io&quot; &gt; cgroup.subtree_control
+</code></pre><p>在 CGroup V2 中，A CGroup 开启了某个 Controller，则其直接子 CGroup B会生成对应的 Controller 接口文件(如 <code>cpu.cfs_quota_us</code>)，并且B CGroup 的 cgroup.controllers 会更新。B也可以选择开启或关闭该 Controller，但影响的是 B 的直接子 CGroup。并且只有没有 Tasks 的 CGroup 即中间节点可以开关 Controller，只有叶子节点(和根节点)可以执行资源配置。这样每个节点要么控制子 CGroup 的 Controller 开关(中间节点)，要么控制其下 Tasks 的资源配置(叶子节点)，结构更清晰。</p>
+<p>另外，CGroup V2 去掉了 Tasks 文件，增加了 cgroup.threads 文件，用于管理 LWP(仍然没有放弃对”线程”的支持)，但语义上会清晰一些。</p>
+<p>站在进程的角度来说，在挂载 CGroup V2时，所有已有Live Proc PID 都会加入到 Root CGroup，之后所有新创建的进程都会自动加入到父进程所属的 CGroup，由于 V2 只有一个 Hierarchy，因此一个进程同一时间只会属于一个 CGroup:</p>
+<pre><code>root# cat /proc/842/cgroup
+...
+0::/test-cgroup/test-cgroup-nested
+</code></pre><p>总的来说，CGroup V2去掉了多个 Hierarchy 结构，使用 unified Hierarchy，对 Hierarchy 内部层级结构作出一些限制以保证层级逻辑清晰，并且优化了 CGroup 的文件组织(如 cgroup.events, cgroup.threads)。由于目前手头暂时没有 Kernel 4.5，只能通过文档大概了解下，还是要找机会实际体验一下。</p>
+<p>Reference:</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/Documentation/cgroup-v1/cgroups.txt">CGroup V1 Document</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/Documentation/cgroup-v2.txt">CGroup V2 Document</a></li>
+<li><a target="_blank" rel="noopener" href="https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/7/html/resource_management_guide/chap-introduction_to_control_groups">RedHat: 控制群组简介</a></li>
+<li><a target="_blank" rel="noopener" href="https://lwn.net/Articles/679786/">RedHat: Understanding the new control groups API</a></li>
+<li><a target="_blank" rel="noopener" href="https://coolshell.cn/articles/17049.html">CoolShell: DOCKER基础技术：LINUX CGROUP</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/10/linux-cgroup/" title="Linux CGroup 基础">http://wudaijun.com/2018/10/linux-cgroup/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/linux/" rel="tag"><i class="fa fa-tag"></i> linux</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/09/consistency/" rel="prev" title="一致性杂谈">
+      <i class="fa fa-chevron-left"></i> 一致性杂谈
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/10/go-mod-intro/" rel="next" title="go mod 依赖管理">
+      go mod 依赖管理 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#CGroup-V1"><span class="nav-text">CGroup V1</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-CGroup-%E6%A6%82%E5%BF%B5"><span class="nav-text">1. CGroup 概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-CGroup-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F"><span class="nav-text">2. CGroup 文件系统</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E4%B8%80%E4%B8%AA%E5%AE%9E%E4%BE%8B"><span class="nav-text">3. 一个实例</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CGroup-V2"><span class="nav-text">CGroup V2</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="记录一下搭建wordpress博客的过程，做备忘之用，仅供参考。 一. 前期准备一台云服务器和一个域名(可选)。国内的服务器搭建网站需要备案，国外的话推荐linode，目前linode tokyo服务器应该是国内访问最快的，但是已经缺货了，而新开的singapore服务器线路优化又不是很好(ping 300+)，后来又换成了fremont，速度总算稳定了一些，ping值 210 左右。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="WordPress搭建历程">
+<meta property="og:url" content="http://wudaijun.com/2015/05/wordpress-setup/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="记录一下搭建wordpress博客的过程，做备忘之用，仅供参考。 一. 前期准备一台云服务器和一个域名(可选)。国内的服务器搭建网站需要备案，国外的话推荐linode，目前linode tokyo服务器应该是国内访问最快的，但是已经缺货了，而新开的singapore服务器线路优化又不是很好(ping 300+)，后来又换成了fremont，速度总算稳定了一些，ping值 210 左右。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2015-05-18T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.603Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="tool">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2015/05/wordpress-setup/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>WordPress搭建历程 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/05/wordpress-setup/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          WordPress搭建历程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-05-19 00:00:00" itemprop="dateCreated datePublished" datetime="2015-05-19T00:00:00+08:00">2015-05-19</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/tool/" itemprop="url" rel="index"><span itemprop="name">tool</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/05/wordpress-setup/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/05/wordpress-setup/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>记录一下搭建wordpress博客的过程，做备忘之用，仅供参考。</p>
+<h3 id="一-前期准备"><a href="#一-前期准备" class="headerlink" title="一. 前期准备"></a>一. 前期准备</h3><p>一台云服务器和一个域名(可选)。国内的服务器搭建网站需要备案，国外的话推荐linode，目前linode tokyo服务器应该是国内访问最快的，但是已经缺货了，而新开的singapore服务器线路优化又不是很好(ping 300+)，后来又换成了fremont，速度总算稳定了一些，ping值 210 左右。</p>
+<span id="more"></span>
+<h3 id="二-部署wordpress"><a href="#二-部署wordpress" class="headerlink" title="二. 部署wordpress"></a>二. 部署wordpress</h3><p>我的环境是 Ubuntu 14.04 LTS。</p>
+<h4 id="1-安装-apache2-php5-mysql-server"><a href="#1-安装-apache2-php5-mysql-server" class="headerlink" title="1.安装 apache2 + php5 + mysql-server"></a>1.安装 apache2 + php5 + mysql-server</h4><pre><code>// apache
+sudo apt-get install apache2 // 安装完成后，在本地打开浏览器 http://云服务器IP地址 测试
+
+// php5
+sudo apt-get install php5      
+sudo apt-get install libapache2-mod-php5
+
+// mysql
+sudo apt-get install mysql-server
+sudo apt-get install libapache2-mod-auth-mysql
+sudo apt-get install php5-mysql
+
+// 重启apache 如果遇到 ServerName 警告，可在/etc/apache2/apache2.conf 中，
+// 添加一行: ServerName localhost
+/etc/init.d/apache2 restart 
+</code></pre><h4 id="2-下载解压-wordpress"><a href="#2-下载解压-wordpress" class="headerlink" title="2.下载解压 wordpress"></a>2.下载解压 wordpress</h4><pre><code>wget https://cn.wordpress.org/wordpress-4.2-zh_CN.tar.gz // 可去cn.wordpress.org获取最新版
+tar zxvf wordpress-4.2-zh_CN.tar.gz
+</code></pre><h4 id="3-为wordpress-准备-mysql"><a href="#3-为wordpress-准备-mysql" class="headerlink" title="3.为wordpress 准备 mysql"></a>3.为wordpress 准备 mysql</h4><pre><code>mysql -uroot -p
+mysql&gt; CREATE DATABASE 网站数据库名
+mysql&gt; GRANT ALL PRIVILEGES ON 网站数据库名.* to 用户名@localhost identified by &#39;密码&#39;
+mysql&gt; exit
+</code></pre><h4 id="4-配置-wordpress"><a href="#4-配置-wordpress" class="headerlink" title="4.配置 wordpress"></a>4.配置 wordpress</h4><pre><code>// 配置前面为wordpress准备的mysql数据库和用户
+cd wordpress
+mv wp-config-sample.php wp-config.php
+vim wp-config.php #在配置文件中，配置DB_NAME DB_USER DB_PASSWORD三项
+</code></pre><h4 id="5-添加-wordpress-到-apache"><a href="#5-添加-wordpress-到-apache" class="headerlink" title="5.添加 wordpress 到 apache"></a>5.添加 wordpress 到 apache</h4><pre><code>// 将wordpress中所有内容移动到 /var/www/html下
+// /var/www/html是apache的默认根目录
+sudo mv wordpress/* /var/www/html    
+</code></pre><h4 id="6-安装wordpress"><a href="#6-安装wordpress" class="headerlink" title="6. 安装wordpress"></a>6. 安装wordpress</h4><p>本地浏览器中，输入 <a target="_blank" rel="noopener" href="http://云服务器地址/wp-admin/install.php">http://云服务器地址/wp-admin/install.php</a></p>
+<p>安装向导提供网站管理的用户名密码等信息。即可完成安装</p>
+<h3 id="三-完善wordpress"><a href="#三-完善wordpress" class="headerlink" title="三. 完善wordpress"></a>三. 完善wordpress</h3><h4 id="1-修改网站根目录"><a href="#1-修改网站根目录" class="headerlink" title="1. 修改网站根目录"></a>1. 修改网站根目录</h4><p>apache2默认目录为 /var/www/html，如果要更改到/var/www:</p>
+<pre><code>1. 修改/etc/apache2/sites-available/000-default.conf，将其中的 DocumentRoot 改为 /var/www
+2. 执行: sudo mv /var/www/html/* /var/www/
+3. 重启: service apache2 restart
+</code></pre><h4 id="2-制作固定链接"><a href="#2-制作固定链接" class="headerlink" title="2. 制作固定链接"></a>2. 制作固定链接</h4><p>要求: </p>
+<pre><code>1. Apache web server，安装了mod_rewrite模块:
+操作:
+    sudo a2enmod rewrite
+    或: sudo ln -s /etc/apache2/mods-available/rewrite.load /etc/apache2/mods-enabled/rewrite.load
+
+2. 在WordPress的home目录:
+     FollowSymLinks option enabled 
+     FileInfo directives允许 (如 AllowOverride FileInfo 或 AllowOverride All) 
+操作:
+    在/etc/apache2/apache2.conf中，找到&lt;Directory /var/www/&gt;标签，将其改为:
+    &lt;Directory /var/www/&gt;
+    Options Indexes FollowSymLinks
+    AllowOverride All
+    Require all granted
+    &lt;/Directory&gt;
+
+3. .htaccess文件 (如果找不到，当你激活漂亮固定链接时WordPress会尝试创建它) 如果你希望WordPress自动更新.htaccess，WordPress需要有这个文件的写权限。
+操作:
+    在你的网站根目录(wordpress文件目录)中:
+    sudo touch .htaccess
+    sudo chmod 777 .htaccess //最粗暴的方式，方便wordpress自动写入
+</code></pre><p>准备就绪后，在wordpress <code>管理页面-&gt;设置-&gt;固定链接</code>中可设置固定链接格式，地址为<code>http://xxx/wp-admin/options-permalink.php</code>。选定固定链接后，wordpress会自动尝试写入规则，如果写入失败，则会在最下方给出提示，让你尝试手动添加规则。</p>
+<p>完成之后，固定连接就生效了。</p>
+<h4 id="3-更换主题"><a href="#3-更换主题" class="headerlink" title="3. 更换主题"></a>3. 更换主题</h4><p>在wordpress中自带更换主题的功能，但默认需要FTP用户名和密码，因为web访问的用户不具有对服务器wordpress文件夹的相关操作权限。由于安装方式不一样，解决方案不一样。我最后找到比较有用的是<a target="_blank" rel="noopener" href="http://www.piaoyi.org/php/Wordpress-To-perform-the-requested-action.html">这里</a>提供的一些思路：</p>
+<pre><code>// 先将wordpress相关文件全部改为 777
+sudo chmod 777 -R /var/www/wp*
+// 然后通过wordpress管理界面，主题能够安装成功了
+// 此时观察 wp-content/themes的写入者为www-data
+// 改回权限:
+sudo chmod 755 -R /var/www/wp*
+chown -R www-data /var/www/wp*
+</code></pre><p>另外，推荐一个wordpress中文主题下载网站: <a target="_blank" rel="noopener" href="http://www.wopus.org">http://www.wopus.org</a></p>
+<h4 id="4-关于主页"><a href="#4-关于主页" class="headerlink" title="4. 关于主页"></a>4. 关于主页</h4><p>到目前为止，如果在本地浏览器直接输入<code>http://云服务器地址</code> 得到的将是apache的it works页面，这也是服务器上/var/www/index.html页面。而我们想使用的是/var/www/index.php作为我们的主页。此时删掉/var/www/index.html即可。</p>
+<h4 id="5-域名绑定"><a href="#5-域名绑定" class="headerlink" title="5. 域名绑定"></a>5. 域名绑定</h4><p>这个比较简单，在你的域名提供商中修改DNS指向为你的云服务器IP地址，然后在wordpress管理-&gt;设置 中修改站点地址为你的域名，就可以了。</p>
+<h3 id="四-参考文档"><a href="#四-参考文档" class="headerlink" title="四. 参考文档:"></a>四. 参考文档:</h3><ol>
+<li><a target="_blank" rel="noopener" href="http://codex.wordpress.org/zh-cn:%E5%AE%89%E8%A3%85WordPress">官方安装教程</a></li>
+<li><a target="_blank" rel="noopener" href="http://blog.csdn.net/shineflowers/article/details/40979927">网友安装教程</a></li>
+<li><a target="_blank" rel="noopener" href="https://codex.wordpress.org/zh-cn:Main_Page">官方使用文档</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/05/wordpress-setup/" title="WordPress搭建历程">http://wudaijun.com/2015/05/wordpress-setup/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/tool/" rel="tag"><i class="fa fa-tag"></i> tool</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/05/erlang-gameserver-persistence/" rel="prev" title="Erlang 服务器落地机制">
+      <i class="fa fa-chevron-left"></i> Erlang 服务器落地机制
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/05/firefly-study1/" rel="next" title="Firefly 学习(一)">
+      Firefly 学习(一) <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E5%89%8D%E6%9C%9F%E5%87%86%E5%A4%87"><span class="nav-text">一. 前期准备</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E9%83%A8%E7%BD%B2wordpress"><span class="nav-text">二. 部署wordpress</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%AE%89%E8%A3%85-apache2-php5-mysql-server"><span class="nav-text">1.安装 apache2 + php5 + mysql-server</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E4%B8%8B%E8%BD%BD%E8%A7%A3%E5%8E%8B-wordpress"><span class="nav-text">2.下载解压 wordpress</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E4%B8%BAwordpress-%E5%87%86%E5%A4%87-mysql"><span class="nav-text">3.为wordpress 准备 mysql</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E9%85%8D%E7%BD%AE-wordpress"><span class="nav-text">4.配置 wordpress</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-%E6%B7%BB%E5%8A%A0-wordpress-%E5%88%B0-apache"><span class="nav-text">5.添加 wordpress 到 apache</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-%E5%AE%89%E8%A3%85wordpress"><span class="nav-text">6. 安装wordpress</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E5%AE%8C%E5%96%84wordpress"><span class="nav-text">三. 完善wordpress</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E4%BF%AE%E6%94%B9%E7%BD%91%E7%AB%99%E6%A0%B9%E7%9B%AE%E5%BD%95"><span class="nav-text">1. 修改网站根目录</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%88%B6%E4%BD%9C%E5%9B%BA%E5%AE%9A%E9%93%BE%E6%8E%A5"><span class="nav-text">2. 制作固定链接</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E6%9B%B4%E6%8D%A2%E4%B8%BB%E9%A2%98"><span class="nav-text">3. 更换主题</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E5%85%B3%E4%BA%8E%E4%B8%BB%E9%A1%B5"><span class="nav-text">4. 关于主页</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-%E5%9F%9F%E5%90%8D%E7%BB%91%E5%AE%9A"><span class="nav-text">5. 域名绑定</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3"><span class="nav-text">四. 参考文档:</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

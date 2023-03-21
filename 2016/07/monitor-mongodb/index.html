@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. 关键指标 慢查询：当MongoDB处理能力不足时，找出系统中的慢查询，分析原因，看能否通过建立索引或重新设计schema改进 内存使用：MongoDB吃内存(特别是MMAPv1)，至少要给MongoDB足够的内存存放索引，最理想的情况是能够存放所有数据。当内存占用过高，或者page faults过高时，考虑能不能给MongoDB预留更多的内存。 磁盘占用：特别是对于MMAPv1，涉及到磁盘占">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MongoDB 状态监控">
+<meta property="og:url" content="http://wudaijun.com/2016/07/monitor-mongodb/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. 关键指标 慢查询：当MongoDB处理能力不足时，找出系统中的慢查询，分析原因，看能否通过建立索引或重新设计schema改进 内存使用：MongoDB吃内存(特别是MMAPv1)，至少要给MongoDB足够的内存存放索引，最理想的情况是能够存放所有数据。当内存占用过高，或者page faults过高时，考虑能不能给MongoDB预留更多的内存。 磁盘占用：特别是对于MMAPv1，涉及到磁盘占">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2016-07-04T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.607Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="mongodb">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2016/07/monitor-mongodb/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>MongoDB 状态监控 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/07/monitor-mongodb/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MongoDB 状态监控
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-07-05 00:00:00" itemprop="dateCreated datePublished" datetime="2016-07-05T00:00:00+08:00">2016-07-05</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/database/" itemprop="url" rel="index"><span itemprop="name">database</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/07/monitor-mongodb/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/07/monitor-mongodb/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一-关键指标"><a href="#一-关键指标" class="headerlink" title="一. 关键指标"></a>一. 关键指标</h2><ul>
+<li>慢查询：当MongoDB处理能力不足时，找出系统中的慢查询，分析原因，看能否通过建立索引或重新设计schema改进</li>
+<li>内存使用：MongoDB吃内存(特别是MMAPv1)，至少要给MongoDB足够的内存存放索引，最理想的情况是能够存放所有数据。当内存占用过高，或者page faults过高时，考虑能不能给MongoDB预留更多的内存。</li>
+<li>磁盘占用：特别是对于MMAPv1，涉及到磁盘占用的因素有很多，不合理的schema(文档频繁移动)或集合/文档的删除都可能会导致磁盘空间利用不足。前期需要设计好schema，后期维护也需要定期整理磁盘数据。</li>
+<li>连接数：MongoDB为每个连接分配一个线程，因此连接是占资源的，并且也不是越多连接越好。合理地控制连接数。</li>
+<li>索引不命中：查看所有查询的索引不命中情况，尽量让所有查询都通过索引</li>
+<li>锁等待：锁等待的原因有很多，连接数过多，操作频繁，慢操作，schema设计过于反范式化等，可从上面的原因针对性解决。</li>
+</ul>
+<span id="more"></span>
+<h2 id="二-监控工具"><a href="#二-监控工具" class="headerlink" title="二. 监控工具"></a>二. 监控工具</h2><h3 id="1-mongostat"><a href="#1-mongostat" class="headerlink" title="1. mongostat"></a>1. mongostat</h3><p>mongodb自带的状态检测工具，按照固定时间间隔(默认1s)获取mongodb的当前运行状态，适用于对临时异常状态的监控：</p>
+<pre><code>// from MongoDB 3.0 MMAPv1
+▶ mongostat
+insert query update delete getmore command flushes mapped vsize    res faults qr|qw ar|aw netIn netOut conn     time
+    *0    40      1     *0       0     1|0       0   4.3G 11.1G 150.0M      0   0|0   0|0    2k    12k  201 19:07:04
+    *0    20     *0     *0       0     1|0       0   4.3G 11.1G 150.0M      0   0|0   0|0    1k    11k  201 19:07:05
+    *0    *0      1     *0       0     1|0       0   4.3G 11.1G 150.0M      0   0|0   0|0  244b    10k  201 19:07:06
+    *0    20     *0     *0       0     1|0       0   4.3G 11.1G 150.0M      0   0|0   0|0    1k    11k  201 19:07:07
+    *0    20     *0     *0       0     2|0       0   4.3G 11.1G 150.0M      0   0|0   0|0    1k    11k  201 19:07:08
+</code></pre><p>具体各列的意义都很简单，见官方文档即可。比较重要的字段有：</p>
+<ul>
+<li>res:      常驻内存大小</li>
+<li>mapped:   通过mmap映射数据所占用虚拟内存大小(只对MMAPv1有效)</li>
+<li>vsize:    mongodb进程占用的虚拟内存大小</li>
+<li>faults:   page fault次数，如果持续过高，则可以考虑加内存</li>
+<li>qr/qw:    读取/写入等待队列的大小，如果队列很大，表示MongoDB处理能力跟不上，可以看看是否存在慢操作，或者减缓请求</li>
+<li>conn:     当前连接数，conn也会占用MongoDB资源，合理控制连接数</li>
+<li>idx miss: 索引不命中所占百分比 如果太高则要考虑索引是否设计得不合理</li>
+<li>flushes:  通常为0或1，对于MMAPv1，表示后台刷盘次数(默认60s)，对于WiredTiger，表示执行checkpoint次数(默认60s或2GB journal日志)</li>
+<li>lr/lw:    读取/写入操作等待锁的比例 (New In MongoDB 3.2, Only for MMapv1)</li>
+<li>lrt/lwt:  读取/写入锁的平均获取时间(微妙)</li>
+</ul>
+<p>更多<a target="_blank" rel="noopener" href="https://docs.mongodb.com/manual/reference/program/mongostat/">参考</a>。</p>
+<h3 id="2-db-serverStatus"><a href="#2-db-serverStatus" class="headerlink" title="2. db.serverStatus()"></a>2. db.serverStatus()</h3><p>返回数据库服务器信息，该命令返回的数据量很大，但执行很快，不会对数据库性能造成影响，其中比较重要的字段有：</p>
+<ul>
+<li>db.serverStatus().mem: 当前数据库内存使用情况</li>
+<li>db.serverStatus().connections: 当前数据库服务器的连接情况</li>
+<li>db.serverStatus().extra_info: 在Linux下，包含page fault次数</li>
+<li>db.serverStatus().locks: 数据库各种类型锁竞态情况</li>
+<li>db.serverStatus().backgroundFlushing: 数据库后台刷盘情况(默认60s)一次，仅针对MMAPv1存储引擎</li>
+</ul>
+<p>更多<a target="_blank" rel="noopener" href="https://docs.mongodb.com/manual/reference/command/serverStatus/">参考</a>。</p>
+<h3 id="3-Profiler"><a href="#3-Profiler" class="headerlink" title="3. Profiler"></a>3. Profiler</h3><p>主要用于分析查询性能，默认是关闭的，Profiler获取关于查询/写入/命令等操作的详细执行数据，并将这些分析数据写入system.profile集合。Profiler有三个Level：</p>
+<ul>
+<li>Level 0: 意味着关闭Profiler，并不收集任何数据，也是mongod的默认配置。注意mongod总是会将”慢操作”(执行时间超过<a target="_blank" rel="noopener" href="https://docs.mongodb.com/manual/reference/configuration-options/#operationProfiling.slowOpThresholdMs">slowOpThresholdMs</a>，默认100ms)的操作写入mongod日志(不是system.profile集合)</li>
+<li>Level 1: 只收集所有慢操作的信息，慢操作执行时间可通过<a target="_blank" rel="noopener" href="https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/#database-profiling-specify-slowms-threshold">修改slowOpThresholdMs参数</a>指定</li>
+<li>Level 2: 收集所有的数据库操作执行信息</li>
+</ul>
+<p>需要注意，一个操作执行慢，可能是索引不合理，也可能是page fault从磁盘读数据等原因导致。需要进一步分析。</p>
+<p>使用示例：</p>
+<pre><code>&gt; db.setProfilingLevel(2)
+&#123; &quot;was&quot; : 0, &quot;slowms&quot; : 100, &quot;ok&quot; : 1 &#125;
+&gt;
+&gt; db.getProfilingStatus()
+&#123; &quot;was&quot; : 2, &quot;slowms&quot; : 100 &#125;
+&gt; db.user.insert(&#123;&quot;name&quot;:&quot;wdj&quot;&#125;)
+WriteResult(&#123; &quot;nInserted&quot; : 1 &#125;)
+&gt; db.system.profile.find()
+&#123; &quot;op&quot; : &quot;insert&quot;, &quot;ns&quot; : &quot;test.user&quot;, &quot;query&quot; : &#123; &quot;insert&quot; : &quot;user&quot;, &quot;documents&quot; : [ &#123; &quot;_id&quot; : ObjectId(&quot;577e62991fa7b960bb8bf0af&quot;), &quot;name&quot; : &quot;wdj&quot; &#125; ], &quot;ordered&quot; : true &#125;, &quot;ninserted&quot; : 1, &quot;keyUpdates&quot; : 0, &quot;writeConflicts&quot; : 0, &quot;numYield&quot; : 0, &quot;locks&quot; : &#123; &quot;Global&quot; : &#123; &quot;acquireCount&quot; : &#123; &quot;r&quot; : NumberLong(2), &quot;w&quot; : NumberLong(2) &#125; &#125;, &quot;Database&quot; : &#123; &quot;acquireCount&quot; : &#123; &quot;w&quot; : NumberLong(1), &quot;W&quot; : NumberLong(1) &#125; &#125;, &quot;Collection&quot; : &#123; &quot;acquireCount&quot; : &#123; &quot;w&quot; : NumberLong(1), &quot;W&quot; : NumberLong(1) &#125; &#125; &#125;, &quot;responseLength&quot; : 25, &quot;protocol&quot; : &quot;op_command&quot;, &quot;millis&quot; : 32, &quot;execStats&quot; : &#123;  &#125;, &quot;ts&quot; : ISODate(&quot;2016-07-07T14:09:29.690Z&quot;), &quot;client&quot; : &quot;127.0.0.1&quot;, &quot;allUsers&quot; : [ ], &quot;user&quot; : &quot;&quot; &#125;
+&gt;
+</code></pre><p>system.profile集合中，关键字段：op(操作类型), ns(操作集合), ts(操作时间)，millis(执行时间ms),query(操作详情)。</p>
+<p>更多<a target="_blank" rel="noopener" href="https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/">参考</a>。</p>
+<h3 id="4-db-currentOp"><a href="#4-db-currentOp" class="headerlink" title="4. db.currentOp()"></a>4. db.currentOp()</h3><p>当MongoDB比较繁忙或者在执行比较慢的命令时，可能会阻塞之后的操作(视数据库和操作的并发级别而定)。可通过db.currentOp()来获取当前正在进行的操作，并可通过db.killOp()来干掉它。</p>
+<p>更多<a target="_blank" rel="noopener" href="https://docs.mongodb.com/manual/reference/method/db.currentOp/">参考</a>。</p>
+<h3 id="5-db-stats"><a href="#5-db-stats" class="headerlink" title="5. db.stats()"></a>5. db.stats()</h3><p>返回对应数据库的信息，包括集合数量，文档总大小，文档平均大小，索引数量，索引大小等静态信息：</p>
+<pre><code>&gt; db.stats()
+&#123;
+        &quot;db&quot; : &quot;test&quot;,
+        &quot;collections&quot; : 2,
+        &quot;objects&quot; : 3,
+        &quot;avgObjSize&quot; : 430,
+        &quot;dataSize&quot; : 1290,
+        &quot;storageSize&quot; : 49152,
+        &quot;numExtents&quot; : 0,
+        &quot;indexes&quot; : 1,
+        &quot;indexSize&quot; : 16384,
+        &quot;ok&quot; : 1
+&#125;
+&gt;
+</code></pre><p>更多<a target="_blank" rel="noopener" href="https://docs.mongodb.com/manual/reference/command/dbStats/">参考</a>。</p>
+<h3 id="6-db-collStats"><a href="#6-db-collStats" class="headerlink" title="6. db.collStats()"></a>6. db.collStats()</h3><p>返回集合详细信息.</p>
+<p>更多<a target="_blank" rel="noopener" href="https://docs.mongodb.com/manual/reference/command/collStats/#dbcmd.collStats">参考</a>。</p>
+<h3 id="7-db-enableFreeMonitoring"><a href="#7-db-enableFreeMonitoring" class="headerlink" title="7. db.enableFreeMonitoring"></a>7. db.enableFreeMonitoring</h3><p>Mongo官方提供的免费监视服务，可以脱离altas云服务独立使用，<code>db.enableFreeMonitoring()</code>会返回一个URL地址，上面有包含MongoDB内存，CPU，读写，网络，磁盘等全方位的可视化监控。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/07/monitor-mongodb/" title="MongoDB 状态监控">http://wudaijun.com/2016/07/monitor-mongodb/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/mongodb/" rel="tag"><i class="fa fa-tag"></i> mongodb</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/06/virtual-memory/" rel="prev" title="虚拟存储器">
+      <i class="fa fa-chevron-left"></i> 虚拟存储器
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/08/web-get-started/" rel="next" title="web 初学笔记">
+      web 初学笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-%E5%85%B3%E9%94%AE%E6%8C%87%E6%A0%87"><span class="nav-text">一. 关键指标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C-%E7%9B%91%E6%8E%A7%E5%B7%A5%E5%85%B7"><span class="nav-text">二. 监控工具</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-mongostat"><span class="nav-text">1. mongostat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-db-serverStatus"><span class="nav-text">2. db.serverStatus()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Profiler"><span class="nav-text">3. Profiler</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-db-currentOp"><span class="nav-text">4. db.currentOp()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-db-stats"><span class="nav-text">5. db.stats()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-db-collStats"><span class="nav-text">6. db.collStats()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-db-enableFreeMonitoring"><span class="nav-text">7. db.enableFreeMonitoring</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="本文简单讨论如何在服务端实现基于三角形网格的寻路算法。 地图表示1. 基于路点基于路点是最原始的寻路方案，比如要让你实现一个迷宫，你会很自然地想到用0代表通路，1代码障碍物，整个迷宫地图由0和1构成的点阵来表示。这就是基于路点，本质上是将地图上可以通过的位置(坐标状态)都记录下来。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="GS 中的 Mesh 寻路">
+<meta property="og:url" content="http://wudaijun.com/2019/02/gs-mesh-nav/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="本文简单讨论如何在服务端实现基于三角形网格的寻路算法。 地图表示1. 基于路点基于路点是最原始的寻路方案，比如要让你实现一个迷宫，你会很自然地想到用0代表通路，1代码障碍物，整个迷宫地图由0和1构成的点阵来表示。这就是基于路点，本质上是将地图上可以通过的位置(坐标状态)都记录下来。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_point_1.jpeg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_1.jpeg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_point_2.jpeg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_2.jpeg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_point_3.jpeg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_3.jpeg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_quad_tree.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_demo.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_grid_path.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_line_path.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_line_path_1.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_line_path_2.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_line_path_3.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_line_path_4.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_line_path_5.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_line_path_6.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_line_path_7.jpg">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201902/nav_mesh_line_path_8.jpg">
+<meta property="article:published_time" content="2019-02-06T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.613Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="gameserver">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201902/nav_point_1.jpeg">
+
+<link rel="canonical" href="http://wudaijun.com/2019/02/gs-mesh-nav/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>GS 中的 Mesh 寻路 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2019/02/gs-mesh-nav/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          GS 中的 Mesh 寻路
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-02-07 00:00:00" itemprop="dateCreated datePublished" datetime="2019-02-07T00:00:00+08:00">2019-02-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2019/02/gs-mesh-nav/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2019/02/gs-mesh-nav/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文简单讨论如何在服务端实现基于三角形网格的寻路算法。</p>
+<h3 id="地图表示"><a href="#地图表示" class="headerlink" title="地图表示"></a>地图表示</h3><h4 id="1-基于路点"><a href="#1-基于路点" class="headerlink" title="1. 基于路点"></a>1. 基于路点</h4><p>基于路点是最原始的寻路方案，比如要让你实现一个迷宫，你会很自然地想到用0代表通路，1代码障碍物，整个迷宫地图由0和1构成的点阵来表示。这就是基于路点，本质上是将地图上可以通过的位置(坐标状态)都记录下来。</p>
+<span id="more"></span>
+<p><img src="/assets/image/201902/nav_point_1.jpeg" alt=""></p>
+<center> 图1 基于路点的地图 </center>
+
+<h4 id="2-基于网格"><a href="#2-基于网格" class="headerlink" title="2. 基于网格"></a>2. 基于网格</h4><p>基于网格是指对地图进行预处理，将地图边界拐点和障碍物外围拐点所形成的离散点集合转换为一个由多边形(通常是三角形)构成的网格，然后去掉障碍物内部的多边形，剩下即为所有可达地点的网格，称作寻路网格。或者换个角度来讲，将地图上的障碍物和边界之外去掉，然后将剩下的部分通过多边形切割，得到寻路网格。</p>
+<p><img src="/assets/image/201902/nav_mesh_1.jpeg" alt=""></p>
+<center> 图2 基于网格的地图 </center>
+
+<p>以下简单对比基于路点和基于网格的寻路:</p>
+<ol>
+<li>基于路点要比基于网格存储更多的信息</li>
+</ol>
+<p><img src="/assets/image/201902/nav_point_2.jpeg" alt=""></p>
+<center> 图3 基于路点存储的数据量 </center>
+
+<p><img src="/assets/image/201902/nav_mesh_2.jpeg" alt=""></p>
+<center> 图4 基于路点存储的数据量 </center>
+
+<ol>
+<li>基于路点寻路，即使没有障碍物，也可能走折线</li>
+</ol>
+<p><img src="/assets/image/201902/nav_point_3.jpeg" alt=""></p>
+<center> 图5 基于路点寻路，从 A 点到 B 点 </center>
+
+<p><img src="/assets/image/201902/nav_mesh_3.jpeg" alt=""></p>
+<center> 图6 基于网格寻路，从 A 点到 B 点 </center>
+
+<ol>
+<li><p>基于网格可以更好地处理平滑转弯，角色大小等细节，如体型过大的角色可能无法通过某个小通道</p>
+</li>
+<li><p>基于网格可以通过网格保存更多的地表信息，如水中移动速度更慢，可用于寻路算法计算权重</p>
+</li>
+</ol>
+<h3 id="寻路算法"><a href="#寻路算法" class="headerlink" title="寻路算法"></a>寻路算法</h3><p>不管是基于网关还是基于路点，最终的地图都是图结构，只不过基于路点的图结构基本单位是点，而基于网格的基本单位是网格。基于路点的寻路比较简单，通常通过 A* 或 Dijkstra 算法即可直接算出。这里讨论基于三角形的网格寻路。</p>
+<h4 id="Step-1-导出网格数据"><a href="#Step-1-导出网格数据" class="headerlink" title="Step 1. 导出网格数据"></a>Step 1. 导出网格数据</h4><p>网格地图需要对地图进行预处理生成地图元数据，这里不讨论生成过程，假设我们已经得到了地图元数据，其中包含地图上所有的三角形信息。</p>
+<h4 id="Step-2-数据预处理"><a href="#Step-2-数据预处理" class="headerlink" title="Step 2. 数据预处理"></a>Step 2. 数据预处理</h4><p>预处理有两个目的:</p>
+<ol>
+<li>给定一个点，能快速找到其所在的三角形</li>
+<li>给定一个三角形，能快速索引到与其相连的其它三角形</li>
+</ol>
+<p>第一点可以通过将整个地图(假设为方形)组织成四叉树，起初所有的三角形都在根节点下，当节点下的三角形超过某个阈值时，将该节点进一步分为四个节点，各个节点保存其 Rect 区域内的所有三角形，那些在边界处的三角形(存在于多个 Rect 区域内)，则继续挂在根节点上，这样在查找点时，可通过该点是否在节点区域内不断递归缩小查找范围，找到所在三角形。</p>
+<p>如下图，我们将三角形网格地图分为了四部分，当我们要寻找 A 点所在的三角形时，只需遍历左上角黑线包围的三角形即可，在地图较大，四叉树层数较深时，能够极大优化三角形查找。</p>
+<p><img src="/assets/image/201902/nav_mesh_quad_tree.jpg" alt=""></p>
+<center> 图7 组织为四叉树的网络地图 </center>
+
+<p>现在来解决如何存储三角形相邻关系，如果将三角形看做点，本质上我们要做的其实是要保存一张图，保存图的方式通常有邻接矩阵，邻接图等，一个地图可能有上万网格，而每个三角形相邻的三角形通常是个位数，在这种情况下，用邻接表是个不错的选择，具体的实现不再罗列，本质上该部分预处理数据提供网格的通路信息。</p>
+<h4 id="Step-3-寻路"><a href="#Step-3-寻路" class="headerlink" title="Step 3. 寻路"></a>Step 3. 寻路</h4><p>到这里我们开始阐述寻路的具体过程，我们有了以上的预处理数据，并且给定地图上的两个点 A，B，求 A, B 之间的寻路路径:</p>
+<p><img src="/assets/image/201902/nav_mesh_demo.jpg" alt=""></p>
+<center> 图8 找 A 点到 B 点的寻路路径 </center>
+
+<p>我们将寻路算法分为如下步骤:</p>
+<h5 id="3-1-找到-A-B-两点所在的三角形"><a href="#3-1-找到-A-B-两点所在的三角形" class="headerlink" title="3.1 找到 A, B 两点所在的三角形"></a>3.1 找到 A, B 两点所在的三角形</h5><p>基于前面我们创建的四叉树，我们可以得到 A,B 两点所在的三角形</p>
+<h5 id="3-2-找到两个三角形之间的最短三角形路径"><a href="#3-2-找到两个三角形之间的最短三角形路径" class="headerlink" title="3.2 找到两个三角形之间的最短三角形路径"></a>3.2 找到两个三角形之间的最短三角形路径</h5><p>前面提到，如果将三角形看做基本单位，那么我们的网格图本质上就是个无向图，基于图的寻路算法主要有 A* 和 Dijkstra 算法，通常启发式的 A* 是更好地选择，我们可以用三角形的中心点(三条边中线的交点)到目标三角形的中心点的距离作为启发函数 h值。</p>
+<h5 id="3-3-将三角形路径转换为最短线路径"><a href="#3-3-将三角形路径转换为最短线路径" class="headerlink" title="3.3 将三角形路径转换为最短线路径"></a>3.3 将三角形路径转换为最短线路径</h5><p>假设我们现在得到了A，B 间的网格路径:</p>
+<p><img src="/assets/image/201902/nav_mesh_grid_path.jpg" alt=""></p>
+<center> 图9 A B 两点间的网格路径 </center>
+
+<p>现在我们要将其转换为角色最终行走的线路径，一种简单的算法是直接将沿途三角形的中心点联结起来，得到如上图所示的线路，但一来是路线存在不必要的折现，不是最短线路。二来返回给客户端的点过多，不适合作为服务器寻路结果。理想的最短路线如下图所示:</p>
+<p><img src="/assets/image/201902/nav_mesh_line_path.jpg" alt=""></p>
+<center> 图10 A B 两点间的最短线路径 </center>
+
+<p>其中只有三个拐点，我们只需要将这三个拐点返回给客户端即可(这里不讨论平滑转弯)。接下来我们来尝试将网格路径推演为最短线路径。</p>
+<p>首先我们知道，拐点必然出现在三角形路径上某两个三角形共同边的端点，因此我们尝试遍历三角形路径上所有的共同边，得到拐点。如上图所示，A，B 两点间一共有9条共同边，我们称这9条边为临边或者穿出边，我们以 A 点为起点，对第一条临边作两个向量:</p>
+<p><img src="/assets/image/201902/nav_mesh_line_path_1.jpg" alt=""></p>
+<p>我们将这两个向量通过向量叉乘的方式分为左向量和右向量，设为 vLeft1，vRight1，我们可以非正式地将 vLeft1 和 vRight 1之间的夹角看做角色的当前视野(之后我们用<code>&#123;vLeft, vRight&#125;</code>表示)。然后对第二条临边做向量，vLeft2 和 vRight2，发现新视野{vLeft2，vRight2}在当前视野{vLeft1，vRight1}之间，因此更新当前视野为{vLeft1, vRight2}:</p>
+<p><img src="/assets/image/201902/nav_mesh_line_path_2.jpg" alt=""></p>
+<p>同样，继续从出发点对第三条临边锻炼做向量得到新视野 {vLeft3, vRight3}，仍然在当前视野{vLeft1, vRight2}内，如此迭代:</p>
+<p><img src="/assets/image/201902/nav_mesh_line_path_3.jpg" alt=""></p>
+<p><img src="/assets/image/201902/nav_mesh_line_path_4.jpg" alt=""></p>
+<p>直到我们对第五条临边做向量得到的视野{vLeft4, vRight4}，发现vRight4不在当前视野{vLeft1, vRight4}内，即视野不是包含关系:</p>
+<p><img src="/assets/image/201902/nav_mesh_line_path_5.jpg" alt=""></p>
+<p>此时忽略第五条临边，当前视野不变，仍然是{vLeft1, vRight4}，继续对第六条临边作视野:</p>
+<p><img src="/assets/image/201902/nav_mesh_line_path_6.jpg" alt=""></p>
+<p>发现新的视野{vLeft6, vRight6}在当前视野{vLeft1, vRight4}左侧，没有重叠部分，即 vLeft6 和 vRight6 均在 vLeft1 的左侧，换句话说，我们无法从起点直接到达第6条临边，需要在某个点转弯，这个点就是拐点，也就是这里的 Left1 的非起点端点。此时记录该拐点 C，将当前起点从 A 点更新到 C 点，重新找到与 C 点不相邻的第一条临边，也就是整条路径的第5条临边，重新初始化当前视野，递归寻找从 C 点到达 B 的路径拐点。</p>
+<p><img src="/assets/image/201902/nav_mesh_line_path_7.jpg" alt=""></p>
+<p>如此递归，直到找到最后一个拐点P:</p>
+<p><img src="/assets/image/201902/nav_mesh_line_path_8.jpg" alt=""></p>
+<p>从 P 点的视野可以直接连到最后一个三角形，也就是与目标点B所在的三角形，由于 B 在 P 点的视野内，因此 P，B 可直接连线到达。如果 B 点不在 P 的视野内，则还需一个拐点，通常我们将目标点作为一条特殊的边来处理即可，即长度为0的边，这样可以用同样的拐点算法来计算。至此，我们就得到了 A, B 两点间的最短路径。</p>
+<h3 id="其它细节"><a href="#其它细节" class="headerlink" title="其它细节"></a>其它细节</h3><p>到此我们就得到了基于拐点的寻路路径，本文只讨论了大概思路，实际上寻路还有很多有意思的问题值得探讨，如:</p>
+<ol>
+<li>如何在寻路时考虑到单位的半径？Tips: 在寻路算法找出三角形路径时，比较三角形的临边和角色大小</li>
+<li>如何在寻路时考虑到各种地形的权重？Tips: 将地形信息保存在三角形网格中，在 A* 算法的代价函数中考虑三角形权重</li>
+<li>如何动态更新寻路？Tips: 可选方案: a. 定时检查 b. 每 N 步检查一次 c. 有障碍物时触发相关寻路更新 d. 寻路局部更新优化</li>
+</ol>
+<p>由于懒且画工不好，本文图片均出自以下参考文章:</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/24112879">https://zhuanlan.zhihu.com/p/24112879</a></li>
+<li><a target="_blank" rel="noopener" href="http://gad.qq.com/article/detail/10042">http://gad.qq.com/article/detail/10042</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2019/02/gs-mesh-nav/" title="GS 中的 Mesh 寻路">http://wudaijun.com/2019/02/gs-mesh-nav/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/gameserver/" rel="tag"><i class="fa fa-tag"></i> gameserver</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/01/gameserver-data-consistency/" rel="prev" title="游戏服务器的数据一致性">
+      <i class="fa fa-chevron-left"></i> 游戏服务器的数据一致性
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/02/lazy-evaluation/" rel="next" title="函数式中的延迟计算及惰性求值">
+      函数式中的延迟计算及惰性求值 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%B0%E5%9B%BE%E8%A1%A8%E7%A4%BA"><span class="nav-text">地图表示</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%9F%BA%E4%BA%8E%E8%B7%AF%E7%82%B9"><span class="nav-text">1. 基于路点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%9F%BA%E4%BA%8E%E7%BD%91%E6%A0%BC"><span class="nav-text">2. 基于网格</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%BB%E8%B7%AF%E7%AE%97%E6%B3%95"><span class="nav-text">寻路算法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Step-1-%E5%AF%BC%E5%87%BA%E7%BD%91%E6%A0%BC%E6%95%B0%E6%8D%AE"><span class="nav-text">Step 1. 导出网格数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Step-2-%E6%95%B0%E6%8D%AE%E9%A2%84%E5%A4%84%E7%90%86"><span class="nav-text">Step 2. 数据预处理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Step-3-%E5%AF%BB%E8%B7%AF"><span class="nav-text">Step 3. 寻路</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#3-1-%E6%89%BE%E5%88%B0-A-B-%E4%B8%A4%E7%82%B9%E6%89%80%E5%9C%A8%E7%9A%84%E4%B8%89%E8%A7%92%E5%BD%A2"><span class="nav-text">3.1 找到 A, B 两点所在的三角形</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-2-%E6%89%BE%E5%88%B0%E4%B8%A4%E4%B8%AA%E4%B8%89%E8%A7%92%E5%BD%A2%E4%B9%8B%E9%97%B4%E7%9A%84%E6%9C%80%E7%9F%AD%E4%B8%89%E8%A7%92%E5%BD%A2%E8%B7%AF%E5%BE%84"><span class="nav-text">3.2 找到两个三角形之间的最短三角形路径</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-3-%E5%B0%86%E4%B8%89%E8%A7%92%E5%BD%A2%E8%B7%AF%E5%BE%84%E8%BD%AC%E6%8D%A2%E4%B8%BA%E6%9C%80%E7%9F%AD%E7%BA%BF%E8%B7%AF%E5%BE%84"><span class="nav-text">3.3 将三角形路径转换为最短线路径</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B6%E5%AE%83%E7%BB%86%E8%8A%82"><span class="nav-text">其它细节</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

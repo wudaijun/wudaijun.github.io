@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="环境管理 Go版本管理: gvm(go version manager) GOPATH管理: gvp(go version package) 依赖版本管理: gpm(go package manager)  go build用于编译指定的源码文件或代码包以及它们的依赖包。  import导入路径中的最后一个元素是路径名而不是包名，路径名可以和包名不一样，但同一个目录只能定义一个包(包对应的_tes">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go 常用命令">
+<meta property="og:url" content="http://wudaijun.com/2017/01/go-command-notes/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="环境管理 Go版本管理: gvm(go version manager) GOPATH管理: gvp(go version package) 依赖版本管理: gpm(go package manager)  go build用于编译指定的源码文件或代码包以及它们的依赖包。  import导入路径中的最后一个元素是路径名而不是包名，路径名可以和包名不一样，但同一个目录只能定义一个包(包对应的_tes">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2017-01-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.609Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="go">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2017/01/go-command-notes/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Go 常用命令 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2017/01/go-command-notes/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Go 常用命令
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-01-20 00:00:00" itemprop="dateCreated datePublished" datetime="2017-01-20T00:00:00+08:00">2017-01-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/go/" itemprop="url" rel="index"><span itemprop="name">go</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2017/01/go-command-notes/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2017/01/go-command-notes/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="环境管理"><a href="#环境管理" class="headerlink" title="环境管理"></a>环境管理</h3><ul>
+<li>Go版本管理: <a target="_blank" rel="noopener" href="https://github.com/moovweb/gvm">gvm</a>(go version manager)</li>
+<li>GOPATH管理: <a target="_blank" rel="noopener" href="https://github.com/pote/gvp">gvp</a>(go version package)</li>
+<li>依赖版本管理: <a target="_blank" rel="noopener" href="https://github.com/pote/gpm">gpm</a>(go package manager)</li>
+</ul>
+<h3 id="go-build"><a href="#go-build" class="headerlink" title="go build"></a>go build</h3><p>用于编译指定的源码文件或代码包以及它们的依赖包。</p>
+<blockquote>
+<p>import导入路径中的最后一个元素是路径名而不是包名，路径名可以和包名不一样，但同一个目录只能定义一个包(包对应的_test测试包除外)</p>
+</blockquote>
+<span id="more"></span>
+<p>编译包:</p>
+<pre><code># 当前路径方式
+cd src/foo &amp;&amp; go build
+# 包导入路径方式
+go build foo bar
+# 本地代码包路径方式
+go build ./src/foo
+</code></pre><p>go build 在编译只包含库源码文件的代码包时，只做检查性的编译，不会输出任何结果文件。如果编译的是main包，则会将编译结果放到执行命令的目录下。</p>
+<p>编译源码文件:</p>
+<pre><code># 指定源码文件使用文件路径
+# 指定的多个源码文件必须属于同一个目录(包)
+go build src/foo/foo1.go src/foo/foo2.go
+</code></pre><p>当执行以上编译时，编译命令在分析参数的时候如果发现第一个参数是Go源码文件而不是代码包时，会在内部生成一个名为“command-line-arguments”的虚拟代码包。也就是当前的foo1.go foo2.go属于”command-line-arguments”包，而不是foo包，因此除了指定的源码文件和它们所依赖的包，其它文件(如foo3.go)不会被编译。</p>
+<p>同样，对于库源码文件，build不会输出任何结果文件。对于main包的源文件，go build要求有且只能有一个main函数声明，并将生成结果(与指定的第一个源码文件同名)放在执行该命令的当前目录下。</p>
+<p>构建与<code>go build</code>之上的其它命令(如<code>go run</code>，<code>go install</code>)，在编译包或源码文件时，过程和特性是一样的。</p>
+<p>常用选项:</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>-v</td>
+<td>打印出那些被编译的代码包的名字。</td>
+</tr>
+<tr>
+<td>-n</td>
+<td>打印编译期间所用到的其它命令，但是并不真正执行它们。</td>
+</tr>
+<tr>
+<td>-x</td>
+<td>打印编译期间所用到的其它命令。注意它与-n标记的区别。</td>
+</tr>
+<tr>
+<td>-a</td>
+<td>强行对所有涉及到的代码包（包含标准库中的代码包）进行重新构建，即使它们已经是最新的了。</td>
+</tr>
+<tr>
+<td>-work</td>
+<td>打印出编译时生成的临时工作目录的路径，并在编译结束时保留它。在默认情况下，编译结束时会删除该目录。</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="go-run"><a href="#go-run" class="headerlink" title="go run"></a>go run</h3><p>go run编译(通过go build)并运行命令源码文件(main package)，查看过程:</p>
+<pre><code>go run -x -work src/main/main.go
+# build 临时目录
+WORK=/var/folders/n5/j8y6skrx1xn3_ls64gl1lrsmmp53rv/T/go-build979313546
+# main.go依赖foo包  先编译foo包
+mkdir -p $WORK/foo/_obj/
+mkdir -p $WORK/
+cd /Users/wudaijun/Work/test/src/foo
+/usr/local/Cellar/go/1.7/libexec/pkg/tool/darwin_amd64/compile -o $WORK/foo.a -trimpath $WORK -p foo -complete -buildid cd61b5a9f3c8eba0f3088adca894fc9bf695826b -D _/Users/wudaijun/Work/test/src/foo -I $WORK -pack ./foo.go
+# 在虚拟包 command-line-arguments 中编译 main.go
+mkdir -p $WORK/command-line-arguments/_obj/
+mkdir -p $WORK/command-line-arguments/_obj/exe/
+cd /Users/wudaijun/Work/test/src/main
+/usr/local/Cellar/go/1.7/libexec/pkg/tool/darwin_amd64/compile -o $WORK/command-line-arguments.a -trimpath $WORK -p main -complete -buildid 9131b7dd9f64a85bb423da7f8a7d408c089a23e8 -D _/Users/wudaijun/Work/test/src/main -I $WORK -I /Users/wudaijun/Work/test/pkg/darwin_amd64 -pack ./main.go
+# 链接
+cd .
+/usr/local/Cellar/go/1.7/libexec/pkg/tool/darwin_amd64/link -o $WORK/command-line-arguments/_obj/exe/main -L $WORK -L /Users/wudaijun/Work/test/pkg/darwin_amd64 -w -extld=clang -buildmode=exe -buildid=9131b7dd9f64a85bb423da7f8a7d408c089a23e8 $WORK/command-line-arguments.a
+# 从临时目录运行可执行文件
+$WORK/command-line-arguments/_obj/exe/main
+Call Foo()
+</code></pre><p>可看到<code>go run</code>的执行结果都在WORK临时目录中完成，由于使用了<code>-work</code>选项，因此WORK目录会在<code>go run</code>执行完成后保留。<code>go run</code>只接受命令源文件而不接收包路径作为参数，并且不会在当前目录生成任何文件。</p>
+<h3 id="go-install"><a href="#go-install" class="headerlink" title="go install"></a>go install</h3><p><code>go install</code>只比<code>go build</code>多干一件事：安装编译后的结果文件到指定目录。</p>
+<h3 id="go-test"><a href="#go-test" class="headerlink" title="go test"></a>go test</h3><h4 id="1-单元测试"><a href="#1-单元测试" class="headerlink" title="1. 单元测试"></a>1. 单元测试</h4><p><code>go test</code>编译指定包或源文件，并执行所在包对应的测试用例。一个符合规范的测试文件指：</p>
+<ul>
+<li>文件名必须是_test.go结尾的，这样在执行go test的时候才会执行到相应的代码</li>
+<li>你必须import testing这个包</li>
+<li>所有的测试用例函数必须是Test开头</li>
+<li>测试用例会按照源代码中写的顺序依次执行</li>
+<li>测试函数TestXxx()的参数是testing.T，我们可以使用该类型来记录错误或者是测试状态</li>
+<li>测试格式：<code>func TestXxx (t *testing.T)</code>,Xxx部分可以为任意的字母数字的组合，但是- - 首字母不能是小写字母[a-z]，例如Testingdiv是错误的函数名</li>
+<li>函数中通过调用testing.T的Error, Errorf, FailNow, Fatal, FatalIf方法，说明测试不通过，调用Log方法用来记录测试的信息</li>
+</ul>
+<p>测试分为包内测试和包外测试，即测试源码文件可于被测试源码文件位于同一个包(目录)，或者测试源码文件声明的包名可以是被测试包名+”_test”后缀。</p>
+<h4 id="2-基准测试"><a href="#2-基准测试" class="headerlink" title="2. 基准测试"></a>2. 基准测试</h4><p>基准测试也就是跑分测试，写法和单元测试差不多，只不过函数签名为<code>BenchmarkXxx(b *testing.B)</code>，函数内通过 b.N 作为迭代次数，go test会自动调整这个值，得到合适的测试次数，然后算出每次迭代消耗的时间。</p>
+<h4 id="3-执行测试"><a href="#3-执行测试" class="headerlink" title="3. 执行测试"></a>3. 执行测试</h4><pre><code># 执行当前目录所在包的单元测试
+go test . 
+# 执行当前目录所在包的单元测试和基准测试(-bench 后面接正则匹配，&#39;.&#39;通配所有 Benchmark)
+go test -bench . . 
+# 执行当前目录所在包的 TestAbc 单元测试以及 BenchmarkAbc 基准测试
+go test -run TestAbc -bench BenchmarkAbc . 
+
+# 在当前目录生成 battle.test 二进制文件而不执行，支持 go build 的所有参数。如可通过 -o 参数指定输出文件
+go test -c ngs/battle 
+# 直接执行 test 二进制时，test flag 需要加上 &#39;test.&#39; 前缀
+./battle.test -test.bench . 
+
+# 以下两条命令等价 并且实际上，编译器也是分为这两步来做的
+go test -bench . -cpuprofile cpu.prof .
+go test -c -o my.test . &amp;&amp; my.test -test.bench . -test.cpuprofile cpu.prof
+
+# 如果要在 go test 时传入无需编译器加 &#39;test.&#39; 前缀的 flag，可将 flag 放在 -args 选项后:
+go test -v -args -x -v
+# 等价于:
+pkg.test -test.v -x -v
+</code></pre>
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2017/01/go-command-notes/" title="Go 常用命令">http://wudaijun.com/2017/01/go-command-notes/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/go/" rel="tag"><i class="fa fa-tag"></i> go</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017/01/css-notes/" rel="prev" title="CSS 笔记">
+      <i class="fa fa-chevron-left"></i> CSS 笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2017/02/max-osx-ulimit/" rel="next" title="Mac OS X下的资源限制">
+      Mac OS X下的资源限制 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%8E%AF%E5%A2%83%E7%AE%A1%E7%90%86"><span class="nav-text">环境管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#go-build"><span class="nav-text">go build</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#go-run"><span class="nav-text">go run</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#go-install"><span class="nav-text">go install</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#go-test"><span class="nav-text">go test</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95"><span class="nav-text">1. 单元测试</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%9F%BA%E5%87%86%E6%B5%8B%E8%AF%95"><span class="nav-text">2. 基准测试</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E6%89%A7%E8%A1%8C%E6%B5%8B%E8%AF%95"><span class="nav-text">3. 执行测试</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

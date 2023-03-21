@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="在网络编程模型中，一个Session代表一次会话，主要维护网络数据的发送和接收。对外提供发送数据和处理数据的接口。一个高效的Session主要通过缓冲和异步来提高IO效率。NGServer的Session运用双缓冲和boost::asio的异步机制，很好地做到了这一点。 一. 双缓冲在网络IO中，读写线程的互斥访问一直都是一个关乎性能的大问题。为了减少互斥锁的使用，环形缓冲和双缓冲是常见的策略。N">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NGServer Session设计">
+<meta property="og:url" content="http://wudaijun.com/2014/10/ngserver-session/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="在网络编程模型中，一个Session代表一次会话，主要维护网络数据的发送和接收。对外提供发送数据和处理数据的接口。一个高效的Session主要通过缓冲和异步来提高IO效率。NGServer的Session运用双缓冲和boost::asio的异步机制，很好地做到了这一点。 一. 双缓冲在网络IO中，读写线程的互斥访问一直都是一个关乎性能的大问题。为了减少互斥锁的使用，环形缓冲和双缓冲是常见的策略。N">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2014-10-29T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.601Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="ngserver">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2014/10/ngserver-session/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>NGServer Session设计 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/10/ngserver-session/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          NGServer Session设计
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2014-10-30 00:00:00" itemprop="dateCreated datePublished" datetime="2014-10-30T00:00:00+08:00">2014-10-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2014/10/ngserver-session/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2014/10/ngserver-session/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在网络编程模型中，一个Session代表一次会话，主要维护网络数据的发送和接收。对外提供发送数据和处理数据的接口。一个高效的Session主要通过缓冲和异步来提高IO效率。NGServer的Session运用双缓冲和boost::asio的异步机制，很好地做到了这一点。</p>
+<h2 id="一-双缓冲"><a href="#一-双缓冲" class="headerlink" title="一. 双缓冲"></a>一. 双缓冲</h2><p>在网络IO中，读写线程的互斥访问一直都是一个关乎性能的大问题。为了减少互斥锁的使用，环形缓冲和双缓冲是常见的策略。NGServer使用后者作为消息和数据缓冲。<br>在NGServer MessageQueue.h中，定义了两种双缓冲：基于消息的MessageQueue和基于数据的ByteBuff。下面简要介绍ByteBuff类：</p>
+<p>ByteBuff类的基本思想是通过两个缓冲区_buff_read和_buff_write来使读写分离。通过<code>size_t Push(const char* data, size_t len)</code>来写入数据：</p>
+<span id="more"></span>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; 压入字节流数据 压入成功 则返回当前缓冲区长度 否则返回0</span><br><span class="line">size_t Push(const char* data, size_t len)</span><br><span class="line">&#123;</span><br><span class="line">	if(data !&#x3D; nullptr &amp;&amp; len &gt; 0)</span><br><span class="line">	&#123;</span><br><span class="line">		AutoLocker aLock(&amp;_lock);</span><br><span class="line">		if(_size+len &lt;&#x3D;  _capacity)</span><br><span class="line">		&#123;</span><br><span class="line">			memcpy(_buff_write+_size, data, len);</span><br><span class="line">			return _size +&#x3D; len;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Push方法是线程安全的，它通过AutoLocker来保证对_buff_write的互斥访问。</p>
+<p><code>char* PopAll(size_t&amp; len)</code>用于读取数据:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; 返回当前缓冲区指针 长度由len返回 若当前缓冲区无消息 返回nullptr</span><br><span class="line">char* PopAll(size_t&amp; len)</span><br><span class="line">&#123;</span><br><span class="line">	if(_size &gt; 0)</span><br><span class="line">	&#123;</span><br><span class="line">		AutoLocker aLock(&amp;_lock);</span><br><span class="line">		if(_size &gt; 0)</span><br><span class="line">		&#123;</span><br><span class="line">			swap(_buff_read, _buff_write);</span><br><span class="line">			len &#x3D; _size;</span><br><span class="line">			_size &#x3D; 0;</span><br><span class="line">			return _buff_read;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">    len &#x3D; 0;</span><br><span class="line">	return nullptr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>它返回当前_buff_write的指针，并且交换_buff_write和_buff_read的指针，这样下次再Push数据时，实际上写到了之前的_read_buff中，如此交替，完成读写分离。</p>
+<p>需要注意到，Push接口是线程安全的，而对于PopAll：<br>由于PopAll直接返回缓冲区指针(避免内存拷贝)，因此同一时刻双缓冲中，必有一读一写，故同一时刻只能有一个线程读取和处理数据(处理数据时,_buff_read仍然是被占用的)。读取线程需要将上次PopAll的数据处理完成之后再次调用PopAll。因为调用PopAll时，之前的读缓冲已变成写缓冲，并且写缓冲将从头开始写。</p>
+<p>基于消息的MessageQueue原理与ByteBuff一样，只不过_buff_read和_buff_write均为vector<MsgT\*>* 类型。MsgT是用户定义的消息类。由于使用的MsgT*，提高效率的同时，需要注意消息的释放问题。这在使用到MessageQueue时再提。</p>
+<h2 id="二-Session类的设计"><a href="#二-Session类的设计" class="headerlink" title="二. Session类的设计"></a>二. Session类的设计</h2><p>Session类利用boost::asio异步读写提高IO性能，它使用线性缓冲作为接收缓冲，使用ByteBuff作为发送缓冲，提高发送性能。由于ByteBuff同一时刻只能由一个线程读取和处理，Session需要使用一个锁来保证同一时刻只有一个线程来读取ByteBuff并发送其中的数据：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; 发送数据</span><br><span class="line">bool Session::SendAsync(const char* data, size_t len)</span><br><span class="line">&#123;</span><br><span class="line">	if (!_run)</span><br><span class="line">	return false;</span><br><span class="line"></span><br><span class="line">	if (_send_buf.Push(data, len))</span><br><span class="line">	&#123;</span><br><span class="line">		if (_sending_lock.TryLock())</span><br><span class="line">		&#123;</span><br><span class="line">			size_t sendlen;</span><br><span class="line">			const char* data &#x3D; _send_buf.PopAll(sendlen);</span><br><span class="line">			&#x2F;&#x2F; 异步发送数据 同一时刻仅有一个线程调用该函数</span><br><span class="line">			SendData(data, sendlen);</span><br><span class="line">			return true;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	else</span><br><span class="line">		assert(0); &#x2F;&#x2F; 发送缓冲区满</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void Session::SendComplete(const boost::system::error_code&amp; err, size_t bytes_to_transfer, size_t bytes_transferred)</span><br><span class="line">&#123;</span><br><span class="line">	if (err)</span><br><span class="line">	return;</span><br><span class="line"></span><br><span class="line">	assert(bytes_to_transfer &#x3D;&#x3D; bytes_transferred);</span><br><span class="line"></span><br><span class="line">	_send_total +&#x3D; bytes_transferred;</span><br><span class="line"></span><br><span class="line">	size_t len;</span><br><span class="line">	const char* data &#x3D; _send_buf.PopAll(len);</span><br><span class="line">	if (data) &#x2F;&#x2F; 如果还有数据  继续发送</span><br><span class="line">	&#123;</span><br><span class="line">		SendAsync(data, len);</span><br><span class="line">	&#125;</span><br><span class="line">	else</span><br><span class="line">	&#123;</span><br><span class="line">		_sending_lock.UnLock();</span><br><span class="line">	 	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>当网络空闲时，在SendAsync中，消息通过Push压入缓冲区后，将即时发送。当网络IO繁忙时，调用SendAsync中，可能已有数据正在发送，在将新数据压入缓冲区后，_sending_lock.TryLock()将返回false，此时数据被放在缓冲区中。待已有数据发送完成后，_sending_lock解锁。那么下次调用SendAsync发送的数据将和缓冲区中已有的数据立即发送。而ByteBuff双缓冲最大程度避免了这个过程中的内存拷贝。</p>
+<p>Session将收到的数据放在线性缓冲区中，如此方便解包。在每次接收数据完成后，都尝试解包，并校正缓冲区新的偏移。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2014/10/ngserver-session/" title="NGServer Session设计">http://wudaijun.com/2014/10/ngserver-session/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/ngserver/" rel="tag"><i class="fa fa-tag"></i> ngserver</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2014/09/ngserver-startpage/" rel="prev" title="NGServer 简介">
+      <i class="fa fa-chevron-left"></i> NGServer 简介
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2014/10/ngserver-service/" rel="next" title="NGServer Service框架">
+      NGServer Service框架 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-%E5%8F%8C%E7%BC%93%E5%86%B2"><span class="nav-text">一. 双缓冲</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C-Session%E7%B1%BB%E7%9A%84%E8%AE%BE%E8%AE%A1"><span class="nav-text">二. Session类的设计</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. Docker Machine通常我们使用的Docker都是直接在物理机上安装Docker Engine，docker-machine是一个在虚拟机上安装Docker Engine的工具，使用起来很方便: # 创建一个docker machine，命名为abc &gt; docker-machine create abc # 列出当前主机上所有的docker machine &gt; dock">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Docker Swarm - 轻量级容器编排工具">
+<meta property="og:url" content="http://wudaijun.com/2018/03/docker-swarm/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. Docker Machine通常我们使用的Docker都是直接在物理机上安装Docker Engine，docker-machine是一个在虚拟机上安装Docker Engine的工具，使用起来很方便: # 创建一个docker machine，命名为abc &gt; docker-machine create abc # 列出当前主机上所有的docker machine &gt; dock">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-03-07T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.611Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="docker">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2018/03/docker-swarm/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Docker Swarm - 轻量级容器编排工具 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/03/docker-swarm/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Docker Swarm - 轻量级容器编排工具
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-03-08 00:00:00" itemprop="dateCreated datePublished" datetime="2018-03-08T00:00:00+08:00">2018-03-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/tool/" itemprop="url" rel="index"><span itemprop="name">tool</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/03/docker-swarm/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/03/docker-swarm/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="一-Docker-Machine"><a href="#一-Docker-Machine" class="headerlink" title="一. Docker Machine"></a>一. Docker Machine</h3><p>通常我们使用的Docker都是直接在物理机上安装Docker Engine，docker-machine是一个在虚拟机上安装Docker Engine的工具，使用起来很方便:</p>
+<pre><code># 创建一个docker machine，命名为abc
+&gt; docker-machine create abc
+# 列出当前主机上所有的docker machine
+&gt; docker-machine ls
+# 通过ssh连接到abc
+&gt; docker-machine ssh abc
+# 现在就已经在abc machine上，可以像使用Docker Engine一样正常使用
+docker@abc:~$ docker ps
+# 退出machine
+docker@abc:~$ exit
+</code></pre><p>docker-machine可以用来在本机部署Docker集群，或者在云上部署Docker。docker-machine支持多种虚拟方案，virtualbox，xhyve，hyperv等等。具体使用比较简单，命令参考附录文档。</p>
+<span id="more"></span>
+<h3 id="二-Docker-Swarm"><a href="#二-Docker-Swarm" class="headerlink" title="二. Docker Swarm"></a>二. Docker Swarm</h3><p>Docker Swarm是docker原生的集群管理工具，之前是个独立的项目，于 Docker 1.12 被整合到 Docker Engine 中,作为swarm model存在，因此Docker Swarm实际上有两种：独立的swarm和整合后swarm model。官方显然推荐后者，本文也使用swarm model。相较于kubernetes，Mesos等工具，swarm最大的优势是轻量，原生和易于配置。它使得原本单主机的应用可以方便地部署到集群中。</p>
+<h4 id="相关术语"><a href="#相关术语" class="headerlink" title="相关术语"></a>相关术语</h4><ul>
+<li>task: 任务，集群的最小单位，对应单容器实例</li>
+<li>service: 服务，由一个或多个task构成，可以统一配置，部署，收缩</li>
+<li>node: 机器节点，代表一台物理机    </li>
+</ul>
+<h4 id="相关命令"><a href="#相关命令" class="headerlink" title="相关命令"></a>相关命令</h4><ul>
+<li>docker service: 提供了service创建，更新，回滚，task扩展收缩等功能</li>
+<li>docker node: 提供对机器节点的管理</li>
+<li>docker swarm: 用于配置机器集群，包括管理manager和worker两类机器节点的增删</li>
+</ul>
+<h4 id="1-初始化-swarm"><a href="#1-初始化-swarm" class="headerlink" title="1. 初始化 swarm"></a>1. 初始化 swarm</h4><pre><code>[n1-common]&gt; docker swarm init
+Swarm initialized: current node (b3a3avned864im04d7veyw06t) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-4mptgs751hcyh3ddlqwvv2aumo5j5mu1qllva52ciim6bun51d-eausald3qqtae604doj639mck 192.168.65.2:2377
+
+To add a manager to this swarm, run &#39;docker swarm join-token manager&#39; and follow the instructions.
+</code></pre><p>执行该条命令的node将会成为manager node，该命令会生成两个token: manager token和worker token，通过<code>docker swarm join --token TOKEN MANAGER_NODE_IP</code>提供不同的token来将当前node以不同身份加入到集群。</p>
+<p>现在我们尝试加入一个worker node，在另一台机器上执行:</p>
+<pre><code>[moby]&gt; docker swarm join --token SWMTKN-1-2w53lkm9h1l5u6yb4hh0k2t8yayub2zx0sidpvcr9nicqwafzx-9jm5zix2041rhfrf7e07oh4l2 172.20.140.39:2377
+This node joined a swarm as a worker.
+</code></pre><h4 id="2-配置节点"><a href="#2-配置节点" class="headerlink" title="2. 配置节点"></a>2. 配置节点</h4><p>通过 <code>docker node ls</code> 可以查看当前swarm集群中的所有节点(只能在manager节点上运行):</p>
+<pre><code>[n1-common]&gt; sudo docker node ls
+ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS
+yozazaogirhpj8skccfwqtl8f     moby                Ready               Active
+rx03hnmwx6z9jc9x9velz46if *   n1-common           Ready               Active              Leader
+</code></pre><p>PS: swarm的service和node管理命令的规范和container管理类似:</p>
+<pre><code>docker node|service ls: 查看集群中所有的节点(服务)
+docker node|service ps: 查看指定节点(服务)的容器信息
+docker node|service inspect: 查看指定节点(服务)的内部配置和状态信息
+docker node|service update: 更新节点(服务)配置信息
+docker node|service rm: 从集群中移除节点(服务)
+</code></pre><p>以上命令都只能在manager节点上运行。</p>
+<p>在这里，我们通过docker node update为节点设置标签:</p>
+<pre><code>n1-common:~$ docker node update --label-add type=db moby
+moby
+</code></pre><h4 id="3-创建服务"><a href="#3-创建服务" class="headerlink" title="3. 创建服务"></a>3. 创建服务</h4><p>服务有两种模式(mode): </p>
+<ul>
+<li>复制集模式(—mode replicas): 默认模式，该方式会将指定的(通过—replicas) M个task按照指定方式部署在N个机器节点上(N &lt;= 集群机器节点数)。</li>
+<li>全局模式(—mode global): 将服务在每个机器节点上部署一份，因此无需指定任务数量，也不能进行任务扩展和收缩。</li>
+</ul>
+<p>我们尝试创建一个名为redis的服务，该服务包含5个任务的复制集:</p>
+<pre><code>[n1-common]&gt; docker service create \
+--replicas 5 \
+--name redis \
+--constraint &#39;node.labels.type=db&#39; \
+--update-delay 10s \
+--update-parallelism 2 \
+--env MYVAR=foo \
+-p 6379:6379 \
+redis
+</code></pre><p><code>--update-xxx</code>指定了服务更新策略，这里为redis服务指定最多同时更新2个task，并且每批次更新之间间隔10s，在更新失败时，执行回滚操作，回滚到更新前的配置。更新操作通过<code>docker service update</code>命令完成，可以更新<code>docker service create</code>中指定的几乎所有配置，如task数量。<code>docker service create</code>除了更新策略外，还可以为service指定回滚策略(<code>--rollback-xxx</code>)，重启策略(<code>--restart-xxx</code>)等。</p>
+<p><code>--constraint</code>指定服务约束，限制服务的任务能够部署的节点，在这里，redis服务的5个任务只能部署在集群中labels.type==db的节点上。除了constraint参数外，还可以通过<code>--placement-pref</code>更进一步地配置部署优先级，如<code>--placement-pref &#39;spread=node.labels.type&#39;</code>将task平均分配到不同的type上，哪怕各个type的node数量不一致。</p>
+<p><code>--env MYVAR=foo</code>指定服务环境变量，当然，这里并没有实际意义。</p>
+<p>关于服务创建的更多选项参考官方文档。运行以上命令后，服务默认将在后台创建(—detach=false)，通过<code>docker service ps redis</code>可查看服务状态，确保服务的任务都以正常启动:</p>
+<pre><code>[n1-common]&gt; docker service ps redis
+ID                  NAME                IMAGE               NODE                DESIRED STATE       CURRENT STATE            ERROR               PORTS
+fegu7p341u58        redis.1             redis:latest        moby                Running             Running 9 seconds ago
+hoghsnnamv56        redis.2             redis:latest        moby                Running             Running 9 seconds ago
+0klozd8zkz0d        redis.3             redis:latest        moby                Running             Running 10 seconds ago
+jpcik7w3hpjx        redis.4             redis:latest        moby                Running             Running 10 seconds ago
+29jrofbwfi13        redis.5             redis:latest        moby                Running             Running 8 seconds ago
+</code></pre><p>可以看到，由于只有moby节点的labels.type==db，因此所有的task都被部署在moby节点上。现在整个服务已经部署完成，那么如何访问这个服务呢？事实上，我们通过moby或者n1-common两台主机IP:6379均可访问Redis服务，<strong>Swarm向用户屏蔽了服务的具体部署位置，让用户使用集群就像使用单主机一样</strong>，这也为部署策略，负载均衡以及故障转移提供基础。</p>
+<h4 id="4-平滑更新"><a href="#4-平滑更新" class="headerlink" title="4. 平滑更新"></a>4. 平滑更新</h4><p>通过<code>docker service update</code>可以完成对服务的更新，可更新的配置很多，包括<code>docker service create</code>中指定的参数，自定义标签等，服务的更新策略由<code>--update-xxx</code>选项配置，只有部分更新需要重启任务，可通过<code>--force</code>参数强制更新。</p>
+<p>现在我们尝试限制redis服务能够使用的cpu个数:</p>
+<pre><code>[n1-common]&gt; docker service update --limit-cpu 2 redis
+redis
+Since --detach=false was not specified, tasks will be updated in the background.
+In a future release, --detach=false will become the default.
+[n1-common]&gt; docker service ps redis
+ID                  NAME                IMAGE               NODE                DESIRED STATE       CURRENT STATE             ERROR               PORTS
+fegu7p341u58        redis.1             redis:latest        moby                Running             Running 13 minutes ago
+hoghsnnamv56        redis.2             redis:latest        moby                Running             Running 13 minutes ago
+mgblj8v97al1        redis.3             redis:latest        moby                Running             Running 9 seconds ago
+0klozd8zkz0d         \_ redis.3         redis:latest        moby                Shutdown            Shutdown 11 seconds ago
+jpcik7w3hpjx        redis.4             redis:latest        moby                Running             Running 13 minutes ago
+49mvisd0zbtj        redis.5             redis:latest        moby                Running             Running 8 seconds ago
+29jrofbwfi13         \_ redis.5         redis:latest        moby                Shutdown            Shutdown 11 seconds ago
+[n1-common]&gt; docker service ps redis
+ID                  NAME                IMAGE               NODE                DESIRED STATE       CURRENT STATE             ERROR               PORTS
+9396e3x8gp5m        redis.1             redis:latest        moby                Ready               Ready 2 seconds ago
+fegu7p341u58         \_ redis.1         redis:latest        moby                Shutdown            Running 2 seconds ago
+msugiubez60a        redis.2             redis:latest        moby                Ready               Ready 2 seconds ago
+hoghsnnamv56         \_ redis.2         redis:latest        moby                Shutdown            Running 2 seconds ago
+mgblj8v97al1        redis.3             redis:latest        moby                Running             Running 13 seconds ago
+0klozd8zkz0d         \_ redis.3         redis:latest        moby                Shutdown            Shutdown 15 seconds ago
+jpcik7w3hpjx        redis.4             redis:latest        moby                Running             Running 13 minutes ago
+49mvisd0zbtj        redis.5             redis:latest        moby                Running             Running 12 seconds ago
+29jrofbwfi13         \_ redis.5         redis:latest        moby                Shutdown            Shutdown 15 seconds ago
+</code></pre><p>由于限制服务所使用的CPU数量需要重启任务，通过前后两次的<code>docker service ps</code>可以看到，docker service的更新策略与我们在<code>docker service create</code>中指定的一致: 每两个一组，每组间隔10s，直至更新完成，通过指定<code>--detach=false</code>能同步地看到这个平滑更新过程。这种平滑更新重启使得服务在升级过程中，仍然能够正常对外提供服务。docker swarm会保存每个任务的升级历史及对应的容器ID和容器状态，以便在更新失败时正确回滚(如果指定了更新失败的行为为回滚)，<code>docker service rollback</code>命令可强制将任务回滚到上一个版本。</p>
+<p>现在我们通过<code>docker service scale</code>来伸缩服务任务数量，在这里我们使用<code>--detach=false</code>选项:</p>
+<pre><code>[n1-common]&gt; docker service scale redis=3
+redis scaled to 3
+overall progress: 3 out of 3 tasks
+1/3: running   [==================================================&gt;]
+2/3: running   [==================================================&gt;]
+3/3: running   [==================================================&gt;]
+verify: Service converged
+[n1-common]&gt; docker service ps redis
+ID                  NAME                IMAGE               NODE                DESIRED STATE       CURRENT STATE             ERROR               PORTS
+9396e3x8gp5m         redis.1            redis:latest        moby                Running             Running 10 minutes ago
+fegu7p341u58         \_ redis.1         redis:latest        moby                Shutdown            Shutdown 10 minutes ago
+8urov9089x6c         redis.4            redis:latest        moby                Running             Running 9 minutes ago
+jpcik7w3hpjx         \_ redis.4         redis:latest        moby                Shutdown            Shutdown 9 minutes ago
+49mvisd0zbtj         redis.5            redis:latest        moby                Running             Running 10 minutes ago
+29jrofbwfi13         \_ redis.5         redis:latest        moby                Shutdown            Shutdown 10 minutes ago
+</code></pre><p>服务的任务规模被收缩，现在只剩下redis.1,redis.4,redis.5三个任务。</p>
+<h4 id="5-故障转移"><a href="#5-故障转移" class="headerlink" title="5. 故障转移"></a>5. 故障转移</h4><p>现在我们将redis服务停掉，重新创建一个redis服务:</p>
+<pre><code>[n1-common]&gt; docker service rm redis
+redis
+[n1-common]&gt; docker service create --replicas 5 --name redis  -p 6379:6379 redis
+fvcwpsmbscxhsmg04vf5zhmbf
+Since --detach=false was not specified, tasks will be created in the background.
+In a future release, --detach=false will become the default.
+[n1-common]&gt; docker service ps redis
+ID                  NAME                IMAGE               NODE                DESIRED STATE       CURRENT STATE           ERROR               PORTS
+n1dd790efq36        redis.1             redis:latest        moby                Running             Running 2 minutes ago
+5fvqbozb7bpr        redis.2             redis:latest        n1-common           Running             Running 2 minutes ago
+ma533n5ce09c        redis.3             redis:latest        moby                Running             Running 2 minutes ago
+j1f18j2yaqhc        redis.4             redis:latest        n1-common           Running             Running 2 minutes ago
+p2kf7ftrexam        redis.5             redis:latest        moby                Running             Running 2 minutes ago
+</code></pre><p>由于我们没有指定部署约束，因此redis服务的5个任务将被自动负载到集群节点中，在这里，redis.2,redis.4部署在n1-common上，其余三个部署在moby，现在我们将moby节点退出集群，观察服务任务状态变化:</p>
+<pre><code>[moby]&gt;  docker swarm leave
+Node left the swarm.
+[n1-common]&gt; service ps redis
+ID                  NAME                IMAGE               NODE                DESIRED STATE       CURRENT STATE                     ERROR               PORTS
+8c5py5p9pcgz        redis.1             redis:latest        n1-common           Ready               Accepted less than a second ago
+n1dd790efq36         \_ redis.1         redis:latest        moby                Shutdown            Running 12 seconds ago
+5fvqbozb7bpr        redis.2             redis:latest        n1-common           Running             Running 8 minutes ago
+ml546ziyey4r        redis.3             redis:latest        n1-common           Ready               Accepted less than a second ago
+ma533n5ce09c         \_ redis.3         redis:latest        moby                Shutdown            Running 8 minutes ago
+j1f18j2yaqhc        redis.4             redis:latest        n1-common           Running             Running 8 minutes ago
+kfu6jeddkvwu        redis.5             redis:latest        n1-common           Ready               Accepted less than a second ago
+p2kf7ftrexam         \_ redis.5         redis:latest        moby                Shutdown            Running 12 seconds ago
+[n1-common]&gt; docker service ps redis
+ID                  NAME                IMAGE               NODE                DESIRED STATE       CURRENT STATE            ERROR               PORTS
+8c5py5p9pcgz        redis.1             redis:latest        n1-common           Running             Running 3 seconds ago
+n1dd790efq36         \_ redis.1         redis:latest        moby                Shutdown            Running 23 seconds ago
+5fvqbozb7bpr        redis.2             redis:latest        n1-common           Running             Running 8 minutes ago
+ml546ziyey4r        redis.3             redis:latest        n1-common           Running             Running 3 seconds ago
+ma533n5ce09c         \_ redis.3         redis:latest        moby                Shutdown            Running 8 minutes ago
+j1f18j2yaqhc        redis.4             redis:latest        n1-common           Running             Running 8 minutes ago
+kfu6jeddkvwu        redis.5             redis:latest        n1-common           Running             Running 3 seconds ago
+p2kf7ftrexam         \_ redis.5         redis:latest        moby                Shutdown            Running 23 seconds ago
+</code></pre><p>故障节点moby上面的1,3,5任务已经被自动重新部署在其它可用节点(当前只有n1-common)上，并记录了每个任务的版本和迁移历史。现在如果尝试再将moby节点加入集群，会发现5个task仍然都在n1-common上，没有立即进行任务转移，而是等下一步重启升级或者扩展服务任务时再进行动态负载均衡。</p>
+<h4 id="6-再看Swarm集群"><a href="#6-再看Swarm集群" class="headerlink" title="6. 再看Swarm集群"></a>6. 再看Swarm集群</h4><p>再来回顾一下Docker Swarm，在我们初始化或加入Swarm集群时，通过<code>docker network ls</code>可以看到，Docker做了如下事情:</p>
+<ol>
+<li>创建了一个叫ingress的overlay网络，用于Swarm集群容器跨主机通信，在创建服务时，如果没有为其指定网络，将默认接入到ingress网络中</li>
+<li>创建一个docker_gwbridge虚拟网桥，用于连接集群各节点(Docker Deamon)的物理网络到到ingress网络</li>
+</ol>
+<p>网络细节暂时不谈(也没怎么搞清楚)，总之，Swarm集群构建了一个跨主机的网络，可以允许集群中多个容器自由访问。Swarm集群有如下几个比较重要的特性:</p>
+<ol>
+<li>服务的多个任务可以监听同一端口(通过iptables透明转发)。</li>
+<li>屏蔽掉服务的具体物理位置，通过任意集群节点IP:Port均能访问服务(无论这个服务是否跑在这个节点上)，Docker会将请求正确路由到运行服务的节点(称为routing mesh)。在routine mesh下，服务运行在虚拟IP环境(virtual IP mode, vip)，即使服务运行在global模式(每个节点都运行有任务)，用户仍然不能假设指定IP:Port节点上的服务会处理请求。</li>
+<li>如果不想用Docker Swarm自带的routing mesh负载均衡器，可以在服务创建或更新时使用<code>--endpoint-mode = dnsrr</code>，dnsrr为dns round robin简写，另一种模式即为vip，dnsrr允许应用向Docker通过服务名得到服务IP:Port列表，然后应用负责从其中选择一个地址进行服务访问。</li>
+</ol>
+<p>综上，Swarm通过虚拟网桥和NATP等技术，搭建了一个跨主机的虚拟网络，通过Swarm Manager让这个跨主机网络用起来像单主机一样方便，并且集成了服务发现(服务名-&gt;服务地址)，负载均衡(routing mesh)，这些都是Swarm能够透明协调转移任务的根本保障，应用不再关心服务有几个任务，部署在何处，只需要知道服务在这个集群中，端口是多少，然后这个服务就可以动态的扩展，收缩和容灾。当然，Swarm中的服务是理想状态的微服务，亦即是无状态的。</p>
+<h3 id="三-Docker-Compose-amp-Stack"><a href="#三-Docker-Compose-amp-Stack" class="headerlink" title="三. Docker Compose &amp; Stack"></a>三. Docker Compose &amp; Stack</h3><p>docker-compose 是一个用于定义和运行多容器应用的工具。使用compose，你可以通过一份docker-compose.yml配置文件，然后运行<code>docker-compose up</code>即可启动整个应用所配置的服务。一个docker-compose.yml文件定义如下:</p>
+<pre><code>version: &#39;3&#39;  # docker-compose.yml格式版本号，版本3为官方推荐版本，支持swarm model和deploy选项
+services:     # 定义引用所需服务
+  web:        # 服务名字
+    build: .  # 服务基于当前目录的Dockerfile构建
+    ports:    # 服务导出端口配置
+    - &quot;5000:5000&quot;
+    volumes:  # 服务目录挂载配置
+    - .:/code
+    - logvolume01:/var/log
+    links:    # 网络链接
+    - redis
+    deploy:   # 部署配置 和 docker service create中的参数对应 只有版本&gt;3支持
+      replicas: 5
+      resources:
+        limits:
+          cpus: &quot;0.1&quot;
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+  redis:      # redis 服务
+    image: redis # 服务基于镜像构建
+</code></pre><p>docker-compose设计之初是单机的，docker-compose中也有服务的概念，但只是相当于一个或多个容器(version&gt;2.2 scale参数)，并且只能部署在单台主机上。版本3的docker-compose.yml开始支持swarm model，可以进行集群部署配置，这里的服务才是swarm model中的服务。但version 3的docker-compose.yml本身已经不能算是docker-compose的配置文件了，因为docker-compose不支持swarm model，用以上配置文件执行<code>docker-compose up</code>将得到警告:</p>
+<pre><code>WARNING: Some services (web) use the &#39;deploy&#39; key, which will be ignored. Compose does not support &#39;deploy&#39; configuration - use `docker stack deploy` to deploy to a swarm.
+WARNING: The Docker Engine you&#39;re using is running in swarm mode.
+
+Compose does not use swarm mode to deploy services to multiple nodes in a swarm. All containers will be scheduled on the current node.
+</code></pre><p>那么<code>docker stack</code>又是什么？<code>docker stack</code>是基于<code>docker swarm</code>之上的应用构建工具，前面介绍的<code>docker swarm</code>只能以服务为方式构建，而docker-compose虽然能以应用为单位构建，但本身是单机版的，Docker本身并没有基于docker-compose进行改造，而是另起炉灶，创建了<code>docker stack</code>命令，同时又复用了docker-compose.yml配置方案(同时也支持另一种bundle file配置方案)，因此就造成了docker-compose能使用compose配置的version 1, version 2,和部分version 3(不支持swarm model和deploy选项)，而<code>docker stack</code>仅支持version 3的compose配置。</p>
+<p>总的来说，如果应用是单机版的，或者说不打算使用docker swarm集群功能，那么就通过docker-compose管理应用构建，否则使用docker stack，毕竟后者才是亲生的。</p>
+<p>参考:</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://docs.docker.com/machine/reference/">Docker Machine</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.docker.com/get-started/part4/">Docker Swarm</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.docker.com/compose/gettingstarted/">Docker Compose</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.docker.com/get-started/part3/">Docker Services</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.docker.com/network/overlay/">Docker overlay网络</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/03/docker-swarm/" title="Docker Swarm - 轻量级容器编排工具">http://wudaijun.com/2018/03/docker-swarm/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/docker/" rel="tag"><i class="fa fa-tag"></i> docker</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/02/go-sync-map-implement/" rel="prev" title="Go sync.Map 实现">
+      <i class="fa fa-chevron-left"></i> Go sync.Map 实现
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/03/docker-container-ops/" rel="next" title="Docker 容器管理">
+      Docker 容器管理 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-Docker-Machine"><span class="nav-text">一. Docker Machine</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-Docker-Swarm"><span class="nav-text">二. Docker Swarm</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E6%9C%AF%E8%AF%AD"><span class="nav-text">相关术语</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E5%91%BD%E4%BB%A4"><span class="nav-text">相关命令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%88%9D%E5%A7%8B%E5%8C%96-swarm"><span class="nav-text">1. 初始化 swarm</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E9%85%8D%E7%BD%AE%E8%8A%82%E7%82%B9"><span class="nav-text">2. 配置节点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E5%88%9B%E5%BB%BA%E6%9C%8D%E5%8A%A1"><span class="nav-text">3. 创建服务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E5%B9%B3%E6%BB%91%E6%9B%B4%E6%96%B0"><span class="nav-text">4. 平滑更新</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB"><span class="nav-text">5. 故障转移</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-%E5%86%8D%E7%9C%8BSwarm%E9%9B%86%E7%BE%A4"><span class="nav-text">6. 再看Swarm集群</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-Docker-Compose-amp-Stack"><span class="nav-text">三. Docker Compose &amp; Stack</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

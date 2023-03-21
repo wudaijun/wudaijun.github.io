@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="NGServer的核心概念便是服务(Service)，它对逻辑层表现为一个线程，处理各种特定的相关业务。如日志服务(LogService)，数据库服务(DBService)，登录服务(LoginService)。服务之间通过消息进行交互。Service实际上并不是一个独立线程，Service与线程是一种”多对多”的关系。即所有的Service通过ServiceManager来管理，后者维护一个线程">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NGServer Service框架">
+<meta property="og:url" content="http://wudaijun.com/2014/10/ngserver-service/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="NGServer的核心概念便是服务(Service)，它对逻辑层表现为一个线程，处理各种特定的相关业务。如日志服务(LogService)，数据库服务(DBService)，登录服务(LoginService)。服务之间通过消息进行交互。Service实际上并不是一个独立线程，Service与线程是一种”多对多”的关系。即所有的Service通过ServiceManager来管理，后者维护一个线程">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201410/NGServer_Message_Hierarchy.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201410/NGServer_Service_Hierarchy.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201410/NGServer_Service_ClassInterface.png">
+<meta property="article:published_time" content="2014-10-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.601Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="ngserver">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201410/NGServer_Message_Hierarchy.png">
+
+<link rel="canonical" href="http://wudaijun.com/2014/10/ngserver-service/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>NGServer Service框架 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/10/ngserver-service/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          NGServer Service框架
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2014-10-31 00:00:00" itemprop="dateCreated datePublished" datetime="2014-10-31T00:00:00+08:00">2014-10-31</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2014/10/ngserver-service/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2014/10/ngserver-service/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>NGServer的核心概念便是服务(Service)，它对逻辑层表现为一个线程，处理各种特定的相关业务。如日志服务(LogService)，数据库服务(DBService)，登录服务(LoginService)。服务之间通过消息进行交互。Service实际上并不是一个独立线程，Service与线程是一种”多对多”的关系。即所有的Service通过ServiceManager来管理，后者维护一个线程池，并将线程池与”服务池”以某种调度方式关联，让线程充分被利用。</p>
+<p>下面由下至上对Service框架和运行机制简单阐述：</p>
+<span id="more"></span>
+<h2 id="Message定义"><a href="#Message定义" class="headerlink" title="Message定义"></a>Message定义</h2><p>NGServer中的消息定义于Message.h中，主要定义了如下几种消息，它们的继承体系如下：</p>
+<p> <img src="/assets/image/201410/NGServer_Message_Hierarchy.png" alt="" title="Message继承体系"></p>
+<p>Message实现对消息的最高抽象，并不包含任何数据，只提供 GetType纯虚函数接口。用于标识消息类型。</p>
+<p>UserMessage是用户发来的消息，内部包含 char* data , size_t len数据成员。</p>
+<p>UserMessageT是更具体的用户消息，它是一个模板类，多了一个成员字段 T* user。在本服务器中 T 就是 Player 这样每条消息和包含一个用户指针。这在Service处理以及函数回调的时候非常重要：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; 客户端的消息</span><br><span class="line">class UserMessage : public Message</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">    UserMessage(const char* data, size_t len)</span><br><span class="line">    &#123;</span><br><span class="line">        if (data !&#x3D; nullptr)</span><br><span class="line">        &#123;</span><br><span class="line">            _data &#x3D; new char[len];</span><br><span class="line">            memcpy(_data, data, len);</span><br><span class="line">            _len &#x3D; len;</span><br><span class="line">        &#125;</span><br><span class="line">        else</span><br><span class="line">        &#123;</span><br><span class="line">            _data &#x3D; nullptr;</span><br><span class="line">            _len &#x3D; 0;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    MessageType GetType()  const override</span><br><span class="line">    &#123;</span><br><span class="line">        return MessageType::kUserMessage;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">public:</span><br><span class="line">    char* _data;</span><br><span class="line">    size_t _len;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 附加一个成员T的客户端消息</span><br><span class="line">template&lt; typename T &gt;</span><br><span class="line">class UserMessageT : public UserMessage</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">    UserMessageT(const char* data, size_t len, T user) :</span><br><span class="line">        UserMessage(data, len), _user(user)&#123;&#125;</span><br><span class="line"></span><br><span class="line">    inline T GetClient() const &#123; return _user;  &#125;</span><br><span class="line">public:</span><br><span class="line">    T _user;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>对于其他消息放到后面介绍。纵观Message，通过继承完成对多类消息的分类处理，通过模板和继承完成对消息类的扩展，而模板参数则为消息结构(对于InsideMessageT)或其它附加成员(对UserMessageT)。</p>
+<h2 id="Service-服务"><a href="#Service-服务" class="headerlink" title="Service 服务"></a>Service 服务</h2><p>整个NGServer核心概念便是Service,Service完成传统游戏服务器一个线程的任务，但它不完全是线程。目前先把它看作是一个线程。在NGServer中，包含如下Service：</p>
+<p>LoginService(登录服务) MapService(地图服务)  DBService(数据库服务) LogService(日志服务)</p>
+<p>它们的继承体系如下：</p>
+<p><img src="/assets/image/201410/NGServer_Service_Hierarchy.png" alt="" title="Service继承体系"></p>
+<p>下面简要介绍一下Service每一层实现的一些接口，以及意义：</p>
+<p>服务基类Service：</p>
+<p>抽象服务的公共接口，如压入消息，处理消息，发送消息等，以及提供一些服务会用到的公共组件，比如定时器，当前时间，处理情况等。<br>下面是一些重要接口：</p>
+<p><img src="/assets/image/201410/NGServer_Service_ClassInterface.png" alt="" title="Service类接口"></p>
+<h3 id="Service"><a href="#Service" class="headerlink" title="Service"></a>Service</h3><p>Service包含一个消息队列MessageQueue,保存待处理的消息。MessageQueue和ByteBuff类似，使用双缓冲。每个Service都包含一个_sid用于唯一标识自己。以下是一些主要接口：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; 消息投递</span><br><span class="line">Service::PushMsg(Message* msg) &#x2F;&#x2F; 向该Service推送消息，即将消息压入消息队列</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 消息处理</span><br><span class="line">Service::Receive() &#x2F;&#x2F; 处理消息队列中的消息 取出消息队列中的消息并调用ReceiveMsg(msg)处理</span><br><span class="line">Service::ReceiveMsg(Message* msg) &#x2F;&#x2F; 处理单条消息 它取出消息类型，还原消息为本身指针，最后分发到ProcessMsg</span><br><span class="line">Service::ProcessMsg( ... ) &#x2F;&#x2F; 虚函数接口，通过重载处理各类消息</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 消息转发</span><br><span class="line">Service::SendMsg( ... ) &#x2F;&#x2F; 创建InsideMessage 并将消息通过Service::Send()转发到其它服务</span><br><span class="line">Service::Send( int32_t sid, Message* msg ) &#x2F;&#x2F; 静态函数 将msg转发到sid对应的Service</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h3 id="GameService"><a href="#GameService" class="headerlink" title="GameService"></a>GameService</h3><p>GameService是游戏业务逻辑处理服务的基类，它主要在Service的基础上加入服务器的具体业务，主要扩展了：</p>
+<ul>
+<li>关联PlayerManager</li>
+</ul>
+<p>PlayerManager管理了所有玩家的连接，当GameService::ProcessMsg(UserMessage*)收到客户端断开的消息时，需要通过PlayerManager管理所有连接的玩家。并且在游戏逻辑处理中，有时需要通过用户的连接ID获取用户(此时用户还没有对于服务器的ID，比如还在登录状态)。</p>
+<ul>
+<li>回调和消息处理机制:</li>
+</ul>
+<p>消息的注册于回调机制：提供RegistMsg RegistPlayer RegistInside等注册消息回调函数的方法。这些函数的具体处理和实现到后面再解析，这里只需明白可以通过它实现对消息的注册与回调。<br>GameService重写了ProcessMsg(InsideMsg<em> ) 和 ProcessMsg(UserMessage</em> )，在其中完成对消息回调的处理。这样只要调用Service::Receive()，将发生如下流程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">Service::Receive() -&gt; Service::ReceiveMsg(msg) -&gt; GameService::ProcessMsg(msg) -&gt; 消息回调机制 -&gt; 对应回调函数</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<ul>
+<li>关联数据库和日志服务：</li>
+</ul>
+<p>添加LogService，DBService 和 HeroManager成员，并且提供设置它们的接口。方便游戏服务更加专心方便地处理业务逻辑。</p>
+<ul>
+<li>消息发送和转发：</li>
+</ul>
+<p>定义SendToDB SendToLog函数，与日志或数据库通信，它们将调用Service::SendMsg将消息推送到日志服务或数据库服务的消息队列。</p>
+<p>添加SendToClient 将消息群发给所有管理的用户，将消息体编码成数据流，最后调用Send(data ,len)来发送数据。</p>
+<p>Send(char* data, int len)是纯虚函数接口，用于服务具体定义如何将消息发送到所管理的所有用户(群发)。</p>
+<h3 id="DBService-LogService"><a href="#DBService-LogService" class="headerlink" title="DBService LogService"></a>DBService LogService</h3><p>相对于GameService，LogService和DBService则要简单许多，它们负责接收GameService发来的消息，并且将记录写入日志或数据库。因此它们只处理InsideMsg消息。并不处理具体的玩家业务逻辑(UserMessage)，它们与数据库和日志系统打交道。但是由于直接派生于Service，因此对比于GameService，它们也需要消息注册与回调机制。另外，由于Service在运行时是单线程的(后面ServiceManager中解释)，因此它的处理是串行的，所以它可以通过记录_last_recv_service_id 来对源Service进行响应。比如响应数据库操作结果等。这样就实现了纯异步的交互。</p>
+<h3 id="LoginService-MapService"><a href="#LoginService-MapService" class="headerlink" title="LoginService MapService"></a>LoginService MapService</h3><p>得益于GameService的再次封装，具体业务处理服务就真的只需要关心业务逻辑了，让我们以用户登录为例，看看LoginService需要做些什么：</p>
+<ol>
+<li>通过RegistPlayer注册用户登录消息响应函数OnPlayerLogin(Player&amp; player, C2S_Login&amp; msg) 并注册数据库响应消息 OnDBHeroLogin(Player&amp; player, D2S_Login&amp; msg) </li>
+<li>在OnPlayerLogin中处理用户登录，通过SendToDB SendToLog与数据库交互</li>
+<li>在OnDBPlayerLogin中处理数据发来的处理结果</li>
+</ol>
+<p>Done</p>
+<p>注：消息回调机制会自动将UserMessageT中的client提取出来，并且将对应消息体解包，传入回调函数，因此OnDBHeroLogin可以获取到Player的引用，而UserMessageT中的client初始化是在消息构造时传入的，这中消息编解码中详解。对于其他类型消息处理，比如CycleMessage  LoginService需要自己重写ProcessMsg(CycleMessage*)</p>
+<h2 id="ServiceManager"><a href="#ServiceManager" class="headerlink" title="ServiceManager"></a>ServiceManager</h2><p>ServiceManager是整个NGServer的消息集散中心，负责管理所有Service和Message。它将Service和它的_sid对应起来。事实上Service::Send就是通过ServiceManager::Send来转发消息的。</p>
+<p>前面提到，Service对于业务逻辑层来说，可以看作一个线程。而它实际上并不是个线程，ServiceManager中提供一个线程池，由它们来将所有的Service”跑起来”，此时的Service相当于一个特殊的”消息队列”，只不过它提供了处理这些消息的接口，也就是Receive():</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; 取出消息队列中的消息  调用ReceiveMsg处理消息</span><br><span class="line">&#x2F;&#x2F; 如果处理完之后 队列中还有剩余消息 则返回true 否则返回false</span><br><span class="line">bool Service::Receive()</span><br><span class="line">&#123;</span><br><span class="line">#ifdef _DEBUG</span><br><span class="line">    if (!_recvcheck.TryLock())</span><br><span class="line">    &#123;</span><br><span class="line">        std::cerr &lt;&lt; &quot; # service Receive is not runing in single thread ! &quot; &lt;&lt; std::endl;</span><br><span class="line">        assert(0);</span><br><span class="line">    &#125;</span><br><span class="line">#endif</span><br><span class="line">    std::vector&lt;Message*&gt;* msgs &#x3D; _msgqueue.PopAll();</span><br><span class="line">    for(auto msg : *msgs)</span><br><span class="line">	&#123;</span><br><span class="line">        std::unique_ptr&lt;Message&gt; autodel(msg);</span><br><span class="line">        if (!ReceiveMsg(msg))</span><br><span class="line">        &#123;</span><br><span class="line">            autodel.release();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    msgs-&gt;clear();</span><br><span class="line"></span><br><span class="line">    if (_msgqueue.Size())</span><br><span class="line">        return true;</span><br><span class="line"></span><br><span class="line">#ifdef _DEBUG</span><br><span class="line">    _recvcheck.UnLock();</span><br><span class="line">#endif</span><br><span class="line"></span><br><span class="line">    _readylock.UnLock();</span><br><span class="line">    return false;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>该接口确保单线程运行(Service内部MessageQueue双缓冲只能单线程处理数据)，取出消息队列中的消息，调用ReceiveMsg进行处理，后者通过Message::GetType()还原消息类型，调用ProcessMsg重载，然后GameService::ProcessMsg中完成对消息的回调…..</p>
+<p>然而Receive()仅处理Service消息队列中已有的消息，并没有让Service一直”run”起来，这也是Service比直接用线程更为高效的地方：充分利用线程。只有当Service中有消息时，Service::Receive才会被调用，处理完成之后，线程就”离开”，去跑别的Service。而要做到这点，有两个要点：</p>
+<ol>
+<li>保证Service::Receive()同一时刻只被一个线程运行</li>
+<li>捕捉Service中MessageQueue的状态变化，在MessageQueue中有消息时，在1的前提下，能够第一时间让Service分配到线程。</li>
+</ol>
+<p>为了做到以上两点，ServiceManager中维护一个Service队列ServiceQueue _ready_services，该队列线程安全。它保存那些消息队列不为空的Service，也就是”就绪”的Service。_ready_services可以看作一个特殊的”消息队列”：它们维护一组消息，并提供这些消息的处理接口。而ServiceManager中的线程池，则在处理这个特殊的”消息队列”(通过调用Service::Receive())。一个Service是否”就绪”，可以用一个锁_readylock来实现，_readylock锁定表示该Service消息队列不为空，已经就绪，否则表示该Service处于”空闲”状态。_readylock可能会在两个地方改变状态：</p>
+<ol>
+<li>Service::PushMsg()中，可能使消息队列由空变为不空。这可以通过 _readlock.TryLock()来检测并改变该状态。</li>
+<li>Service::Receive()中，处理完消息队列中的消息后，如果消息队列为空(由于双缓冲机制，在处理读缓冲的数据时，可能有新的数据到达写缓冲)，则释放_readylock：_readylock.UnLock();否则_readylock仍然为Lock状态。</li>
+</ol>
+<p>接下来就是对Service _readylock的监测，如果_readlock为Lock状态，则将其加入到”就绪服务”队列_ready_services中。最好的办法当然是在状态可能改变的地方：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; 发送消息到指定Service msg的管理权将转交 调用者不需再关心msg的释放问题</span><br><span class="line">bool ServiceManager::Send(int32_t sid, Message* msg)</span><br><span class="line">&#123;</span><br><span class="line">    if (sid &lt; kMaxServiceNum)</span><br><span class="line">    &#123;</span><br><span class="line">        ServicePtr sptr &#x3D; _serviceMap[sid];</span><br><span class="line">        if (sptr !&#x3D; nullptr)</span><br><span class="line">        &#123;</span><br><span class="line">            if (sptr-&gt;PushMsg(msg))</span><br><span class="line">            &#123;</span><br><span class="line">				&#x2F;&#x2F; 将该服务加入到就绪服务队列 该队列线程安全</span><br><span class="line">                PushService(sptr);</span><br><span class="line">            &#125;</span><br><span class="line">            return true;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    delete msg;</span><br><span class="line">    return false;</span><br><span class="line">&#125;</span><br><span class="line">&#x2F;&#x2F; ServiceManager线程入口，通过该入口让所有Service Run起来</span><br><span class="line">&#x2F;&#x2F; 该函数不断从就绪服务队列中取出服务，并执行其Receive入口处理Service中的消息</span><br><span class="line">void ServiceManager::ExecThread()</span><br><span class="line">&#123;</span><br><span class="line">    try</span><br><span class="line">    &#123;</span><br><span class="line">        &#x2F;&#x2F; 不断执行_ready_services中的Service</span><br><span class="line">        while (_runing)</span><br><span class="line">        &#123;</span><br><span class="line">            ServicePtr sptr &#x3D; _ready_services.Pop();</span><br><span class="line">            if (sptr !&#x3D; nullptr)</span><br><span class="line">            &#123;</span><br><span class="line">                if (sptr-&gt;Receive()) </span><br><span class="line">                &#123;&#x2F;&#x2F; 如果执行完成后 还有未处理消息</span><br><span class="line">                    &#x2F;&#x2F; 重新投递到待执行队列</span><br><span class="line">                    PushService(sptr);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            else</span><br><span class="line">            &#123;</span><br><span class="line">                std::this_thread::sleep_for(std::chrono::milliseconds(1));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    catch (std::runtime_error&amp; err)</span><br><span class="line">    &#123;</span><br><span class="line">        std::cerr &lt;&lt; &quot;runing thread catch one exception : &quot; &lt;&lt; err.what() &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>ExecThread函数，就是整个Service，乃至整个框架的发动机，通过让多个thread执行该入口，即可充分利用多线程，均衡处理所有Service中的消息:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; 开始运行</span><br><span class="line">&#x2F;&#x2F; threadNum：指定运行的线程数量</span><br><span class="line">&#x2F;&#x2F; 如果ServiceManager已经在运行中 则在原有线程基础上再新开threadNum个线程</span><br><span class="line">void ServiceManager::Start(int threadNum)</span><br><span class="line">&#123;</span><br><span class="line">    AutoLocker aLock(&amp;_locker);</span><br><span class="line">    if (_runing &#x3D;&#x3D; false)</span><br><span class="line">    &#123;   &#x2F;&#x2F; ServiceManager需要一个TimerThread用于管理所有定时消息</span><br><span class="line">        _runing &#x3D; true;</span><br><span class="line">        std::thread* t &#x3D; new std::thread(TimerThread);</span><br><span class="line">        _threads.push_back(t);</span><br><span class="line">        </span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    for (int i &#x3D; 0; i &lt; threadNum; i++)</span><br><span class="line">    &#123;</span><br><span class="line">        std::thread* t &#x3D; new std::thread(ExecThread);</span><br><span class="line">        _threads.push_back(t);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="整个流程"><a href="#整个流程" class="headerlink" title="整个流程"></a>整个流程</h2><h3 id="一-框架消息处理流程"><a href="#一-框架消息处理流程" class="headerlink" title="一. 框架消息处理流程"></a>一. 框架消息处理流程</h3><ul>
+<li>ServiceManager::Start(int threadNum) 指定线程池线程数 开始运行所有Service::Receive()</li>
+<li>Service::Receive()从双缓冲消息队列中取出已有消息，逐个调用Service::ReceiveMsg(Message* msg)处理单条消息</li>
+<li>Service::ReceiveMsg(Message* msg)通过Message::GetType()得到每条消息类型，并且通过std::dynamic_cast将msg转换成对应类型nmsg，最后调用ProcessMsg(nmsg)完成分发</li>
+<li>基类Service::ProcessMsg定义了所有消息的处理接口：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; 接口 处理各类消息 返回true代表消息将由框架删除 返回false自行管理该消息</span><br><span class="line">virtual bool ProcessMsg(Message* msg);</span><br><span class="line">virtual bool ProcessMsg(TimerMessage* msg);</span><br><span class="line">virtual bool ProcessMsg(UserMessage* msg);</span><br><span class="line">virtual void ProcessMsg(CycleMessage* msg);</span><br><span class="line">virtual bool ProcessMsg(InsideMessage* msg);</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>如果调度的Service本身重写了对应ProcessMsg,那么将调用重写的ProcessMsg，否则将使用基类Service的ProcessMsg,后者只是忽略消息，不对消息做处理。对于GameService，它重写了ProcessMsg:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">bool ProcessMsg(UserMessage* msg) override;</span><br><span class="line">bool ProcessMsg(InsideMessage* msg) override;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>并完成了对消息的解码和响应函数的回调，因此对于LoginService和MapService，它们只需调用Regist注册消息响应函数后，ProcessMsg会将消息解码并回调到对应函数。ProcessMsg中的回调机制将逻辑由框架导出到了业务层。</p>
+<ul>
+<li><h3 id="二-服务的消息推送流程"><a href="#二-服务的消息推送流程" class="headerlink" title="二. 服务的消息推送流程"></a>二. 服务的消息推送流程</h3></li>
+</ul>
+<p>前面说的是消息的处理流程，下面从消息的产生开始讨论消息的生命周期和传递流程。消息一共有四种：UserMessage(T) InsideMessage(T) CycleMessag  TimerMessage，后两种定时器相关的消息由ServiceManager统一管理，因此这里不作阐述。</p>
+<p><strong>UserMessage</strong>是来自客户端的消息，在前面的博客中，讲到了网络层到框架的接口函数：<code>Player::Decode(const char* data, size_t len)</code>，网络层将收到的数据交给该函数(当len==0时，表示客户端断开连接)：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">int32_t Player::Decode(const char* data, size_t len)</span><br><span class="line">&#123;</span><br><span class="line">    &#x2F;&#x2F; 客户端断线</span><br><span class="line">    if (data &#x3D;&#x3D; nullptr || len &#x3D;&#x3D; 0)</span><br><span class="line">    &#123;</span><br><span class="line">        &#x2F;&#x2F; 通知业务逻辑层 处理下线逻辑</span><br><span class="line">        Message* msg &#x3D; new UserMessageT&lt;PlayerPtr&gt;(data, len, shared_from_this());</span><br><span class="line">        ServiceManager::Send(_sid, msg);</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 消息的解包</span><br><span class="line">    const char* buff &#x3D; data;</span><br><span class="line">    size_t remainLen &#x3D; len;</span><br><span class="line">    static const uint16_t headLen &#x3D; ProtocolStream::kHeadLen + ProtocolStream::kMsgIdLen;</span><br><span class="line">    while (remainLen &gt; headLen)</span><br><span class="line">    &#123;</span><br><span class="line">        int32_t msgLen &#x3D; std::max(headLen, *((uint16_t*)buff));</span><br><span class="line">        if (remainLen &lt; msgLen)</span><br><span class="line">        &#123;</span><br><span class="line">            break;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; 发送到Service框架层</span><br><span class="line">        Message* msg &#x3D; new UserMessageT&lt;PlayerPtr&gt;(buff, msgLen, shared_from_this());</span><br><span class="line">        if (!ServiceManager::Send(_sid, msg))</span><br><span class="line">        &#123;</span><br><span class="line">            &#x2F;&#x2F; 服务器主动断线</span><br><span class="line">            return -1;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        remainLen -&#x3D; msgLen;</span><br><span class="line">        buff +&#x3D; msgLen;</span><br><span class="line">    &#125;</span><br><span class="line">    return remainLen;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>Player::Decode简单解决粘包问题，当客户端有数据来临(len!=0)或断开连接时(len==0)，均创建UserMessageT并传入Player指针，通过ServiceManager::Send发送到Service框架。这里传入的Player指针很重要，框架的消息回调机制就是通过这个指针来将消息关联到Player的。在PlayerManager::OnConnect()中，有新用户连接时，创建Player的同时为Player指定了一个所属服务，这个服务的sid保存在Player中。Player的所有消息均发往其所属服务。对于刚连接的Player，该服务自然是LoginService。当Player登录成功时，将所属服务特换为MapService，之后所有的业务逻辑都在MapService上面跑。</p>
+<p><strong>InsideMessage</strong>是服务之间的内部消息，它在Service之间转发消息时产生，通过Service::SendMsg创建内部消息，最后通过Service::Send发送。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; 发送只包含消息ID的内部消息</span><br><span class="line">bool SendMsg(int32_t sid, int64_t sessionid, int16_t msgid)</span><br><span class="line">&#123;</span><br><span class="line">    InsideMessage* msg &#x3D; new InsideMessage();</span><br><span class="line">    msg-&gt;_dessid &#x3D; sid;</span><br><span class="line">    msg-&gt;_srcsid &#x3D; GetSid();</span><br><span class="line">    msg-&gt;_sessionid &#x3D; sessionid;</span><br><span class="line">    msg-&gt;_msgid &#x3D; msgid;</span><br><span class="line">    Service::Send(sid, msg);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 发送包含消息数据的内部消息</span><br><span class="line">template &lt; typename MsgT &gt; </span><br><span class="line">bool SendMsg(int32_t sid, int64_t sessionid, int16_t msgid, MsgT&amp; t)</span><br><span class="line">&#123;</span><br><span class="line">    InsideMessageT* msg &#x3D; new InsideMessageT&lt;MsgT&gt;();</span><br><span class="line">    msg-&gt;_dessid &#x3D; sid;</span><br><span class="line">    msg-&gt;_srcsid &#x3D; GetSid();</span><br><span class="line">    msg-&gt;_sessionid &#x3D; sessionid;</span><br><span class="line">    msg-&gt;_msgid &#x3D; msgid;</span><br><span class="line">    msg-&gt;_data &#x3D; t;</span><br><span class="line">    Service::Send(sid, msg);</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>UserMessage和InsideMessage在创建之后，都会交给ServiceManager::Send，之后便不用关心其生命周期。Message由框架管理。在Service处理这些消息时：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#x2F;&#x2F; 取出消息队列中的消息  调用ReceiveMsg处理消息</span><br><span class="line">&#x2F;&#x2F; 如果处理完之后 队列中还有剩余消息 则返回true 否则返回false</span><br><span class="line">bool Service::Receive()</span><br><span class="line">&#123;</span><br><span class="line">	&#x2F;&#x2F;....</span><br><span class="line"></span><br><span class="line">    std::vector&lt;Message*&gt;* msgs &#x3D; _msgqueue.PopAll();</span><br><span class="line">    for (auto msg : *msgs)</span><br><span class="line">    &#123;</span><br><span class="line">		&#x2F;&#x2F; 确保消息处理完成后自动删除</span><br><span class="line">        std::unique_ptr&lt;Message&gt; autodel(msg);</span><br><span class="line">        if (!ReceiveMsg(msg))</span><br><span class="line">        &#123;</span><br><span class="line">			&#x2F;&#x2F; ReceiveMsg返回false 取消自动删除</span><br><span class="line">            autodel.release();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    msgs-&gt;clear();</span><br><span class="line"></span><br><span class="line">    if (_msgqueue.Size())</span><br><span class="line">        return true;</span><br><span class="line"></span><br><span class="line">	&#x2F;&#x2F; ...</span><br><span class="line">    return false;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>ReceiveMsg处理完消息后，返回true，消息将由框架自动删除，否则消息将由逻辑自行保管。通常不自动删除的消息是帧消息，该消息始终只有一条，处理完成之后，调整下次触发时间，再将其加入到定时器队列。</p>
+<h3 id="三-完整的消息请求与响应"><a href="#三-完整的消息请求与响应" class="headerlink" title="三. 完整的消息请求与响应"></a>三. 完整的消息请求与响应</h3><h4 id="1-用户连接"><a href="#1-用户连接" class="headerlink" title="1.用户连接"></a>1.用户连接</h4><p>PlayerManager::OnConnect 创建并关联Player和Session 并且为Player指定所属登录服务的_sid -&gt; Session::StartRecv 开始接收数据</p>
+<h4 id="2-用户请求与响应"><a href="#2-用户请求与响应" class="headerlink" title="2.用户请求与响应"></a>2.用户请求与响应</h4><p>推送请求：Session::ReadComplete 数据到达 -&gt; Player::Decode 解包 -&gt; ServiceManager::Send 推送消息到指定服务 -&gt; Service::PushMsg 此时消息已经在服务的消息队列</p>
+<p>处理和响应请求：Service::Receive 取出消息 -&gt; Service::ReceiveMsg 还原消息 -&gt; Service::ProcessMsg 重载各类消息的处理方式 GameService和DBService的ProcessMsg中，完成对消息的解码和回调 -&gt; 消息响应函数 -&gt; Player::SendMsg 发送响应 -&gt; Session::SendMsg 完成对消息的编码 -&gt; Session::SendAsync 发送消息数据 </p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2014/10/ngserver-service/" title="NGServer Service框架">http://wudaijun.com/2014/10/ngserver-service/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/ngserver/" rel="tag"><i class="fa fa-tag"></i> ngserver</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2014/10/ngserver-session/" rel="prev" title="NGServer Session设计">
+      <i class="fa fa-chevron-left"></i> NGServer Session设计
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2014/10/ngserver-player/" rel="next" title="NGServer Session -> Player">
+      NGServer Session -> Player <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Message%E5%AE%9A%E4%B9%89"><span class="nav-text">Message定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Service-%E6%9C%8D%E5%8A%A1"><span class="nav-text">Service 服务</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Service"><span class="nav-text">Service</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GameService"><span class="nav-text">GameService</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DBService-LogService"><span class="nav-text">DBService LogService</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LoginService-MapService"><span class="nav-text">LoginService MapService</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ServiceManager"><span class="nav-text">ServiceManager</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B4%E4%B8%AA%E6%B5%81%E7%A8%8B"><span class="nav-text">整个流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E6%A1%86%E6%9E%B6%E6%B6%88%E6%81%AF%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="nav-text">一. 框架消息处理流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E6%9C%8D%E5%8A%A1%E7%9A%84%E6%B6%88%E6%81%AF%E6%8E%A8%E9%80%81%E6%B5%81%E7%A8%8B"><span class="nav-text">二. 服务的消息推送流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E5%AE%8C%E6%95%B4%E7%9A%84%E6%B6%88%E6%81%AF%E8%AF%B7%E6%B1%82%E4%B8%8E%E5%93%8D%E5%BA%94"><span class="nav-text">三. 完整的消息请求与响应</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E7%94%A8%E6%88%B7%E8%BF%9E%E6%8E%A5"><span class="nav-text">1.用户连接</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E7%94%A8%E6%88%B7%E8%AF%B7%E6%B1%82%E4%B8%8E%E5%93%8D%E5%BA%94"><span class="nav-text">2.用户请求与响应</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

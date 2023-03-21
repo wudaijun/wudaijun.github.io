@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="本文聊聊游戏服务器中常见的通信模型和对比，讨论下常见的实现方案，最后分享下我们当前的实践。 常见的交互语义在实践中，节点交互中常用的点对点通信方式，对应用层而言，可以大概分为以下几种:  同步RPC 同步请求 异步消息 异步请求 发布订阅  在本文中，我将围绕一个简单的例子，来聊聊对这几种交互语义的个人理解。 该例子为: 作为client端的A需要执行(x+y)*z操作，但其中的x+y，是由ser">
+<meta property="og:type" content="article">
+<meta property="og:title" content="游戏服务器中的通信模型">
+<meta property="og:url" content="http://wudaijun.com/2018/07/gameserver-communication-model/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="本文聊聊游戏服务器中常见的通信模型和对比，讨论下常见的实现方案，最后分享下我们当前的实践。 常见的交互语义在实践中，节点交互中常用的点对点通信方式，对应用层而言，可以大概分为以下几种:  同步RPC 同步请求 异步消息 异步请求 发布订阅  在本文中，我将围绕一个简单的例子，来聊聊对这几种交互语义的个人理解。 该例子为: 作为client端的A需要执行(x+y)*z操作，但其中的x+y，是由ser">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-07-21T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.612Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="gameserver">
+<meta property="article:tag" content="programing">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2018/07/gameserver-communication-model/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>游戏服务器中的通信模型 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/07/gameserver-communication-model/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          游戏服务器中的通信模型
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-07-22 00:00:00" itemprop="dateCreated datePublished" datetime="2018-07-22T00:00:00+08:00">2018-07-22</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/07/gameserver-communication-model/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/07/gameserver-communication-model/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文聊聊游戏服务器中常见的通信模型和对比，讨论下常见的实现方案，最后分享下我们当前的实践。</p>
+<h3 id="常见的交互语义"><a href="#常见的交互语义" class="headerlink" title="常见的交互语义"></a>常见的交互语义</h3><p>在实践中，节点交互中常用的点对点通信方式，对应用层而言，可以大概分为以下几种:</p>
+<ul>
+<li>同步RPC</li>
+<li>同步请求</li>
+<li>异步消息</li>
+<li>异步请求</li>
+<li>发布订阅</li>
+</ul>
+<p>在本文中，我将围绕一个简单的例子，来聊聊对这几种交互语义的个人理解。</p>
+<p>该例子为: 作为client端的A需要执行<code>(x+y)*z</code>操作，但其中的<code>x+y</code>，是由server端B实现的，A需要请求B得到<code>x+y</code>的结果，再将其<code>*z</code>完成业务逻辑。</p>
+<h4 id="同步RPC"><a href="#同步RPC" class="headerlink" title="同步RPC"></a>同步RPC</h4><p>RPC库通常有现成的轮子，比如gRPC、thrift等，以golang gRPC为例:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// A 线程</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">handle</span> <span class="params">(x,y,z <span class="keyword">int</span>)</span> <span class="title">int</span></span> &#123;</span><br><span class="line">	ctx, cancel := context.WithTimeout(context.Background(), <span class="number">5</span>*time.Second)</span><br><span class="line">	<span class="keyword">defer</span> cancel()</span><br><span class="line">	req := &amp;AddReq&#123;X: x, Y: y&#125;</span><br><span class="line">	ack, err := grpcClient.Add(ctx, req)</span><br><span class="line">	<span class="keyword">return</span> ack.Result * z</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// B 线程</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(b *B)</span> <span class="title">Add</span><span class="params">(ctx context.Context, req *AddReq)</span> <span class="params">(*AddAck, error)</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> &amp;AddAck&#123;Result: req.X+req.Y&#125;, <span class="literal">nil</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>代码简洁明了，远程请求和本地函数调用一样方便，这种写法应该是开发者最喜欢的方式。诸如超时，错误传递，甚至负载均衡等，gRPC都已经处理好了。同步RPC的缺点在后面讨论同步异步以及具体RPC框架的时候会讨论。</p>
+<span id="more"></span>
+<h4 id="异步消息"><a href="#异步消息" class="headerlink" title="异步消息"></a>异步消息</h4><p>基于异步消息的通信模式可以说非常古老了，从 C/S 到服务器进程/线程间，这种方案的优点是扩展性强(消息的优点)，吞吐量好(异步的优点)。不管是集群/进程/线程/轻量级线程，可以用同一套通信方案，并且消息语义本身也很容易在各种通信设施上实现，如go channel，TCP，MQ等。像 Erlang 的通信模型就只有一套异步消息这一种。这样最大的好处就是完全屏蔽了目标 Process 的物理位置(同一进程/跨进程/跨网络)，获得非常好的系统扩展性和灵活性。比如某个 Process 被重新部署到其它节点上，已有代码几乎无需任何更改。</p>
+<p>谈了这么多优点，下面我们来聊聊它的不足(主要是相较同步RPC而言)，以前面的AddService例子为基础，现在我们尝试将其换成异步消息:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; A 线程</span><br><span class="line">func handle(x,y,z int) &#123;</span><br><span class="line">	&#x2F;&#x2F; 需要将请求数据上下文随消息一并发送</span><br><span class="line">	&#x2F;&#x2F; 由于是异步消息投递，低层通常是不提供超时机制的</span><br><span class="line">	Send2B(&amp;AddReq&#123;X:x,Y:y,Z:z&#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; B 线程</span><br><span class="line">func handleAddReq(req *AddReq) &#123;</span><br><span class="line">	result :&#x3D; req.X + req.Y</span><br><span class="line">	&#x2F;&#x2F; 需要显式指明响应路径，并且透传B根本不应该关心的请求数据上下文z</span><br><span class="line">	Send2A(&amp;AddAck&#123;Result:result,Z:req.z&#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; A 线程</span><br><span class="line">func handleAddAck(ack *AddAck) &#123;</span><br><span class="line">	&#x2F;&#x2F; 从ack中取出处理结果和当时的请求上下文</span><br><span class="line">	result &#x3D; ack.result * ack.Z</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以上暴露了异步消息交互的几个问题，在我的理解中，一个完整的异步请求(期待对端返回响应，而非单纯投递一条消息)需要考虑到如下四个部分:</p>
+<ol>
+<li>消息路由和处理: 即AddReq AddAck消息如何序列化传输，如何映射到指定响应函数等，是消息交互系统的基础支撑</li>
+<li>请求数据上下文: 指只有发送方需要用于后续处理，而接收方不关心的内容，即上例中的 z</li>
+<li>消息响应路径上下文: 指请求完成处理后，如何指明响应路径。上例中，对响应方B，它在响应AddReq时，需要显式指明响应到A。</li>
+<li>超时机制: 用于处理对端无响应或慢响应的情况，避免消息黑洞(消息QoS得不到保证)</li>
+</ol>
+<p>相比同步RPC，单纯的异步消息模型，以上2，3，4都需要应用层关心和维护: </p>
+<ul>
+<li>请求数据上下文: 在上例中，请求方A需要将请求上下文与请求内容一起发送给服务方B(如<code>AddReq&#123;x,y,z&#125;</code>)，然后B再原封不动返回回来，这种方案一方面导致代码复用性很差，比如当AddReq有多种上下文时(如<code>AddReq(x,y)*z</code>, <code>AddReq(x,y)-a-b</code>)，则很难复用 AddReq和handleAddReq。当 B 是 DB 这类公用模块时，这类问题尤其突出。另一方面是带来了额外的消息负载开销(B根本不关心A的请求上下文)。最后一方面是这种方案很难实现异步超时(如果B没有响应A，那么A的超时处理中将获取不到当时的请求上下文)。</li>
+<li>消息响应路径上下文: 在上面的例子中，我们是在 handleAddReq 中直接调用 <code>Send2A(&amp;AddAck&#123;Result:result&#125;)</code> 的，这意味B假设AddReq是来自于A的，并显式指明响应路径，那么当 C，D也会请求 B 时，就需要定义 AddReqForC, AddReqForD 请求，或者在AddReq中添加标识请求方来源的字段，让请求方来填。这种将响应路径(也是请求来源)绑定在消息内容上的做法，不利于代码复用和解耦。</li>
+<li>超时机制: 大部分的异步消息交互系统是不提供超时机制的，因为超时本身是请求-响应模式中的概念(对响应有预期)，是更上层考虑的问题(如TCP和HTTP的关系)。但是在请求-响应语义中，超时又是必要的，比如错误处理，延迟统计，流控降级等</li>
+</ul>
+<p>总之，纯异步消息框架对于请求-响应式的业务场景缺乏更上层的基础设施支撑，开发起来是不够友好的。</p>
+<h4 id="异步请求"><a href="#异步请求" class="headerlink" title="异步请求"></a>异步请求</h4><p>那么有没有办法同时兼顾异步消息交互的扩展性以及请求-响应的便利性呢，异步请求就是两者的结合:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; A 线程</span><br><span class="line">func handle(x,y,z int) &#123;</span><br><span class="line">	&#x2F;&#x2F; 这里传入z，是为了之后的handleAddAck响应处理中，能够正确获取到请求上下文z，进行后续的处理</span><br><span class="line">	&#x2F;&#x2F; 请求上下文将由框架层保存在本端，不会传给对端，如此即使对端B超时无响应，请求方仍然能获取到请求上下文，进行容错处理</span><br><span class="line">	self.AsyncCb(targetB, &amp;AddReq&#123;X: x, Y: y&#125;, z, 3*time.Second, handleAddAck)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; AckCtx由异步回调框架提供，包含响应消息本身，请求错误(超时，网络故障等), 请求上下文(在这里是z)等</span><br><span class="line">func handleAddAck(ackctx *AckCtx) &#123;</span><br><span class="line">	if ackctx.Err !&#x3D; nil &#123;</span><br><span class="line">		&#x2F;&#x2F; 处理超时，对端无响应等框架性错误</span><br><span class="line">	&#125;</span><br><span class="line">	&#x2F;&#x2F; 从actCtx.Ctx.(int)中取出请求上下文z，执行后续操作</span><br><span class="line">	result :&#x3D; ackctx.(*AddAck).Result * ackCtx.Ctx.(int)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; B 线程</span><br><span class="line">&#x2F;&#x2F; ReqCtx由异步请求框架提供，包含请求消息本身，响应路径，消息唯一ID等</span><br><span class="line">func handleAddReq(reqctx *ReqCtx) &#123;</span><br><span class="line">	req :&#x3D; reqctx.Req.(*AddReq)</span><br><span class="line">	&#x2F;&#x2F; 直接返回，无需关心请求上下文(z)，响应路径(B)等</span><br><span class="line">	reqctx.Reply(&amp;AddAck&#123;Result: req.X + req.Y&#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>异步请求方案通过ReqCtx和AckCtx来维护请求-响应语义，通过回调来处理响应。对请求方而言，框架底层为其处理了超时和请求上下文管理，对服务方B而言，它也无需再关心请求上下文，响应路径。</p>
+<p>异步请求语义通常是框架层提供，上例中的异步回调机制只是其中一种实现方案，简单聊聊它的一些特性:</p>
+<ol>
+<li>请求语义: 设计非对称的请求-响应协议，并通过唯一请求ID进行请求、响应的对应</li>
+<li>上下文管理: 请求方统一管理请求ID到请求上下文(包括请求数据上下文、回调函数、超时时间等)的映射</li>
+<li>响应路径: 框架层对响应方屏蔽消息来源，响应方不再关注请求数据上下文和响应路径，专注处理请求并响应结果</li>
+<li>回调机制: 请求方收到响应后，通过唯一ID找到请求上下文，回调到应用层(并移除请求上下文)</li>
+<li>超时机制: 请求方通过ticker or timer来触发超时(并移除请求上下文)</li>
+<li>错误机制: 将请求过程中的各种错误(如无效地址，序列化错误，网络错误，甚至对端panic)尽早地反馈给请求方</li>
+</ol>
+<p>本质上来说，请求-响应和纯异步消息的最大区别在于前者是非对称的(请求走handler路由，响应走回调)，而实际开发中为了更好的数据一致性和错误处理，很多场景的通信模型都是适合请求-响应式的(如扣除资源，检查条件等)，因此站在实用主义的角度来说，架设一套交互语义是有必要的。</p>
+<p>这里顺便提一下为什么我们将请求数据上下文单独管理，而不直接使用函数闭包:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">func handle(x,y,z int) &#123;</span><br><span class="line">	self.AsyncCb(targetB, &amp;AddReq&#123;A: x, B: y&#125;, func (ackctx *AckCtx) &#123;</span><br><span class="line">		result :&#x3D; ackctx.Ack.(*AddAck).Result * z</span><br><span class="line">	&#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这是因为当触发回调函数时，闭包所引用的上下文可能已经失效了，比如z可能是玩家的某个部队的引用，但是异步回调时，玩家的该部队已经解散了，但回调却还在使用，造成写丢失的问题(还很难Debug)。因此我们在实践中限制了异步回调必须分段写，请求数据上下文必须是简单值(如玩家ID，部队ID等)，在分段的回调函数中，去通过ID重新获取相关数据。</p>
+<h4 id="同步请求"><a href="#同步请求" class="headerlink" title="同步请求"></a>同步请求</h4><p>同步请求指基于消息的同步阻塞的请求-响应语义，HTTP协议就是一个典型的基于文本消息的同步请求协议，只不过基于性能和消息顺序性的考量，游戏服务器能直接使用HTTP的场景有限。如果要自己实现同步请求语义的话，可以基于异步回调机制封装，形式上，可以是同步回调，也可以是类似RPC的返回值， 同步请求不需要考虑上下文和回调的维护，</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; A线程 返回值方式</span><br><span class="line">func handle (x,y,z int) &#123;</span><br><span class="line">	ackctx	:&#x3D; SyncRequest(&amp;AddReq&#123;X: x, Y: y&#125;, 3*time.Second)</span><br><span class="line">	result :&#x3D; ackctx.Ack.(*AddAck).Result * z</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; A线程 同步回调方式</span><br><span class="line">func handle(x,y,z int) &#123;</span><br><span class="line">	self.SyncCb(targetB, &amp;AddReq&#123;A: x, B: y&#125;, z, 3*time.Second), func (ackctx *AckCtx) &#123;</span><br><span class="line">		if ackctx.Err !&#x3D; nil &#123;</span><br><span class="line">			&#x2F;&#x2F; 处理超时，对端无响应等框架性错误</span><br><span class="line">		&#125;</span><br><span class="line">		result :&#x3D; ackctx.(*AddAck).Result * ackCtx.Ctx.(int)</span><br><span class="line">	&#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>对服务端B而言，它的实现和异步请求一样，因为它不需要关心请求方是同步还是异步的，同步请求和同步RPC看起来比较类似，但由于其基于消息，有更强的扩展性和可移植性，很容易适配各种底层传输和路由方式，保留较大的灵活性。</p>
+<h4 id="发布订阅"><a href="#发布订阅" class="headerlink" title="发布订阅"></a>发布订阅</h4><p>发布订阅本质是多对多的异步消息通信模式，逻辑层的事件通常就基于发布订阅来分发。但是节点内的事件分发和跨节点的事件分发可能还有些区别:</p>
+<ul>
+<li>节点内: 由于性能高，可以做到细粒度灵活控制，比如基于单个Event去注册，订阅方可能是任务，活动，排行榜等逻辑模块，这些模块可能是跨线程的</li>
+<li>节点间: 由于游戏中的Event太多太细，每个Event一个Topic是不现实的，否则单个活动开启，就可能导致瞬间订阅上百个Topic，因此跨节点的事件分发主要靠发布方来做粗过滤，然后发到订阅者的Topic上</li>
+</ul>
+<p>因此由于游戏服务器对性能的要求，通常节点内会自己实现一套发布订阅组件，使用细粒度Event，而跨节点多对多的模式用得相对较少，Topic大部分时候被用作对端虚拟地址抽象，具体执行的还是点对点的链路。</p>
+<h4 id="同步-vs-异步"><a href="#同步-vs-异步" class="headerlink" title="同步 vs 异步"></a>同步 vs 异步</h4><p>尽管同步代码简单直观且易于维护，但为了构建健壮，可靠的后端系统，对于同步的选择是应该慎之又慎的。为了方便讨论同步可能带来的问题，我将同步请求大概分为三类，然后讨论下这些情景下用同步可能导致的一些问题: </p>
+<ol>
+<li>没有设置超时或不支持超时的同步请求</li>
+<li>带超时但非关键的同步请求</li>
+<li>带超时且关键的同步请求</li>
+</ol>
+<p>不带超时的同步请求的问题很明显，就是请求方无法对对端的响应有一个最坏预期，即有可能对端挂掉了，永远也不响应，那么请求方就永远被阻塞了，最终导致服务无响应、资源泄露、甚至雪崩。很多时候我们在实现同步语义的时候会忽略超时处理，或者说对对端的可用性作出过高的假设。要在语言机制上实现同步语义是很简单的，比如Go的<code>res := &lt;-chanRet</code>，Erlang的<code>receive Answer -&gt; ok</code>，但没有考虑边界情况的后果也可能是很严重的。</p>
+<p>再来看看带超时的非关键同步请求，非关键请求是指请求方不必等该请求完成之后，再处理接下来的任务。即如果这个请求是异步的，那么其实请求方也可以先处理接下来的消息。比如地图线程在发起一个DB请求加载某个玩家数据时，这个过程中地图线程其实可以先处理来自其它玩家的请求。在这种情况下，很明显的，同步请求相比异步，降低了地图线程的吞吐量。前段时间公司一个项目出现CPU Load上不去，而Erlang消息队列有堆积的情况，排查了很久，发现是日志库log4erl里面有同步调用，导致写日志的API其实是有阻塞的，然后基本所有的逻辑线程都会写大量日志，导致CPU不能跑满。</p>
+<p>最后来看看带超时且关键的同步请求，举个例子，玩家登录的时候，玩家的agent线程会向平台去认证鉴权，即使这个鉴权过程是异步的，agent线程也不能处理接下来的任务，因为玩家还没有鉴权成功，它发来的后续消息是没有意义的，agent要么将接下来收到的消息丢掉，要么将其缓存下来，等鉴权完成再处理。在这种情况下，你可能会觉得用同步向平台鉴权总不会有什么问题了吧，既不会降低吞吐量，也不会有永久阻塞的问题，然而我们也有项目躺过坑，玩家多点登录时，新的agent会同步等老的agent走完下线流程之后，再处理后续登录逻辑(这个地方的同步调用没有设置超时)，然而如果老的agent在阻塞处理某些请求(这个请求的超时可能比较长)，并无法即时响应登出请求，那么新的agent也会阻塞，然后玩家觉得几秒钟没登录上，可能又会再次重启游戏重新登录，这个时候新建的agent仍然会继续阻塞，然后agent数量就会暴增，最终导致OOM。当然，这个事故的部分原因是没有正确设置超时，但也从另一方面揭露了关键同步请求相比异步的缺陷: 虽然异步请求过程中，agent也不能处理后续逻辑消息，但起码agent是可响应的，可响应意味着可以处理一些如终止消息，系统消息等高优先级的任务。前面定义的所谓关键二字，其实是对同等优先级的任务而言的，而往往在实践中，总有意外或者更重要的事情发生。</p>
+<p>另外，关于同步请求的一个周知问题就是环形依赖，即A同步请求B，B又直接或间接同步请求A，同步意味着强依赖，随着逻辑复杂度的提升，理想的单向依赖会很难保证和检查，一旦出现环形依赖，轻则请求失败，伴随系统吞吐量降低(有超时的情况)，重则环中的线程全部无响应(没做超时的情况)。因此对于以上的三类同步请求，环形依赖都不会带来好结果。</p>
+<p>讲了这么多同步的缺点，不是说完全不用同步，而是说慎用同步，要理解同步可能带来的边界问题是什么，比如服务器启停服流程，各种数据模块的加载/保存可能会有顺序依赖，如果做成异步，可能需要维护非常复杂的状态机，并且代码维护成本也比较高，而同步则可以获得清晰的执行流程和错误处理。</p>
+<p>相比同步而言，异步看起来健壮性更好，但是也更复杂，其中一个典型的问题就是数据一致性问题: 比如前面讲的agent在异步执行鉴权操作，通常就需要做状态机保护，确保在鉴权完成前，agent不会开始处理后续逻辑消息。又比如A的异步请求还没有响应，后续处理的请求跟前一个异步请求有数据相关性，就可能导致数据不一致。我在<a href="https://wudaijun.com/2019/01/gameserver-acid-consistency/">游戏服务器中的数据一致性</a>中也有一些讨论。</p>
+<p>对异步请求-响应而言，超时也是一个需要考虑的问题，如果没有做超时，对同步而言的代价是可能永久阻塞，而对异步的代价则是”消息黑洞”，即请求方在发出异步请求之后，如果对端没有响应，那么这个请求就没有后续处理了，如果日志记录得不好的话，可能都很难追溯到这个请求。</p>
+<p>总之，异步很多时候是让服务器不出现大问题(无响应/雪崩/系统吞吐量变低等)，但同时也带来了开发复杂度，以及一些”小问题”(请求沉没/数据不一致/逻辑错误等)。</p>
+<h3 id="实现机制"><a href="#实现机制" class="headerlink" title="实现机制"></a>实现机制</h3><p>前面基本讨论的都是交互语义，(同步，异步，RPC，回调)，这里聊聊常见的节点交互实现方案，由于节点内的线程/协程通信机制通常和语言相关，这里主要关注跨节点交互方案。</p>
+<h4 id="HTTP"><a href="#HTTP" class="headerlink" title="HTTP"></a>HTTP</h4><p>HTTP不用过多介绍，它实现的是同步请求语义，它的主要优势在于没有连接上下文，因此对无状态服务而言，可以透明横向扩展。通常第三方服务最常用的协议就是HTTP。但对游戏业务而言，HTTP的性能是一道过不去的坎，毕竟游戏服务器不像第三方服务那样能够做到无数据状态。</p>
+<h4 id="TCP"><a href="#TCP" class="headerlink" title="TCP"></a>TCP</h4><p>TCP应该是最常见也是最底层的通信方案了，它的主要优势就是高性能和灵活性，应用层可以根据需求自由实现编解码，路由，交互模式等。TCP的缺点主要有几点:</p>
+<ol>
+<li>要造的轮子比较多: 数据编解码，加密，断线重连，流控，M对N的消息分发等等</li>
+<li>网络拓扑的维护: 由于TCP是点对点的，在跨服交互的场景下，得谨慎维护网络拓扑，一方面尽可能避免全联通，另一方面复杂的拓扑依赖不利于维护和扩展</li>
+</ol>
+<p>TCP适用于网络拓扑相对稳定的场景，对于比较灵活的网络拓扑结构(如动态匹配机制，动态发布订阅模型等)，要么全相联，要么需要维护一套复杂的动态连接管理机制。</p>
+<h4 id="UDP-QUIC"><a href="#UDP-QUIC" class="headerlink" title="UDP/QUIC"></a>UDP/QUIC</h4><p>在部分延迟容忍度特别低的游戏中，可能会使用UDP作为C/S协议，然后应用层实现一定程度的传输可靠性。对SLG而言，TCP性能和延迟还处于可接受访问内，而至于服务器集群内部，通常由于局域网环境相对稳定，并且消息顺序性敏感，因此基本都是直接用TCP。</p>
+<p>放到这里提一下是因为近几年Google基于UDP封装的应用层可靠传输协议<a target="_blank" rel="noopener" href="https://github.com/lucas-clemente/quic-go">QUIC</a>越来越火，各个大厂纷纷<a target="_blank" rel="noopener" href="https://www.infoq.cn/article/afncpsfmb3ufwehueak1">跟进</a>，QUIC目前还不够成熟，主要还处于巨头摸索阶段，要推广还有不少问题(比如UDP可能被拦截或被限流)，可以持续关注下，考虑未来借助QUIC来进一步提升游戏客户端的弱网延迟和断线重连体验。</p>
+<h4 id="RPC"><a href="#RPC" class="headerlink" title="RPC"></a>RPC</h4><p>如HTTP实现同步请求语义一样，RPC框架主要专注实现同步RPC语义，RPC框架通常基于HTTP或TCP，大部分RPC框架都是同步的，以最流行的gRPC框架为例，虽然 <a target="_blank" rel="noopener" href="http://senlinzhan.github.io/2017/08/10/grpc-async/">gRPC 支持异步</a>，但还不够易用，也比较依赖应用层的封装，并且gRPC golang生成的代码不支持异步调用(犹如net包不提供异步API一样，主要依赖应用层开goroutine去封装异步)，因此异步RPC这种通信模型实践中基本不会用到。另外，gRPC 的<a target="_blank" rel="noopener" href="https://grpc.io/docs/tutorials/basic/go.html#bidirectional-streaming-rpc">双向Stream通信</a>在解决传统RPC中只能一次请求一个返回值，并且不保证顺序性的问题时，其实也实现了异步消息语义(如果传输的消息中包含二进制，逻辑层再自己做一层编解码的话)，但在实践中建议酌情使用，因为这本质是将gRPC和HTTP/2当做TCP来用，上层的消息编解码，消息路由都得自己做，底层仍然可能有全联通等问题，性能和扩展性还不如TCP好。</p>
+<p>RPC框架的通用缺点在于耦合过重(当然，这也是它足够易用的原因)，一方面是同步调用，另一方面是函数调用本身，已经耦合了消息编解码，消息路由，方法名，甚至并发处理模型(golang gRPC中，每个请求会开一个goroutine)等，这导致其在灵活性和扩展性上会相对弱一些(比如想要基于其实现其他语义，或者适配到其他已有交互语义)。</p>
+<p>实践中，RPC框架在游戏后端中的应用场景比较有限，通常用于对接支付这类相对独立的外部服务。</p>
+<h4 id="MQ"><a href="#MQ" class="headerlink" title="MQ"></a>MQ</h4><p>大部分的MQ底层都基于TCP来传输，对应用层提供异步消息，作为中间件单独存在，MQ的优势很多，比如异步，解耦，削峰，M对N的消息分发，Topic本身的灵活性等等，这里聊聊它应用在游戏服务器的利弊:</p>
+<p>MQ的优势:</p>
+<ol>
+<li>将网状拓扑简化为星形拓扑，避免了全联通，同时也能灵活适应各种动态的拓扑调整(topic)</li>
+<li>削峰对于游戏中某些峰值场景来说，也比较有用</li>
+<li>Driver层通常有一些现成的轮子可用，如流控，加解密，编解码等</li>
+</ol>
+<p>MQ的不足:</p>
+<ol>
+<li>MQ通常只提供异步消息语义和发布订阅语义，需要封装其他语义，虽然如nats也提供同步请求语义(request-reply)，但经验上不建议过度依赖中间件专有特性，尽量做到组件可替换</li>
+<li>MQ是弱节点状态耦合，强状态耦合场景需要自己实现，如服务发现，对端状态感知，配置共享等</li>
+<li>需要MQ提供自己的QoS保证(最少一次/最多一次/精确一次)，但出于性能和可靠性的考量，在实践中，也不建议过度依赖MQ Qos，而是应用层来实现QoS</li>
+</ol>
+<p>MQ适用于网络拓扑比较灵活的场景，比如对SLG这类后期主要依赖跨服来支撑生态的游戏而言，MQ能充分发挥它的解耦和灵活性优势，我在<a href="https://wudaijun.com/2021/02/gs-mq-practice/">这里</a>也提到了一些MQ相关的实践。</p>
+<h3 id="实践"><a href="#实践" class="headerlink" title="实践"></a>实践</h3><p>最后简单聊聊我们当下的一些实践，首先说明下我们目前的主要游戏类型是SLG，主要的挑战在于性能(地图战斗，行军均由服务器跑桢)和各种跨服交互(跨服联盟，跨服活动，GvG，KvK等)。技术选型的优劣，只有落实到具体业务挑战上才有标准。</p>
+<p>语义层面，我们目前的主逻辑通信模型基本都是基于消息的，主要使用异步消息，同步请求，异步请求三种交互语义，并尽可能让节点内交互和节点间交互使用同一套API(屏蔽底层实现和差异)。</p>
+<p>实现层面，我们目前主要使用MQ(nats)来做节点间的通信，以适应游戏服务器后期易变的网络拓扑。虽然MQ天然提供发布订阅，但我们尽量将其屏蔽到底层，将发布语义封装为异步消息语义，将订阅语义封装为注册语义，对应用层而言，主要还是点对点的通信，然后基于这之上再封装同步请求和异步请求语义，并且在driver层做好请求-响应的延迟统计。对于已有的第三方同步接口(如平台HTTP，DB API等)均由单独的proxy代理(内部适当使用worker pool，负载分配等)，对逻辑线程提供异步请求接口。对于一些强状态场景，如网关拉取可用服务器列表，则借助ETCD这类组件来做配置共享。</p>
+<p>开发层面，除了服务器启停流程之外，逻辑线程全异步交互，异步请求的一些实践则需要团队通过规范约束和CodeReview不断加强，如可变的闭包上下文，<a href="http://wudaijun.com/2019/01/gameserver-acid-consistency/">数据一致性</a>，超时设置，错误日志规范等。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/07/gameserver-communication-model/" title="游戏服务器中的通信模型">http://wudaijun.com/2018/07/gameserver-communication-model/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/gameserver/" rel="tag"><i class="fa fa-tag"></i> gameserver</a>
+              <a href="/tags/programing/" rel="tag"><i class="fa fa-tag"></i> programing</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/07/javascript-async-programing/" rel="prev" title="Javascript 中的异步编程">
+      <i class="fa fa-chevron-left"></i> Javascript 中的异步编程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/08/gs-devops/" rel="next" title="GS DevOps 实践">
+      GS DevOps 实践 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E7%9A%84%E4%BA%A4%E4%BA%92%E8%AF%AD%E4%B9%89"><span class="nav-text">常见的交互语义</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8C%E6%AD%A5RPC"><span class="nav-text">同步RPC</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E6%B6%88%E6%81%AF"><span class="nav-text">异步消息</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BC%82%E6%AD%A5%E8%AF%B7%E6%B1%82"><span class="nav-text">异步请求</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8C%E6%AD%A5%E8%AF%B7%E6%B1%82"><span class="nav-text">同步请求</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85"><span class="nav-text">发布订阅</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8C%E6%AD%A5-vs-%E5%BC%82%E6%AD%A5"><span class="nav-text">同步 vs 异步</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0%E6%9C%BA%E5%88%B6"><span class="nav-text">实现机制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#HTTP"><span class="nav-text">HTTP</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#TCP"><span class="nav-text">TCP</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#UDP-QUIC"><span class="nav-text">UDP&#x2F;QUIC</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#RPC"><span class="nav-text">RPC</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#MQ"><span class="nav-text">MQ</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E8%B7%B5"><span class="nav-text">实践</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

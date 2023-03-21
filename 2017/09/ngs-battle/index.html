@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="本文记录最近做战斗系统的一些心得和思考，由于我们的战斗系统是回合制的，与大部分回合制游戏一样，需要服务器计算战斗，客户端以战报的方式回放。这里探讨一下服务端战斗系统的设计思路，实现一个灵活，可配置，扩展性强的战斗系统。 战斗流程战斗地图是一个X*Y的矩阵，每个参与者(Fighter)初始位于其中一个格子上。战斗开始后，按照回合迭代，达到胜负条件或最大回合数则战斗结束。回合内，英雄按照出手顺序先后行">
+<meta property="og:type" content="article">
+<meta property="og:title" content="探讨服务端回合制战斗系统">
+<meta property="og:url" content="http://wudaijun.com/2017/09/ngs-battle/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="本文记录最近做战斗系统的一些心得和思考，由于我们的战斗系统是回合制的，与大部分回合制游戏一样，需要服务器计算战斗，客户端以战报的方式回放。这里探讨一下服务端战斗系统的设计思路，实现一个灵活，可配置，扩展性强的战斗系统。 战斗流程战斗地图是一个X*Y的矩阵，每个参与者(Fighter)初始位于其中一个格子上。战斗开始后，按照回合迭代，达到胜负条件或最大回合数则战斗结束。回合内，英雄按照出手顺序先后行">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2017-09-25T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.610Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="gameserver">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2017/09/ngs-battle/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>探讨服务端回合制战斗系统 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2017/09/ngs-battle/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          探讨服务端回合制战斗系统
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-09-26 00:00:00" itemprop="dateCreated datePublished" datetime="2017-09-26T00:00:00+08:00">2017-09-26</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2017/09/ngs-battle/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2017/09/ngs-battle/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文记录最近做战斗系统的一些心得和思考，由于我们的战斗系统是回合制的，与大部分回合制游戏一样，需要服务器计算战斗，客户端以战报的方式回放。这里探讨一下服务端战斗系统的设计思路，实现一个灵活，可配置，扩展性强的战斗系统。</p>
+<h2 id="战斗流程"><a href="#战斗流程" class="headerlink" title="战斗流程"></a>战斗流程</h2><p>战斗地图是一个X*Y的矩阵，每个参与者(Fighter)初始位于其中一个格子上。战斗开始后，按照回合迭代，达到胜负条件或最大回合数则战斗结束。回合内，英雄按照出手顺序先后行动(Action)，英雄的Action包括移动，释放技能和普攻。</p>
+<p>战斗流程是比较简明易懂的，整个战斗系统的难点在于多样的技能实现。每个英雄有N个技能，每个英雄可通过学习其它技能来实现不同的战斗效果，技能的效果和作用比较繁杂，例如：</p>
+<span id="more"></span>
+<ul>
+<li>SkillA: 英雄每回合前3次伤害有50%机率使伤害翻倍(最多生效2次)</li>
+<li>SkillB: 诅咒一片区域（以一个敌方为中心的3*3格子）的敌人，使其攻击距离减1，持续两回合</li>
+<li>SkillC: 分裂箭，英雄普攻可对多个敌人造成伤害</li>
+<li>…</li>
+</ul>
+<p>以下我们主要围绕灵活的技能系统为主要需求，讨论如何实现一个稳定，可扩展的战斗系统。</p>
+<h2 id="Event系统"><a href="#Event系统" class="headerlink" title="Event系统"></a>Event系统</h2><p>Event事件管理是实现复杂技能效果的基石，通过Event可以将复杂，易变的技能效果和核心流程解耦。对回合制游戏，典型地Event有回合开始/结束，英雄移动/普攻/受击/死亡等，EventMgr管理这些Event和它们的Handler，主要提供如下接口:</p>
+<pre><code>// Go Code
+type EventArgs map[string]interface&#123;&#125;
+type EventHandler func(EventArgs)
+
+// 触发Event， 由战斗流程调用 如回合开始，英雄移动等
+FireEvent(EventType, EventId, EventArgs)
+// 监听Event， ListenerId通常为Buff的唯一ID 
+AddEventListener(EventType, EventId, ListenerId, EventHandler)
+// 注销ListenerId监听的所有Event，通常在Buff结束时调用
+DelEventListener(ListenerId)
+</code></pre><p>EventMgr实际上是一个订阅者模式，战斗流程通过FireEvent发布事件，Buff订阅关心的事件并更新自己状态，在Buff结束时注销所有相关的事件监听。两者通过订阅者模式完成解耦，便于扩展。</p>
+<h2 id="技能系统"><a href="#技能系统" class="headerlink" title="技能系统"></a>技能系统</h2><p>技能分为主动技能(概率触发)和被动技能(相当于战斗开始立即触发)。技能的效果分为瞬时性和持续性两种，前者即像普通一样立即造成伤害(其实普攻也可以看做技能的一种)，后者指技能效果包含状态性，有自己的生命周期和状态更新，如Dot伤害，无法移动，沉默等，这个状态通常叫做Buff，关于技能和Buff的区别我的理解是，技能是Buff的容器，是静态的，Buff是技能触发后的实现效果，是动态的。瞬时伤害的技能也可以通过Buff实现，只不过这个Buff生命周期很短，在造成伤害后就消失了。关于Buff的详细实现我们放到后面，我们先看技能系统本身。</p>
+<p>考虑到技能以后的扩展性和可维护性，对其尽可能做抽象是有必要的，抽象出公共的流程，将可变量配置化，可以提升系统稳定性和扩展性，也方便后期做测试。技能本身包含几个阶段：技能触发(概率触发，战斗开始触发)，目标选取(敌军/友军，一个/多个)，技能作用(造成伤害，挂接Buff)，前两个是可抽离到配置的，通过通用的技能触发器和目标选取脚本得到技能所需要的信息传给技能作用模块，由于技能作用效果的多样性，目前我们没有对技能作用进行抽象，是通过脚本各个实现的。</p>
+<h2 id="Buff系统"><a href="#Buff系统" class="headerlink" title="Buff系统"></a>Buff系统</h2><p>技能的各种复杂效果都通过BUFF实现，每个Buff都挂于战场某个参与者(Fighter)上，当Fighter阵亡，其上所有的Buff都会被移除(包括Event关联)。BUFF系统是由一个基于战场事件(Event)的回调系统驱动，整个战场在战斗流程中不断抛出各种Event(如回合开始/结束，Fighter普攻/受击/释放技能，伤害结算等)，BUFF注册这些Event并更新自己Owner(Fighter)的状态，来实现灵活强大的技能效果。</p>
+<h3 id="1-Buff抽象"><a href="#1-Buff抽象" class="headerlink" title="1.Buff抽象"></a>1.Buff抽象</h3><ul>
+<li>Start():Buff开始，即Buff启动脚本，负责初始化状态，注册BUFF的生命周期和相关Event等。</li>
+<li>Update():Buff状态更新，实现Buff作用并更新Buff的状态，对于次数性BUFF(如前N次免伤)，可能调用N次Update，复杂的技能也可能有多个Update函数(关心不同的Event)</li>
+<li>Finish():Buff的正常结束，当BUff结束条件满足(比如Update了N次，或者持续了N回合)调用</li>
+<li>Cancel():Buff被冲突(中断)时的处理</li>
+</ul>
+<p>以上阐述的是Buff的行为抽象，而不是具体实现，在设计Buff时从这四个触法点思考，加上EventMgr注册回调机制，基本可以实现绝大部分各式的Buff效果。例如最开始提到的SkillA: 英雄每回合前3次伤害有50%机率使伤害翻倍(最多生效2次)，这是一个持续整场战斗的Buff(BuffA)，它注册两个Update Event:</p>
+<ul>
+<li><code>BEFORE_DAMAGE</code>(英雄攻击伤害结算前): Update1 中判断如果本回合已触发次数小于2并且满足触发条件(50%概率)，则更新自己的状态(计数器+1)，并产生<strong>伤害翻倍子Buff</strong>(后面讨论)。</li>
+<li><code>ROUND_START</code>(每回合开始): Update2 中重置Buff状态(计数器)。</li>
+</ul>
+<p>目前我们所讨论的Buff都是独立的，有自己生命周期的个体，通过Event注册回调与战斗主流程解耦。但实际上Buff之间是有相互关联的，主要分为三种：Buff属性作用，Buff冲突免疫关系和Buff生命周期，下面分别介绍。</p>
+<h3 id="2-Buff属性作用"><a href="#2-Buff属性作用" class="headerlink" title="2. Buff属性作用"></a>2. Buff属性作用</h3><p>仍然是我们前面的SkillA技能，我们现在来看如何实现伤害翻倍这个Buff，该Buff是SkillA对应的Buff生成的子Buff，它应该被设计为可公用的伤害增加Buff，这个Buff的作用是影响伤害结算流程，按照我们之前的事件注册回调思路，我们可以注册伤害结算这个Event，接收当前算出的伤害，然后*200%并返回新伤害值。如BuffA提升10%伤害，BuffB增加20点真实伤害，BuffC降低20%的伤害，那么最终得到伤害为: <code>(基础伤害*110%+20)*80%</code>，这种方案默认公式计算的顺序与Buff挂载顺序一致，，而正确的伤害值应该为<code>(基础伤害+20)*(1+10%-20%)</code>，如果要处理这种优先级关系，需要遍历所有注册伤害结算Event的Handler，按照类型排序，再依次处理，如果一旦有同类Buff添加或移除，又要重新计算。这样公式与事件管理做到了一起，是不稳定的。</p>
+<p>BuffA,BuffB,BuffC之所以会有复杂的公式计算，一个原因在于它们作用于同一属性的不同维度，BuffA,BuffC作用于伤害值的比例增加这一维度，而BuffB作用于伤害值的绝对值增长这一维度，我们可以将它们分开，作为Fighter两个独虚拟属性ATTR_DAMAGE_ABS, ATTR_DAMAGE_PCT来维护，允许Buff对其修改，但此时的修改是只有加减关系的，避免了优先级的问题，在伤害结算时，通过公式计算: (基础伤害+ATTR_DMAGE_ABS)*ATTR_DAMAGE_PCT即可。</p>
+<p>整个交互流程为: </p>
+<ul>
+<li>战斗流程抛出事件 -&gt; 事件系统 -&gt;Buff系统 -&gt; Fighter属性维度</li>
+<li>战斗流程获取属性 -&gt; 属性系统 -&gt; 公式计算  -&gt; Fighter属性维度</li>
+</ul>
+<p>通过属性系统和事件系统，将战斗流程和Buff系统解耦，将组件职责降到最小，方便测试和扩展。</p>
+<p>比如沉默，眩晕等效果，如果没有虚拟属性，沉默Buff会注册EVENT_BEFORE_SKILL(Fighter释放技能前)这个Event，并且返回false来告知战斗系统它当前不能释放技能。同样，眩晕Buff会注册Fighter EVENT_BEFORE_MOVE, EVENT_BEFORE_ATTACK, EVENT_BEFORE_SKILL三个Event来实现眩晕效果，一来整个战斗流程每次都要合并各类Event的各种返回值(并且EventHandler得不到统一的接口抽象)，效率低下，二来战斗流程不应该依赖外部EventHandler的实现，它只关心值本身(能否移动，能否施法等)，因此虚拟属性本身实际上起一个依赖倒置的作用。如果使用虚拟属性，那么沉默Buff会在ATTR_FORBIDEN_SKILL这个属性上+1，眩晕同理，这样战斗流程在Fighter尝试施放技能时，获取Fighter的ATTR_FORBIDEN_SKILL属性，如果&gt;0，则不能施法。</p>
+<p>Buff通过属性来影响战斗流程，一方面解耦了战斗流程和Buff之间的依赖，另一方面也减轻了Buff与Buff之间的依赖，并且通过属性来固化战斗系统不易变的部分，可以减轻系统复杂度，易于调试。</p>
+<h3 id="3-Buff作用链"><a href="#3-Buff作用链" class="headerlink" title="3. Buff作用链"></a>3. Buff作用链</h3><p>不是所有的Buff都可以通过属性来完成解耦，比如护盾效果，A Buff 加200护盾，B Buff 加300护盾，那么 Fighter 护盾属性为500，此时战斗伤害结算流程扣除400护盾值，那么这个值应该从 A 减还是 B 减，战斗流程并不知晓，需要护盾Buff自己来维护(并且在护盾为0时结束Buff)，并且护盾还有各种类型(物理护盾，魔法护盾等)。属性系统在这里并不适用，因此，我们需要一个Buff作用链来完成护盾的结算流程。比如受击400点魔法伤害，战斗系统抛出 EVENT_FLOW_SHIELD 事件，传入400以及伤害类型，A Buff 收到后判断伤害类型，减免200点伤害(并结束自身)，返回400-200=200，B Buff 伤害类型不满足，返回200，战斗流程得到返回值200，继续后续处理。</p>
+<p>到这里，可能你会问：为什么不将沉默，眩晕这些效果也通过 Buff作用链来完成？实现上是可以的，每次 Fighter移动/攻击/释放技能前，抛出对应事件，检查其返回值，决定是否执行操移动/攻击等。但就我的设计理念而言，能够通过虚拟属性固化的效果尽量固化，对系统复杂度和效率都有好处。</p>
+<p>Buff 作用链和 Buff 事件处理的机制是一样的，只不过前者关心返回值，后者不关心返回值。可公用EventMgr来处理，通过引用类型的EventArgs来更新和返回。</p>
+<h3 id="4-Buff相互关系"><a href="#4-Buff相互关系" class="headerlink" title="4.Buff相互关系"></a>4.Buff相互关系</h3><ul>
+<li>Buff 冲突:  即该BUFF生效时，已有的哪些Buff会失效，如一些清除负面状态的Buff</li>
+<li>Buff 免疫:     即该BUFF生效时，后面来的哪些BUFF不能生效，如BKB免疫眩晕</li>
+<li>Buff 叠加:  两种同类增益或减益BUFF同时生效时，按照某个规则进行BUFF效果重新计算生成</li>
+</ul>
+<p>Buff的冲突免疫关系实际上是Buff作用效果的一部分，但是一个可抽象和配置化的流程，在挂载Buff时统一处理。至于Buff叠加，在Buff B的Start节点中，判断是否有指定Buff A存在，如果存在，修正BuffB的效果(或移除已有BuffA)，是个特例流程，做到Buff脚本里面就行了。</p>
+<p>至此，我们通过属性维度和公式计算来避免了作用于同一个属性的Buff的顺序依赖，通过公用流程来处理Buff的免疫和冲突，仅针对Buff叠加这类少见的特殊作用进行特例化处理，这样最大程度的提升了Buff的扩展性，Buff可以独立实现，Buff的关系可通过配置表配置，新加一个Buff无需修改已有的Buff系统，对其它模块的影响也降到最小。</p>
+<h3 id="5-Buff生命周期"><a href="#5-Buff生命周期" class="headerlink" title="5.Buff生命周期"></a>5.Buff生命周期</h3><p>为了达成复用，我们会通过子Buff的概念来实现一些复杂的Buff，SkillA的BuffA，它维护自己的状态，并在条件满足时，产生伤害翻倍这个子Buff，父子Buff的生命周期关系大致有三种:</p>
+<ol>
+<li>完全独立，创建完成之后即不再相互引用</li>
+<li>父Buff结束时，子Buff随之结束</li>
+<li>父Buff通过内部状态控制子Buff的生命周期</li>
+</ol>
+<p>对战斗系统来说，理想情况下，每个Buff应该自己管理自己的生命周期，这样状态内聚在Buff本身，更好地满足正交性和复用性。并且Buff的生命周期耦合容易引发状态错误，如子Buff由于Buff冲突被移除时，父Buff可能并不知晓，当父Buff结束子Buff时会再次触发Buff Finish或Cancel操作。</p>
+<p>因此我们应该尽可能将父子Buff关系弱化(向第一种关系靠齐)，将Buff生命周期独立:</p>
+<ul>
+<li>将Buff的生命周期作为创建子Buff的参数传入，如一个持续两回合的属性Buff，则将”持续两回合”这个周期以事件类型(回合结束), 事件ID(0), 触发次数(2)传入</li>
+<li>用子Buff监听”父Buff移除”事件的方式来将关系2转换为关系1</li>
+<li>用唯一事件ID来完成父子Buff的特例的事件交互，将部分关系3转换为关系1</li>
+</ul>
+<p>由于更复杂的状态控制，比如Buff的结束机制可能不止一种，所以想要完全只保留关系1的父子Buff是比较难的。对于这类少数父子Buff，可考虑特例化实现这个子Buff，比如吸血Buff独立实现可能会比复用恢复Buff更好，如果以上方案都不能很好解决，最后再考虑将其生命周期完全交由父Buff控制(子Buff本身无Event状态)。</p>
+<h2 id="属性系统"><a href="#属性系统" class="headerlink" title="属性系统"></a>属性系统</h2><p>属性系统针对Fighter的各种属性进行管理，属性系统包括K-V Map和公式计算两部分，前面我们讲到通过虚拟属性来完成Buff与战斗流程间的解耦，那么K-V Map的Key有如下几种:</p>
+<ul>
+<li>固定属性: 当前不受Buff影响的属性，无需公式计算直接获取即可。如Fighter当前血量，位置信息等</li>
+<li>基础属性: 受Buff影响的属性的基础值，如Fighter进入战斗时的初始攻击力，防御力等，基础属性在战斗过程中不变</li>
+<li>Buff属性: 基础属性的可变维度，由各类Buff修改，如攻击力增加值(绝对值)，防御力加成(百分比)</li>
+<li>虚拟属性: 如禁足，沉默，伤害加成等，这些属性原本Fighter上面没有，属于战斗系统需要，也由Buff修改</li>
+</ul>
+<p>我将属性管理器K-V Map保存的”属性”称为属性维度，它们是Buff操作属性的最小粒度，每个属性维度都是纯加减运算，不受Buff先后顺序的影响。对最终属性的计算，由公式计算系统，比如: 最终攻击力 = (攻击力基础值+攻击力增加值)*(1+攻击力加成值)，战斗流程关心Fighter最终攻击力，Buff系统关心其影响的某个属性维度(如攻击力增加值或攻击力加成值)，中间的这一块就是公式计算，将公式计算抽象出来的好处是公式系统可独立变化，甚至可以将公式配置化。属性的计算过程对战斗流程来说是透明的，这给属性维度和公式计算的变更带来的很大的灵活度。</p>
+<h2 id="配置框架"><a href="#配置框架" class="headerlink" title="配置框架"></a>配置框架</h2><p>评估一套配置框架好坏不能简单从可配置性这一点来看，一个完全可配置技能效果，做到通过配置即可添加一些简单技能的配置框架不是不能实现，但开发和维护成本过高，对策划的要求，出错的可能性也更高。因此在设计配置框架时，要结合项目需求，在开发效率，可维护性，可扩展性等方面作出权衡。</p>
+<p>简单提一下我们目前用的配置方案:</p>
+<p>技能基础表:</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>技能ID</th>
+<th>技能类型</th>
+<th>技能距离</th>
+<th>技能目标选取器</th>
+<th>目标数量</th>
+<th>技能BuffIds</th>
+<th>技能描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>主动</td>
+<td>同攻击距离</td>
+<td>敌人</td>
+<td>1</td>
+<td>[1001]</td>
+<td>对目标造成Args[0]的伤害，并眩晕Args[1]回合(Buff[0])</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>技能成长表，即技能的Args表: </p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>技能ID</th>
+<th>技能等级</th>
+<th>技能参数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1</td>
+<td>[0.8,1]</td>
+</tr>
+<tr>
+<td>1</td>
+<td>2</td>
+<td>[0.9,1]</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Buff表:</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>BuffId</th>
+<th>描述</th>
+<th>所属Tags</th>
+<th>冲突Tags</th>
+<th>免疫Tags</th>
+<th>冲突自身</th>
+<th>免疫自身</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1001</td>
+<td>眩晕</td>
+<td>[控制]</td>
+<td>[]</td>
+<td>[]</td>
+<td>false</td>
+<td>false</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>技能根据技能类型，距离和目标选取器以及目标数量，通过通用目标选取流程得到目标，然后传入技能作用脚本，技能作用脚本由程序维护，通过技能描述使用技能参数(来自技能成长表)和技能BuffIds(传入Buff作用脚本)，由于多个Buff可能由同一个Buff脚本实现(如攻击力提高，防御力降低)，因此Buff脚本需要外部传入BuffId来获取冲突免疫关系，对程序来说，BuffId是透明的，它只代表一类冲突免疫关系，对策划来讲，Buff脚本是透明的，他只关心Buff相互关系(如A技能的攻击力提升与B技能的攻击力提升不能同时存在)，至于技能和技能参数以及BuffID的关联本身，是不常变的，因此直接硬编码映射。</p>
+<p>Buff的配置方案有两种，一是通过BuffID来配置冲突免疫关系，这种方案灵活性高，但扩展性和维护性差。另一种方案是通过BuffTag，每个Buff可配置自己的Tag(如增益，减益，控制)，根据这些Tag来控制冲突免疫关系，免疫负面状态的Buff对应的配置中免疫Tag为[减益，控制]。这种方案与BuffId无关(免疫自身和冲突自身需单独配置)，维护性和扩展性更高。</p>
+<h2 id="战报系统"><a href="#战报系统" class="headerlink" title="战报系统"></a>战报系统</h2><p>战斗跑在服务器，客户端需要通过战报进行战斗回放，那么战报就要包含整个战斗的详细过程，每回合那个英雄放了什么技能，攻击了谁，等等，客户端根据这些信息”拼凑”出战斗动画。战报的每一”桢”应该为一个最小粒度的事件，如A对B发起了普通攻击应该是: 1. A对B发起普攻，2. B损失了50HP，中间还可能穿插反击和其它Buff效果，客户端在”按桢表现”的时候，还需要一些关联，如B是因为A的普攻而掉血，因此实际上更好的格式为: B由于A的普攻损失了50HP，为了协议扩展性，我们会将这些事件格式统筹起来:</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>事件类型</th>
+<th>FighterId</th>
+<th>事件参数</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>回合开始</td>
+<td>0</td>
+<td>[1]</td>
+<td>第一回合开始</td>
+</tr>
+<tr>
+<td>发起普攻</td>
+<td>1</td>
+<td>[2]</td>
+<td>Fighter1向Fighter2发起普攻</td>
+</tr>
+<tr>
+<td>受到伤害</td>
+<td>2</td>
+<td>[1,0,50]</td>
+<td>Fighter2由于Fighter1的普攻(BuffId0)损失了50HP</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>每个事件都有自己的参数意义，这部分和客户端约定即可。这里的事件类型和之前提到的战斗系统的EventMgr很相似，很多触发点也一样，只是是针对各种Buff，一个是针对客户端表现。</p>
+<p>至于事件参数的类型，最常见的可能有整型，浮点数，字符串，在protobuf协议里面可以直接通过复合结构定义:</p>
+<pre><code>message Elem &#123;
+    sint32  type = 1; // 1: intv 2: fltv 3: strv
+    sint32  intv = 2;
+    float   fltv = 3;
+    string  strv = 4;
+&#125;
+</code></pre><p>这种方案很丑陋，但在protobuf3中，由于optional字段默认值不发送和sint32的变长编码，实际发送一个type=1,intv=20的Elem只会占用四个字节(两个字段的内容和编号各占 一个字节)，因此还是比较实用的。参考过<a target="_blank" rel="noopener" href="https://developers.google.com/protocol-buffers/docs/proto3#oneof">protobuf的oneof</a>，不是很好用，对repeat和map等复合结构的支持不好。</p>
+<h2 id="技能效果扩展"><a href="#技能效果扩展" class="headerlink" title="技能效果扩展"></a>技能效果扩展</h2><h3 id="1-召唤物"><a href="#1-召唤物" class="headerlink" title="1. 召唤物"></a>1. 召唤物</h3><p>SkillB: 诅咒一片区域（以一个敌方为中心的3*3格子）的敌人，使其攻击距离减1持续两回合</p>
+<p>该技能可用前面介绍的已有机制实现: 技能目标选取规则中，配置攻击范围内一个敌人，技能作用脚本中，获取到该目标周围九宫格所有的敌人，对它们施加持续两回合的属性子Buff(攻击距离-1，由子Buff自身管理生命周期)。</p>
+<p>现在考虑SkillB的诅咒区域如果有状态和AI(如存在两回合，每回合跟随施法者移动)，则实现上更为复杂:</p>
+<ul>
+<li>监控所有敌人的移动，当其进入区域时，添加Buff，出去时，移除Buff</li>
+<li>当自己移动时，根据前后状态更新敌人身上的Buff</li>
+<li>两回合后，结束自身</li>
+</ul>
+<p>那如果是召唤一个宠物，并且宠物有血量，可移动，攻击和被攻击呢，是的，答案是以”Fighter”来实现召唤物，这里的Fighter是一个更广泛的概念，它只是一系列接口，如移动/攻击/属性变更等，这样所有能够通过Fighter实现的，技能都可以实现，也算是终极方案了。</p>
+<h3 id="2-行为属性"><a href="#2-行为属性" class="headerlink" title="2. 行为属性"></a>2. 行为属性</h3><p>SkillC: 分裂箭，英雄普攻可对多个敌人造成伤害</p>
+<p>这类技能的特性是会影响已有技能或其它行为，比如改变普攻流程，移动方式等，这种通常很难用属性系统去做，解决方案是将Fighter的行为(普攻/技能/移动等)抽离为可插拨模块(也可理解为行为属性)，初始每个英雄的行为属性被赋默认值，技能可以更改这些行为(如分裂箭可更换普攻行为)，实现更高级别的抽象，战斗流程根据行为类型和次序(如移动/技能/普攻)取出并执行这些行为，行为属性也是召唤物Fighter实现的基础。</p>
+<h3 id="3-全局Buff"><a href="#3-全局Buff" class="headerlink" title="3. 全局Buff"></a>3. 全局Buff</h3><p>SkillD: 腐蚀一片区域，进入区域的敌人受到持续伤害，区域存在2回合，并且不会随施法者死亡消失</p>
+<p>由于其简单，用Fighter实现过于重度，由于其独立的生命周期，不能以普通Buff的形式存在(会随Fighter死亡消失)，那么可以考虑用全局Buff，全局Buff挂在战场上，介于Fighter和普通Buff之间，适合实现一些简单，全局的效果，如天气效果。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>到这里，战斗系统的主要组件就已经介绍得差不多了，总结起来，核心思路是将相对稳定的核心战斗流程和相对动态的技能Buff扩展隔离开来，战斗流程通过事件系统来解耦外部Buff脚本，Buff通过属性系统(包括行为属性)来反馈到战斗流程。在构建的过程中，还要时刻关注到哪些是易变的，比如Buff 冲突免疫关系，伤害计算公式等，将其单独抽出来，封装成模块甚至抽离到配置，尽量将功能做到模块化，离线化，方便模块的扩展和测试。</p>
+<p>将战斗流程”固化”下来，不要交给Buff系统去任意递归迭代，这种思路适用于回合制这类战斗流程相对固定的情形。另一种思路，是”去流程化”，将流程做到Buff中，比如将移动作为一个Buff，那么”禁足”的效果可以直接通过Buff免疫来实现: 如果Fighter已经有禁足Buff，则移动Buff不能挂上去，达成不能移动的效果。沉默和缴械效果也类似。这种思路更为灵活，但相对更复杂和难以调试。通常我们将通用/固定的行为作为流程，特例/易变的流程作为Buff。</p>
+<p>在战斗系统设计中，很多方案都不是绝对的左或者是右，比如普攻是否应该当做特殊技能处理(这样能很方便实现特殊的普攻效果，如分裂箭)？哪些属于流程，哪些属于Buff？哪些效果以Buff实现，哪些效果以Fighter实现？哪些可抽到配置文件，哪些直接写在代码里等等，在实际决策中，往往都是根据实际情况(开发效率，GD需求，扩展性，维护性等)在中间选一个合适点，并且尽可能在细节上封装解耦，以便之后能根据变化进行调整。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2017/09/ngs-battle/" title="探讨服务端回合制战斗系统">http://wudaijun.com/2017/09/ngs-battle/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/gameserver/" rel="tag"><i class="fa fa-tag"></i> gameserver</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017/08/go-conetxt-usage/" rel="prev" title="用context库规范化Go的异步调用">
+      <i class="fa fa-chevron-left"></i> 用context库规范化Go的异步调用
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2017/10/go-select/" rel="next" title="go select机制与常见的坑">
+      go select机制与常见的坑 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%88%98%E6%96%97%E6%B5%81%E7%A8%8B"><span class="nav-text">战斗流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Event%E7%B3%BB%E7%BB%9F"><span class="nav-text">Event系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E8%83%BD%E7%B3%BB%E7%BB%9F"><span class="nav-text">技能系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Buff%E7%B3%BB%E7%BB%9F"><span class="nav-text">Buff系统</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Buff%E6%8A%BD%E8%B1%A1"><span class="nav-text">1.Buff抽象</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Buff%E5%B1%9E%E6%80%A7%E4%BD%9C%E7%94%A8"><span class="nav-text">2. Buff属性作用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Buff%E4%BD%9C%E7%94%A8%E9%93%BE"><span class="nav-text">3. Buff作用链</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-Buff%E7%9B%B8%E4%BA%92%E5%85%B3%E7%B3%BB"><span class="nav-text">4.Buff相互关系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-Buff%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="nav-text">5.Buff生命周期</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B1%9E%E6%80%A7%E7%B3%BB%E7%BB%9F"><span class="nav-text">属性系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E6%A1%86%E6%9E%B6"><span class="nav-text">配置框架</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%88%98%E6%8A%A5%E7%B3%BB%E7%BB%9F"><span class="nav-text">战报系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E8%83%BD%E6%95%88%E6%9E%9C%E6%89%A9%E5%B1%95"><span class="nav-text">技能效果扩展</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%8F%AC%E5%94%A4%E7%89%A9"><span class="nav-text">1. 召唤物</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%A1%8C%E4%B8%BA%E5%B1%9E%E6%80%A7"><span class="nav-text">2. 行为属性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%85%A8%E5%B1%80Buff"><span class="nav-text">3. 全局Buff</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

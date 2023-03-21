@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="总结下几个使用shared_ptr需要注意的问题: 一. 相互引用链1234567891011121314151617181920212223242526272829class C;class B : public std::enable_shared_from_this&lt;B&gt;&amp;#123;public:    ~B()&amp;#123; cout &lt;&lt; &quot;~B&amp;quot">
+<meta property="og:type" content="article">
+<meta property="og:title" content="shared_ptr的引用链">
+<meta property="og:url" content="http://wudaijun.com/2014/12/shared_ptr-reference/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="总结下几个使用shared_ptr需要注意的问题: 一. 相互引用链1234567891011121314151617181920212223242526272829class C;class B : public std::enable_shared_from_this&lt;B&gt;&amp;#123;public:    ~B()&amp;#123; cout &lt;&lt; &quot;~B&amp;quot">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2014-12-11T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.601Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="c&#x2F;c++">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2014/12/shared_ptr-reference/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>shared_ptr的引用链 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2014/12/shared_ptr-reference/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          shared_ptr的引用链
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2014-12-12 00:00:00" itemprop="dateCreated datePublished" datetime="2014-12-12T00:00:00+08:00">2014-12-12</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2014/12/shared_ptr-reference/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2014/12/shared_ptr-reference/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>总结下几个使用shared_ptr需要注意的问题:</p>
+<h3 id="一-相互引用链"><a href="#一-相互引用链" class="headerlink" title="一. 相互引用链"></a>一. 相互引用链</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">class C;</span><br><span class="line">class B : public std::enable_shared_from_this&lt;B&gt;</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">    ~B()&#123; cout &lt;&lt; &quot;~B&quot; &lt;&lt; endl; &#125;</span><br><span class="line">    void SetPC(std::shared_ptr&lt;C&gt;&amp; pc)&#123; _pc &#x3D; pc; &#125;    </span><br><span class="line"></span><br><span class="line">private:</span><br><span class="line">    std::shared_ptr&lt;C&gt; _pc;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">class C : public std::enable_shared_from_this&lt;C&gt;</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">    ~C()&#123; cout &lt;&lt; &quot;~C&quot; &lt;&lt; endl; &#125;</span><br><span class="line">    void SetPB(std::shared_ptr&lt;B&gt;&amp; pb)&#123; _pb &#x3D; pb; &#125;</span><br><span class="line">    </span><br><span class="line">private:</span><br><span class="line">    std::shared_ptr&lt;B&gt; _pb;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    std::shared_ptr&lt;C&gt; pc &#x3D; std::make_shared&lt;C&gt;();</span><br><span class="line">    std::shared_ptr&lt;B&gt; pb &#x3D; std::make_shared&lt;B&gt;();</span><br><span class="line">    pc-&gt;SetPB(pb);</span><br><span class="line">    pb-&gt;SetPC(pc);</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面的代码中，B和C均不能正确析构，正确的做法是，在B和C的释放函数，如Close中，将其包含的shared_ptr置空。这样才能解开引用链。</p>
+<span id="more"></span>
+<h3 id="二-自引用"><a href="#二-自引用" class="headerlink" title="二. 自引用"></a>二. 自引用</h3><p>还有个比较有意思的例子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">class C : public std::enable_shared_from_this &lt; C &gt;</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line"></span><br><span class="line">    ~C()</span><br><span class="line">    &#123;</span><br><span class="line">        std::cout &lt;&lt; &quot;~C&quot; &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    int32_t Decode(const char* data, size_t)</span><br><span class="line">    &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125;</span><br><span class="line">    void SetDecoder(std::function&lt;int32_t(const char*, size_t)&gt; decoder)</span><br><span class="line">    &#123;</span><br><span class="line">        _decoder &#x3D; decoder;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">private:</span><br><span class="line">    std::function&lt;int32_t(const char*, size_t)&gt; _decoder;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    &#123;</span><br><span class="line">        std::shared_ptr&lt;C&gt; pc &#x3D; std::make_shared&lt;C&gt;();</span><br><span class="line">        auto decoder &#x3D; std::bind(&amp;C::Decode, pc, std::placeholders::_1, std::placeholders::_2);</span><br><span class="line">        pc-&gt;SetDecoder(decoder);</span><br><span class="line">    &#125;</span><br><span class="line">    &#x2F;&#x2F; C不能正确析构 因为存在自引用</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面的C类包含了一个function，该function通过std::bind引用了一个std::shared_ptr<C>，所以_decoder其实包含了一个对shared_ptr<C>的引用。导致C自引用了自身，不能正确析构。需要在C的Close之类的执行关闭函数中，将_decoder=nullptr，以解开这种自引用。</p>
+<h3 id="三-类中传递"><a href="#三-类中传递" class="headerlink" title="三. 类中传递"></a>三. 类中传递</h3><p>下面的例子中有个更为隐蔽的问题：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">class Session : public std::enable_shared_from_this &lt; Session &gt;</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line"></span><br><span class="line">    ~Session()</span><br><span class="line">    &#123;</span><br><span class="line">        std::cout &lt;&lt; &quot;~C&quot; &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    void Start()</span><br><span class="line">    &#123;</span><br><span class="line">        &#x2F;&#x2F; 进行一些异步调用</span><br><span class="line">        &#x2F;&#x2F; 如 _socket.async_connect(..., boost::bind(&amp;Session::ConnectCompleted, this), boost::asio::placeholders::error, ...)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    void ConnectCompleted(const boost::system::err_code&amp; err)</span><br><span class="line">    &#123;</span><br><span class="line">		if(err)</span><br><span class="line">			return; </span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; ... 进行处理</span><br><span class="line">        &#x2F;&#x2F; 如 _socket.async_read(..., boost::bind(&amp;Session::ReadCompleted, this), boost::asio::placeholders::error, ...)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">	void Session::ReadComplete(const boost::system::error_code&amp; err, size_t bytes_transferred)</span><br><span class="line">	&#123;</span><br><span class="line">	    if (err || bytes_transferred &#x3D;&#x3D; 0)</span><br><span class="line">	    &#123;</span><br><span class="line">	        DisConnect();</span><br><span class="line">	        return;</span><br><span class="line">	    &#125;</span><br><span class="line">		&#x2F;&#x2F; 处理数据 继续读</span><br><span class="line">		&#x2F;&#x2F; ProcessData();</span><br><span class="line">		&#x2F;&#x2F; _socket.async_read(...)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">private:</span><br><span class="line">    std::function&lt;int32_t(const char*, size_t)&gt; _decoder;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    &#123;</span><br><span class="line">        std::shared_ptr&lt;Session&gt; pc &#x3D; std::make_shared&lt;Session&gt;();</span><br><span class="line">        pc-&gt;Start();</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面Session，在调用Start时，调用了异步函数，并回调自身，如果在回调函数的 boost::bind 中 传入的是shared_from_this()，那么并无问题，shared_ptr将被一直传递下去，在网络处理正常时，Session将正常运行，即使main函数中已经没有它的引用，但是它靠boost::bind”活了下来”，boost::bind会保存传给它的shared_ptr，在调用函数时传入。当网络遇到错误时，函数直接返回。此时不再有新的bind为其”续命”。Session将被析构。</p>
+<p>而真正的问题在于，如果在整个bind链中，直接传递了this指针而不是shared_from_this()，那么实际上当函数执行完成后，Session即会析构，包括其内部的资源(如 _socket)也会被释放。那么当boost底层去执行网络IO时，自然会遇到错误，并且仍然会”正常”回调到对应函数，如ReadCompleted，然后在err中告诉你：”由本地系统终止网络连接”(或:”An attempt to abort the evaluation failed. The process is now in an indeterminate state.” )。让人误以为是网络问题，很难调试。而事实上此时整个对象都已经被释放掉了。</p>
+<p>注：由于C++对象模型实现所致，成员函数和普通函数的主要区别如下：</p>
+<ol>
+<li>成员函数带隐式this参数</li>
+<li>成员函数具有访问作用域，并且函数内会对非静态成员变量访问做一些转换,如 _member_data 转换成 this-&gt;_member_data;</li>
+</ol>
+<p>也就是说，<strong>成员函数并不属于对象，非静态数据成员才属于对象</strong>。</p>
+<p>因此如下调用在编译期是合法的：</p>
+<p><code>((A*)nullptr)-&gt;Func();</code></p>
+<p>而如果成员函数A::Func()没有访问A的非静态成员变量，这段代码甚至能正确运行，如:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">class Test</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">    void Say()</span><br><span class="line">    &#123;</span><br><span class="line">        std::cout &lt;&lt; &quot;Say Test&quot; &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    void Set(int data)</span><br><span class="line">    &#123;</span><br><span class="line">        _data &#x3D; data;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">private:</span><br><span class="line">    int _data;</span><br><span class="line">&#125;;</span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">	&#x2F;&#x2F; 运行成功</span><br><span class="line">    ((Test*)nullptr)-&gt;Say();</span><br><span class="line">	&#x2F;&#x2F; 运行会崩掉，尝试访问空指针所指内存(_data)</span><br><span class="line">    ((Test*)nullptr)-&gt;Set(1);</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>正因为这种特性，有时候在成员函数中纠结半天，也不会注意到这个对象已经”不正常了”，被释放掉了。</p>
+<h3 id="四-shared-ptr-使用总结"><a href="#四-shared-ptr-使用总结" class="headerlink" title="四. shared_ptr 使用总结"></a>四. shared_ptr 使用总结</h3><ol>
+<li>尽量不要环引用或自引用，可通过weak_ptr来避免环引用：owner持有child的shared_ptr child持有owner的weak_ptr</li>
+<li>如果存在环引用或自引用，记得在释放时解开这个引用链</li>
+<li>对于通过智能指针管理的类，在类中通过shared_from_this()而不是this来传递本身</li>
+<li>在类释放时，尽量手动置空其所有的shared_ptr成员，包括function</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2014/12/shared_ptr-reference/" title="shared_ptr的引用链">http://wudaijun.com/2014/12/shared_ptr-reference/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/c-c/" rel="tag"><i class="fa fa-tag"></i> c/c++</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2014/11/cpp-constructor/" rel="prev" title="C++ 构造语义">
+      <i class="fa fa-chevron-left"></i> C++ 构造语义
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2014/12/ngserver-playersession/" rel="next" title="NGServer 加入PlayerSession">
+      NGServer 加入PlayerSession <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E7%9B%B8%E4%BA%92%E5%BC%95%E7%94%A8%E9%93%BE"><span class="nav-text">一. 相互引用链</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E8%87%AA%E5%BC%95%E7%94%A8"><span class="nav-text">二. 自引用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E7%B1%BB%E4%B8%AD%E4%BC%A0%E9%80%92"><span class="nav-text">三. 类中传递</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-shared-ptr-%E4%BD%BF%E7%94%A8%E6%80%BB%E7%BB%93"><span class="nav-text">四. shared_ptr 使用总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

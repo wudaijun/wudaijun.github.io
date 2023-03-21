@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="服务发现在游戏服务器中，通常有一些功能本身非常内聚，甚至是无状态的，在这种时候，我们应该将其单独地做成一个服务，而不是嵌入到GameServer中，这种思想就是所谓的服务(microservice)思想。 服务发现本身可以看做是一个业务独立的”特殊服务”，它用于逻辑服务的注册&#x2F;查找&#x2F;配置信息共享。通常由如下三部分组成：  一个强一致，高可用的服务存储 提供服务注册和服务健康状态监控的能力 提供查找">
+<meta property="og:type" content="article">
+<meta property="og:title" content="开发笔记(1) cluster server">
+<meta property="og:url" content="http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="服务发现在游戏服务器中，通常有一些功能本身非常内聚，甚至是无状态的，在这种时候，我们应该将其单独地做成一个服务，而不是嵌入到GameServer中，这种思想就是所谓的服务(microservice)思想。 服务发现本身可以看做是一个业务独立的”特殊服务”，它用于逻辑服务的注册&#x2F;查找&#x2F;配置信息共享。通常由如下三部分组成：  一个强一致，高可用的服务存储 提供服务注册和服务健康状态监控的能力 提供查找">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2015-08-05T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.604Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta property="article:tag" content="distributed">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>开发笔记(1) cluster server | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          开发笔记(1) cluster server
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-08-06 00:00:00" itemprop="dateCreated datePublished" datetime="2015-08-06T00:00:00+08:00">2015-08-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/08/erlang-server-design1-cluster-server/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/08/erlang-server-design1-cluster-server/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="服务发现"><a href="#服务发现" class="headerlink" title="服务发现"></a>服务发现</h3><p>在游戏服务器中，通常有一些功能本身非常内聚，甚至是无状态的，在这种时候，我们应该将其单独地做成一个服务，而不是嵌入到GameServer中，这种思想就是所谓的服务(<a target="_blank" rel="noopener" href="http://martinfowler.com/articles/microservices.html#MicroservicesAndSoa">microservice</a>)思想。</p>
+<p>服务发现本身可以看做是一个业务独立的”特殊服务”，它用于逻辑服务的注册/查找/配置信息共享。通常由如下三部分组成：</p>
+<ul>
+<li>一个强一致，高可用的服务存储</li>
+<li>提供服务注册和服务健康状态监控的能力</li>
+<li>提供查找服务，连接服务的能力</li>
+</ul>
+<p>在分布式领域中，服务发现是一个非常实用和通用的组件，并且已经有一些比较成熟的组件，如<a target="_blank" rel="noopener" href="https://zookeeper.apache.org/">zookeeper</a>，<a target="_blank" rel="noopener" href="https://github.com/coreos/etcd">etcd</a>等。服务发现组件的好处有很多：微服理念，为负载均衡，灾难恢复提供基础。更多应用场景，可参见etcd的<a target="_blank" rel="noopener" href="http://www.infoq.com/cn/articles/etcd-interpretation-application-scenario-implement-principle">这篇文章</a>。</p>
+<span id="more"></span>
+<h3 id="cluster-server"><a href="#cluster-server" class="headerlink" title="cluster_server"></a>cluster_server</h3><p>先来谈谈我们的集群划分，基于我们的服务器设计，整个集群由N个node组成，node可根据其职责来划分，如player_node，master_node，pvp_node，每个node上跑对应类型的进程，每种node可有多个。其中master_node负责监控/管理所有业务逻辑node，新加入的node只需和master_node连接，这种粒度的划分本身是有利弊的，我们在之后的开发中对它进行了<a href="http://wudaijun.com/2016/01/erlang-server-design5-server-node/">改进</a>，就我们本身cluster_server的设计初衷而言，本质职责是没变的。</p>
+<p>在GS中，我们在查找某个服务时，如某个PlayerId对应的player_server，我无需知道这个player_server位于哪个player_node上，甚至无需知道是否在本台物理机上，我只需获取到这个player_server的Pid，即可与其通信。显然地，为了将服务的使用者和服务本身解耦，我们需要维护这样一个 PlayerId -&gt; player_server Pid 的映射表，并且这个表是集群共同访问的，这也就是服务发现的基本需求。</p>
+<h4 id="服务注册-查找，状态共享"><a href="#服务注册-查找，状态共享" class="headerlink" title="服务注册/查找，状态共享"></a>服务注册/查找，状态共享</h4><p>在Erlang中，我们的服务本身通常是一个进程，即Pid，我们可以用分布式数据库mnesia实现一个简易的cluster_server，它处理的一件事是：根据不同Key值(Erlang Term)取出对应服务的Pid。cluster_server本身是节点唯一的进程，用于和mnesia交互，实现服务注册/服务查找。为了方便使用，我将Key定义为一个type加一个id，表的初步定义如下：</p>
+<pre><code>-record(cluster_(TYPE)_process, &#123;id, node, pid, share&#125;).  % TYPE: pvp player 等  share: 用于状态共享
+</code></pre><p>基于这张mnesia表，可以实现如下功能：</p>
+<ol>
+<li>服务注册：通过事务保证写入的原子性，将不同类型的服务写入对应的表中</li>
+<li>服务查找：根据不同的类型访问不同的表，用mnesia的ram_copies来优化读取，使读取像本地ets一样快</li>
+<li>服务注销：在服务不可用或被终止时，通过事务删除对应表条目</li>
+<li>状态共享：通过share字段可以获知服务的当前状态或配置</li>
+</ol>
+<h4 id="服务创建，负载均衡"><a href="#服务创建，负载均衡" class="headerlink" title="服务创建，负载均衡"></a>服务创建，负载均衡</h4><p>上面实现了最简单的服务注册/查找机制，服务本身的创建和维护由服务提供者管理，在GS集群中，通常我们是希望所有的服务被统一监控和管理，比如某个服务节点挂了，那么上面的所有服务将被注销(主动注销/失联注销)，这个时候应该允许使用者或master重启该服务，将该服务分配到其它可用节点上。</p>
+<p>因此我们还需要维护可用节点表，用于服务创建：</p>
+<pre><code>-record(cluster_(type)_process, &#123;id, node, pid, share&#125;).
+</code></pre><p>通过share字段，可以获取到节点当前的状态信息，比如当前负载，这样做负载均衡就比较容易了，将服务创建的任务分发到当前负载较轻的节点即可。</p>
+<h4 id="服务监控，灾难恢复"><a href="#服务监控，灾难恢复" class="headerlink" title="服务监控，灾难恢复"></a>服务监控，灾难恢复</h4><p>对于关键的服务或者是无状态的服务，可以通过master来监控其状态，在其不可用时，对其进行选择性恢复。比如当某服务所在物理机断电或断网，此时上面的服务都来不及注销自己，通过<code>monitor_node/2</code>，master会在数次心跳检测失败后，收到<code>nodedown</code>消息，此时master节点可以代为注销失联结节点上所有服务，并且决定这些服务是否需要重建在其它节点上。</p>
+<h3 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h3><h4 id="一致性问题"><a href="#一致性问题" class="headerlink" title="一致性问题"></a>一致性问题</h4><ul>
+<li>如果不使用事务，服务A可能覆写/误删服务B</li>
+<li>服务注册信息同步到其它节点的时间差，可能导致的不同步(服务的写入者无论是服务的发起方还是服务本身，都会存在这个问题)。</li>
+</ul>
+<p>解决方案：</p>
+<ol>
+<li><p>使用事务</p>
+<p> 这是最”简单”的方案，主要是性能问题，特别是游戏的波峰时段，这种延迟会扩散</p>
+</li>
+<li><p>串行化服务管理</p>
+<p> 将服务的查找或者是注册/注销，交由一个Proxy来做(经由某种分组规则ServerId)，则可使用脏读写，避免一致性问题。但是会有单点，并且弱化了分布式的特性。</p>
+</li>
+<li><p>服务查询</p>
+<p> 将表不添加本地拷贝，直接使用remote类型表进行访问(事务)，在本节点对Pid进行保存，采用某种机制来确保缓存Pid的正确性(如monitor)</p>
+</li>
+<li><p>退化ETS</p>
+<p> 将一些频繁访问和使用的服务退化为ETS(特别是player和agent)，主要目的是减轻mnesia压力(28原则)，使mnesia可以安全的使用事务。但这部分服务也失去了使用mnesia的优势，个人觉得不如方案3。</p>
+</li>
+</ol>
+<h4 id="全联通问题"><a href="#全联通问题" class="headerlink" title="全联通问题"></a>全联通问题</h4><p>mnesia必须建立在全联通网络上，在节点数量超过10个时，就需要关注这个问题了。</p>
+<p>解决方案：</p>
+<p>可为节点分组(如5个一组)，设定代理节点，由代理节点组成mnesia集群。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/" title="开发笔记(1) cluster server">http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+              <a href="/tags/distributed/" rel="tag"><i class="fa fa-tag"></i> distributed</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/07/kbengine-study2/" rel="prev" title="kbengine 源码导读(二) 加载流程">
+      <i class="fa fa-chevron-left"></i> kbengine 源码导读(二) 加载流程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/08/erlang-port/" rel="next" title="Erlang Ports">
+      Erlang Ports <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0"><span class="nav-text">服务发现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cluster-server"><span class="nav-text">cluster_server</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E6%B3%A8%E5%86%8C-%E6%9F%A5%E6%89%BE%EF%BC%8C%E7%8A%B6%E6%80%81%E5%85%B1%E4%BA%AB"><span class="nav-text">服务注册&#x2F;查找，状态共享</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E5%88%9B%E5%BB%BA%EF%BC%8C%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1"><span class="nav-text">服务创建，负载均衡</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E7%9B%91%E6%8E%A7%EF%BC%8C%E7%81%BE%E9%9A%BE%E6%81%A2%E5%A4%8D"><span class="nav-text">服务监控，灾难恢复</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-text">注意事项</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%80%E8%87%B4%E6%80%A7%E9%97%AE%E9%A2%98"><span class="nav-text">一致性问题</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%A8%E8%81%94%E9%80%9A%E9%97%AE%E9%A2%98"><span class="nav-text">全联通问题</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

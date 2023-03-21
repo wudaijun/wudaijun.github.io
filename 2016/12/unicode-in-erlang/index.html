@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Unicode基础编码方式定义字符集中每个字符的codepoint(数字编码)  ASCII: 不用多说，编码空间为7位(0-127) ISO 8859-1: 又称Latin-1，以ASCII为基础，在空置的0xA0-0xFF的范围内，加入96个字母及符号。编码空间为8位(0-255) UCS-2: 16位编码空间 又称基本多文种平面或零平面 UCS-4: 32位编码空间 在UCS-2基本上，加入">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang Unicode编码">
+<meta property="og:url" content="http://wudaijun.com/2016/12/unicode-in-erlang/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="Unicode基础编码方式定义字符集中每个字符的codepoint(数字编码)  ASCII: 不用多说，编码空间为7位(0-127) ISO 8859-1: 又称Latin-1，以ASCII为基础，在空置的0xA0-0xFF的范围内，加入96个字母及符号。编码空间为8位(0-255) UCS-2: 16位编码空间 又称基本多文种平面或零平面 UCS-4: 32位编码空间 在UCS-2基本上，加入">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2016-12-16T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.609Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2016/12/unicode-in-erlang/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Erlang Unicode编码 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/12/unicode-in-erlang/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Erlang Unicode编码
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-12-17 00:00:00" itemprop="dateCreated datePublished" datetime="2016-12-17T00:00:00+08:00">2016-12-17</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/12/unicode-in-erlang/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/12/unicode-in-erlang/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="Unicode基础"><a href="#Unicode基础" class="headerlink" title="Unicode基础"></a>Unicode基础</h2><h3 id="编码方式"><a href="#编码方式" class="headerlink" title="编码方式"></a>编码方式</h3><p>定义字符集中每个字符的<strong>codepoint(数字编码)</strong></p>
+<ul>
+<li>ASCII: 不用多说，编码空间为7位(0-127)</li>
+<li><a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/ISO/IEC_8859-1">ISO 8859-1</a>: 又称Latin-1，以ASCII为基础，在空置的0xA0-0xFF的范围内，加入96个字母及符号。编码空间为8位(0-255)</li>
+<li>UCS-2: 16位编码空间 又称基本多文种平面或零平面</li>
+<li>UCS-4: 32位编码空间 在UCS-2基本上，加入辅助平面(目前有16个辅助平面，至少需要21位)</li>
+<li>注1: UCS(Universal Character Set, <a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/%E9%80%9A%E7%94%A8%E5%AD%97%E7%AC%A6%E9%9B%86">通用字符集</a>)</li>
+<li>注2: 以上四种编码都是向前兼容的，通常我们所说的Unicode编码指UCS-2和UCS-4，目前广泛运用的是UCS-2</li>
+</ul>
+<span id="more"></span>
+<h3 id="实现方式"><a href="#实现方式" class="headerlink" title="实现方式"></a>实现方式</h3><p>实现方式将字符的数字编码存储在计算机字节中，由于节省空间和平台差异性等，衍生不同的实现方式</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/UTF-8">UTF-8</a>: 一种变长编码，使用1-3个字节编码UCS-2字符集，1-6个字节可编码UCS-4字符集(目前只用最多四个字节即可表示UCS-4所定义的17个平面)。优点是兼容ASCII，节省空间，并且不存在字节序的问题</li>
+<li><a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/UTF-16">UTF-16</a>: 和UTF-8类似，使用2个字节来编码UCS-2字符集(UCS-2中有预留的位用于实现UTF-16扩展多字节)，使用4个字节来编码UCS-4字符集。由于使用两个字节作为基本编码单位，UTF-16存在字节序的问题，通常使用BOM来解决</li>
+<li><a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/UTF-32">UTF-32</a>: 32位定长编码，能够表示UCS-4字符集所有字符，但空间占用大，因此很少见</li>
+<li>注1: UTF(Unicode Transformation Format, Unicode转换格式)</li>
+<li>注2: BOM(byte-order mark, <a target="_blank" rel="noopener" href="https://zh.wikipedia.org/wiki/%E4%BD%8D%E5%85%83%E7%B5%84%E9%A0%86%E5%BA%8F%E8%A8%98%E8%99%9F">字节顺序标记</a>)</li>
+</ul>
+<h2 id="Erlang中的Unicode"><a href="#Erlang中的Unicode" class="headerlink" title="Erlang中的Unicode"></a>Erlang中的Unicode</h2><h3 id="Unicode表示"><a href="#Unicode表示" class="headerlink" title="Unicode表示"></a>Unicode表示</h3><pre><code>%% 环境 Mac OSX Yosemite &amp; Erlang OTP/19
+Eshell V8.1  (abort with ^G)
+1&gt; L = &quot;中文&quot;.
+[20013,25991] % Erlang lists存放的是字符的Unicode编码
+2&gt; B = &lt;&lt;&quot;中文&quot;&gt;&gt;.
+&lt;&lt;45,135&gt;&gt; % Erlang只知&quot;中文&quot;的Unicode编码[20013,25991]，并不知应该用何种实现方式(UTF8或其他)，默认它会将Unicode编码 rem 256，产生0-255间的编码(并按照Lantin-1解码)
+
+% 下面我们将考虑将&quot;中文&quot;转换为binary
+% 方案一. erlang:list_to_binary -&gt; error
+3&gt; list_to_binary(L). % 该函数支持的list只能是iolist(见后面术语参考)，否则Erlang并不知道你想将字符串转换为何种编码格式的binary
+** exception error: bad argument
+     in function  list_to_binary/1
+        called as list_to_binary([20013,25991])
+
+% 方案二. unicode:characters_to_binary -&gt; ok
+4&gt; UTF8 = unicode:characters_to_binary(L).% 将L中的unicode编码转换为UTF8 binary
+&lt;228,184,173,230,150,135&gt;&gt;
+5&gt; UTF16Big = unicode:characters_to_binary(UTF8,utf8,utf16).
+&lt;&lt;78,45,101,135&gt;&gt; % 默认为Big Endian
+6&gt; UTF16Little = unicode:characters_to_binary(UTF8,utf8,&#123;utf16,little&#125;).
+&lt;&lt;45,78,135,101&gt;&gt;
+
+% 方案三. 利用binary构造语法构建
+7&gt; UTF8 = &lt;&lt;&quot;中文&quot;/utf8&gt;&gt;.
+&lt;&lt;228,184,173,230,150,135&gt;&gt;
+8&gt; UTF8 = &lt;&lt;L/utf8&gt;&gt;. % Why ?
+** exception error: bad argument
+</code></pre><p>在Erlang中，字符串就是整数列表，并且这个整数可以无限大，lists将保存其中每个字符的Unicode编码，只要lists中的整数是有效的Unicode codepoint，就可以找到对应的字符。因此也就不存在UTF8/UTF16格式的lists字符串一说。而binary的处理则要麻烦一些，Erlang用UTF8作为Unicode在binary上的实现方式，unicode模块提供了这方面丰富的unicode编码处理接口。</p>
+<h3 id="Unicode使用"><a href="#Unicode使用" class="headerlink" title="Unicode使用"></a>Unicode使用</h3><pre><code>8&gt; io:format(&quot;~s&quot;, [L]).
+** exception error: bad argument
+ in function  io:format/3
+    called as io:format(&lt;0.50.0&gt;,&quot;~s&quot;,[[20013,25991]])
+9&gt; io:format(&quot;~p&quot;, [L]).
+[20013,25991]ok
+10&gt; io:format(&quot;~ts&quot;, [L]).
+中文ok
+11&gt; io:format(&quot;~s&quot;, [UTF8]).
+ä¸­æok
+12&gt; io:format(&quot;~p&quot;, [UTF8]).
+&lt;&lt;228,184,173,230,150,135&gt;&gt;ok
+13&gt; io:format(&quot;~ts&quot;, [UTF8]).
+中文ok
+</code></pre><p>先解释几个Erlang术语：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="http://www.cnblogs.com/me-sa/archive/2012/01/31/erlang0034.html">iolist</a>: 0-255编码(Latin-1)的lists，binary，或它们的嵌套，如<code>[[&quot;123&quot;,&lt;&lt;&quot;456&quot;&gt;&gt;],&lt;&lt;&quot;789&quot;&gt;&gt;]</code></li>
+<li>unicode binary: UTF8编码的binary(Erlang默认使用UTF8 binary编码unicode)</li>
+<li>charlist: UTF8编码的binary，或包含有效unicode codepoint的lists，或它们的嵌套，如<code>[&lt;&lt;&quot;hello&quot;&gt;&gt;, &quot;中国&quot;]</code></li>
+</ul>
+<p><code>~s</code>只能打印iolist，binary，或atom，因此不能直接打印中文lists(无法解码超过255的codepoint)或UTF8 binary(会按字节解释，出现乱码)。</p>
+<p><code>~ts</code>则可打印charlist和unicode binary。</p>
+<p><code>~p</code>如果不能打印出ASCII(0-127)字符，则直接打印出原生Term，不会对Unicode编码进行处理。</p>
+<p>参考：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/man/unicode.html">http://erlang.org/doc/man/unicode.html</a></li>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/apps/stdlib/unicode_usage.html">http://erlang.org/doc/apps/stdlib/unicode_usage.html</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/12/unicode-in-erlang/" title="Erlang Unicode编码">http://wudaijun.com/2016/12/unicode-in-erlang/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/11/docker-erlang/" rel="prev" title="探索Docker在Erlang集群中的应用">
+      <i class="fa fa-chevron-left"></i> 探索Docker在Erlang集群中的应用
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/12/erlang-memory-debug/" rel="next" title="Erlang 内存问题诊断">
+      Erlang 内存问题诊断 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Unicode%E5%9F%BA%E7%A1%80"><span class="nav-text">Unicode基础</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E7%A0%81%E6%96%B9%E5%BC%8F"><span class="nav-text">编码方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F"><span class="nav-text">实现方式</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Erlang%E4%B8%AD%E7%9A%84Unicode"><span class="nav-text">Erlang中的Unicode</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Unicode%E8%A1%A8%E7%A4%BA"><span class="nav-text">Unicode表示</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Unicode%E4%BD%BF%E7%94%A8"><span class="nav-text">Unicode使用</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

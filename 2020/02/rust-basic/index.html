@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="之前被同事安利了很多次Rust，周末没事去Rust官方文档学习了下，记录一些对Rust语言粗浅理解。 一. 所有权系统要说Rust语言的核心优势，应该就是运行效率+内存安全了，这两者都与其独树一帜的所有权系统有关。要谈所有权系统，GC是个不错的切入点，众所周知，编程语言GC主要包含两种: 手动GC和自动GC，它们各有利弊，总的来说是运行效率和内存安全之间的权衡取舍。而Rust则尝试两者兼顾，Rus">
+<meta property="og:type" content="article">
+<meta property="og:title" content="初识 Rust">
+<meta property="og:url" content="http://wudaijun.com/2020/02/rust-basic/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="之前被同事安利了很多次Rust，周末没事去Rust官方文档学习了下，记录一些对Rust语言粗浅理解。 一. 所有权系统要说Rust语言的核心优势，应该就是运行效率+内存安全了，这两者都与其独树一帜的所有权系统有关。要谈所有权系统，GC是个不错的切入点，众所周知，编程语言GC主要包含两种: 手动GC和自动GC，它们各有利弊，总的来说是运行效率和内存安全之间的权衡取舍。而Rust则尝试两者兼顾，Rus">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-02-15T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.614Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="rust">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2020/02/rust-basic/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>初识 Rust | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2020/02/rust-basic/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          初识 Rust
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-02-16 00:00:00" itemprop="dateCreated datePublished" datetime="2020-02-16T00:00:00+08:00">2020-02-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/rust/" itemprop="url" rel="index"><span itemprop="name">rust</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2020/02/rust-basic/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/02/rust-basic/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>之前被同事安利了很多次Rust，周末没事去<a target="_blank" rel="noopener" href="https://kaisery.github.io/trpl-zh-cn/title-page.html">Rust官方文档</a>学习了下，记录一些对Rust语言粗浅理解。</p>
+<h3 id="一-所有权系统"><a href="#一-所有权系统" class="headerlink" title="一. 所有权系统"></a>一. 所有权系统</h3><p>要说Rust语言的核心优势，应该就是运行效率+内存安全了，这两者都与其独树一帜的所有权系统有关。要谈所有权系统，GC是个不错的切入点，众所周知，编程语言GC主要包含两种: 手动GC和自动GC，它们各有利弊，总的来说是运行效率和内存安全之间的权衡取舍。而Rust则尝试两者兼顾，Rust的GC，我将其理解为半自动GC或编译期GC，即开发者配合编译器通过所有权约束来明确变量的生命周期，这样Rust在编译期就已经知道内存应该何时释放，不需要运行时通过复杂的<a href="https://wudaijun.com/2017/12/gc-study/">GC算法</a>去解析变量的引用关系，也无需像C/C++让开发者对各种内存泄露、越界访问等问题如履薄冰。这也是Rust敢号称可靠的系统级编程语言，运行时效率叫板C/C++的底气来源。</p>
+<span id="more"></span>
+<p>Rust GC的核心就是所有权系统，它基于以下事实:</p>
+<ol>
+<li>编译器能够解析局部变量的生命周期，正确管理栈内存的收缩扩张</li>
+<li>堆内存最终都是通过栈变量来读取和修改</li>
+</ol>
+<p>那么，我们能否让堆内存管理和栈内存管理一样轻松，成为编译期就生成好的指令呢？Rust就是沿着这个思路走的，它将堆内存的生命周期和栈变量绑定在一起，当函数栈被回收，局部变量失效时，其对应的堆内存也会被回收。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="keyword">let</span> s = <span class="built_in">String</span>::from(<span class="string">&quot;hello&quot;</span>); <span class="comment">// 从此处起，s 是有效的</span></span><br><span class="line">    <span class="comment">// 使用 s</span></span><br><span class="line">&#125;                               <span class="comment">// 此作用域已结束，</span></span><br><span class="line">                                <span class="comment">// s 不再有效</span></span><br></pre></td></tr></table></figure>
+<p>如代码所示，局部变量s和对应的字符串堆内存绑定在了一起，称s对这块堆内存具备所有权，当s无效时，对应String堆内存也会回收。编译器知道s的作用域，也就自然知道何时执行对String执行回收。</p>
+<p>Rust所有权系统的核心规则如下:</p>
+<ol>
+<li>Rust 中的每一个值都有一个被称为其 所有者（owner）的变量。</li>
+<li>值有且只有一个所有者。</li>
+<li>当所有者（变量）离开作用域，这个值将被丢弃。</li>
+</ol>
+<p>规则需要简单，要达成这套规则的完备性，还需要其它系统方方面面的协助和完善。下面展开聊聊。</p>
+<h4 id="1-控制权转移"><a href="#1-控制权转移" class="headerlink" title="1. 控制权转移"></a>1. 控制权转移</h4><p>当发生局部变量赋值，如执行 <code>let s = String::from(&quot;big str&quot;); let s1 = s;</code> 时，Rust要么执行深拷贝，代价是运行时开销，要么浅拷贝，代价是s和s1只能有其中一个对String有所有权(否则会导致对堆内存的二次回收)。Rust选择了第二种方案，即s1拥有String的所有权，s在赋值给s1后不再有效，这之后对s的访问将会导致编译错误。在Rust中，这叫做<strong>控制权转移</strong>，此时也称<code>let s1 = s;</code>是<strong>转移语义</strong>，在Rust中，变量与值的交互方式分为以下几种:</p>
+<ol>
+<li>移动(Move)语义: 浅拷贝，且会发生控制权转移，这是Rust的默认行为</li>
+<li>克隆(Clone)语义: 深拷贝，通过<strong>显式</strong>调用clone()来避免控制权转移，如 <code>let s1 = s.clone();</code>，如此s1和s均可继续使用</li>
+<li>复制(Copy)语义: 浅拷贝，主要针对值语义这类浅拷贝安全的场景，Rust默认为整型、布尔、字符、浮点、以及元组(当且仅当其包含的类型也都实现Copy的时候)实现了复制语义，因此对于<code>let a = 5; let b = a;</code>，不需要显式Clone，也不会发生控制转移，a和b可继续使用</li>
+<li>引用(Borrowing)语义: 也叫借用语义，Rust引用类似其它语言的指针，Rust创建引用的过程也称为借用，它允许你使用值但不获取其所有权</li>
+</ol>
+<p>Clone是比Copy更基础的概念，对支持Copy语义的对象，它必然也是支持Clone的(值语义的浅拷贝就是它的深拷贝)。实现上来说，Clone，Copy均是Rust提供的trait(类似OOP接口，但可包含默认实现，后面Rust OOP编程中再详说)，其中Clone trait依赖Copy trait，简单来说: 所有想要实现Copy trait的类，都需要同时实现Clone trait。这样从实现层保证了所有可Copy的对象，必然是可Clone的。</p>
+<p>小结下Copy和Clone的区别和联系:</p>
+<ul>
+<li>Clone是显式的，Rust不会在任何地方自动调用clone()执行深拷贝。Copy是隐式的，编译期识别到Copy语义对象的复制时，会自动执行简单浅拷贝，并且不会发生控制转移</li>
+<li>Clone是可重写的，各个类型可以自定义自己的clone()方法。Copy是不可重写的，因为编译器直接执行栈内存拷贝就行了，如果某个类型需要重写Copy，那么它就不应该是Copy语义的</li>
+<li>支持Copy语义的类型必然支持Clone语义</li>
+</ul>
+<p>下面这个例子进一步说明几种赋值语义，引用语义的细节将单独在下一节展开讨论。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// === Case1: 移动 ===</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">MyStruct</span></span> &#123;</span><br><span class="line">    part: <span class="built_in">i32</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> a = MyStruct &#123;part: <span class="number">123</span>&#125;;</span><br><span class="line">    <span class="keyword">let</span> b = a;</span><br><span class="line">    <span class="comment">// 编译错误: a的数据控制权转移到了b，a将无法再被使用</span></span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;, &#123;&#125;&quot;</span>, i.part, j.part)</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// === Case2: 克隆 ===</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">MyStruct</span></span> &#123;</span><br><span class="line">    part: <span class="built_in">i32</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 实现Clone trait</span></span><br><span class="line"><span class="keyword">impl</span> <span class="built_in">Clone</span> <span class="keyword">for</span> MyStruct &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">clone</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="keyword">Self</span> &#123;</span><br><span class="line">    	 <span class="comment">// 等价于 MyStruct &#123; part: self.part &#125;，因为i32是满足复制语义的(浅拷贝即深拷贝)</span></span><br><span class="line">        MyStruct &#123; part: <span class="keyword">self</span>.part.clone() &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> a = MyStruct &#123;part: <span class="number">123</span>&#125;;</span><br><span class="line">    <span class="keyword">let</span> b = a.clone();	<span class="comment">// 显式指明clone()，执行深拷贝</span></span><br><span class="line">    <span class="comment">// OK. 之后a和b都具有各自独立的数据所有权，因此均可使用</span></span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;, &#123;&#125;&quot;</span>, a.part, b.part)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// === Case3: 复制 ===</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// derive是Rust中的属性，类似类型注解的概念</span></span><br><span class="line"><span class="comment">// #[derive(Copy, Clone)] 表示在 MyStruct 上实现Copy，Clone两个trait，并使用这两个trait的默认实现</span></span><br><span class="line"><span class="comment">// Clone trait默认实现会逐个调用struct的字段的clone()方法来实现深拷贝，类似前面Case2手动重写的clone()方法</span></span><br><span class="line"><span class="comment">//            如果有字段未实现Clone trait(比如包含另一个自定义Struct)，则编译错误</span></span><br><span class="line"><span class="comment">// Copy trait不需要也不允许重写，如果有字段未实现Copy trait(比如包含String字段)，同样会触发编译错误</span></span><br><span class="line"><span class="comment">// 对于MyStruct而言，由于它实现了Copy trait，因此它的clone()方法完全可以直接写成:</span></span><br><span class="line"><span class="comment">// fn clone(&amp;self) -&gt; Self &#123;</span></span><br><span class="line"><span class="comment">// 		*self</span></span><br><span class="line"><span class="comment">// &#125; </span></span><br><span class="line"><span class="meta">#[derive(Clone, Copy)]</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">MyStruct</span></span> &#123;</span><br><span class="line">    part: <span class="built_in">i32</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> a = MyStruct &#123;part: <span class="number">123</span>&#125;;</span><br><span class="line">    <span class="comment">// 等价于 let mut b = a.clone();</span></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> b = a;</span><br><span class="line">    b.part = <span class="number">456</span>;</span><br><span class="line">    <span class="comment">// OK. a和b具有独立的数据所有权</span></span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;, &#123;&#125;&quot;</span>, a.part, b.part)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// === Case4: 引用 ===</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">	<span class="keyword">let</span> a = MyStruct&#123;part: <span class="number">123</span>&#125;;</span><br><span class="line">	<span class="keyword">let</span> b = &amp;a;</span><br><span class="line">	<span class="comment">// OK. b只是引用了a，并不会发生控制权转移</span></span><br><span class="line">	<span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;, &#123;&#125;&quot;</span>, a.part, b.part)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Rust编译器会识别和检查变量类型是否实现或调用了指定trait，从而决定变量赋值是什么语义，以确定控制权归属。</p>
+<h4 id="2-使用引用来避免控制权转移"><a href="#2-使用引用来避免控制权转移" class="headerlink" title="2. 使用引用来避免控制权转移"></a>2. 使用引用来避免控制权转移</h4><p>按照局部变量赋值的控制权转移规则，函数返回值和函数参数的隐式赋值也会导致控制权转移:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">        <span class="keyword">let</span> s1 = <span class="built_in">String</span>::from(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">        <span class="comment">// 调用calculate_length后，s1的控制权转移给了函数实参，在这之后s1就失效了</span></span><br><span class="line">        <span class="comment">// 为了后续能够继续访问String数据，需要通过返回值将控制权又转移回来</span></span><br><span class="line">        <span class="keyword">let</span> (s2, len) = calculate_length(s1); </span><br><span class="line">        <span class="comment">// 这里就不能继续访问s1了，只能使用s2</span></span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;The length of &#x27;&#123;&#125;&#x27; is &#123;&#125;.&quot;</span>, s2, len);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">calculate_length</span></span>(s: <span class="built_in">String</span>) -&gt; (<span class="built_in">String</span>, <span class="built_in">usize</span>) &#123;</span><br><span class="line">        <span class="keyword">let</span> length = s.len();</span><br><span class="line">        (s, length)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看到，在控制权转移规则下，这种控制权转来转去的方式非常麻烦。这种情况下，更合适的做法是使用引用，在不转移控制权的前提下传递参数，但这里我们以另一个函数<code>first_word</code>为例，该函数求字符串内空格分隔的第一个单词:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// first_word 通过引用借用了 s1，不发生控制权转移，函数返回后也不会回收形参s指向的值</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">first_word</span></span>(s: &amp;<span class="built_in">String</span>) -&gt; &amp;<span class="built_in">str</span> &#123;</span><br><span class="line">    <span class="keyword">let</span> bytes = s.as_bytes();</span><br><span class="line">    <span class="keyword">for</span> (i, &amp;item) <span class="keyword">in</span> bytes.iter().enumerate() &#123;</span><br><span class="line">        <span class="keyword">if</span> item == <span class="string">b&#x27; &#x27;</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> &amp;s[<span class="number">0</span>..i];</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    &amp;s[..]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> s = <span class="built_in">String</span>::from(<span class="string">&quot;hello world&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> word = first_word(&amp;s);</span><br><span class="line">    s.clear();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;the first word is: &#123;&#125;&quot;</span>, word);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>选用<code>fist_word</code>是因为它展示了Rust引用的另一个有意思的特性。由于<code>first_word</code>返回的引用结果是基于引用参数的局部引用，因此当main调用<code>s.clear()</code>时，事实上也导致word引用失效了，导致得到非预期的结果。这在其它语言是指针/引用带来的难点之一，即要依靠开发者去解析内存引用关系，确保对内存的修改不会有非预期的副作用。而在Rust中，上面的代码不会通过编译！</p>
+<p>和变量一样，Rust中的引用分为可变引用和不可变引用，可变引用需要在可变变量的基础上再显式声明: 如<code>let r = &amp;mut s;</code> Rust编译器会想尽办法保证<strong>引用的两大原则</strong>:</p>
+<ol>
+<li>在任意给定时间，要么只能有一个可变引用，要么只能有多个不可变引用</li>
+<li>引用必须总是有效的 (例如函数返回一个局部变量的引用将会得到编译错误)</li>
+</ol>
+<p>结合上面的规则，<code>s.clear</code>需要清空string，因此它会尝试获取s的一个可变引用(函数原型为:<code>clear(&amp;mut self)</code>)，而由于s已经有一个不可变引用word，这破坏了规则1，因此编译器会报错。</p>
+<p>对于规则2，编译器的<strong>借用检查器</strong>会比较引用和被引用数据的生命周期，确保不会出现悬挂引用，如以下代码不会编译通过:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="comment">// rust不允许存在空值，确切地说是不允许使用空值，这里只是声明r，在第一次使用r前必须先初始化它，否则编译器会报错</span></span><br><span class="line">    <span class="keyword">let</span> r;</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> x = <span class="number">5</span>;</span><br><span class="line">        r = &amp;x;</span><br><span class="line">    &#125; <span class="comment">// 这之后 r 引用的 x 已经脱离作用域失效了，而 r 还在有效作用域内，继续访问 r 将会导致非预期结果</span></span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;r: &#123;&#125;&quot;</span>, r);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以上对引用的限制，有个非常显著的好处就是避免并发数据竞争问题:</p>
+<ol>
+<li>两个或更多指针同时访问同一数据</li>
+<li>至少有一个指针被用来写入数据</li>
+<li>没有同步数据访问的机制</li>
+</ol>
+<p>Rust可以在编译期就避免大部分的数据竞争！</p>
+<h4 id="3-生命周期注解"><a href="#3-生命周期注解" class="headerlink" title="3. 生命周期注解"></a>3. 生命周期注解</h4><p>有Rust编译器的殚精竭虑，开发者就能安全使用这套所有权系统而高枕无忧了么，当然不是，编译器所知也仅限于编译期就能获得的信息，比如以下代码:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">longest</span></span>(x: &amp;<span class="built_in">str</span>, y: &amp;<span class="built_in">str</span>) -&gt; &amp;<span class="built_in">str</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> x.len() &gt; y.len() &#123;</span><br><span class="line">        x</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        y</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> string1 = <span class="built_in">String</span>::from(<span class="string">&quot;abcd&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> string2 = <span class="string">&quot;xyz&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> result = longest(string1.as_str(), string2);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;The longest string is &#123;&#125;&quot;</span>, result);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面的代码无法通过编译，因为longest函数的参数和返回值都是引用，编译器无法获悉函数返回的引用是来自于x还是来自于y(这是运行时的东西)，那么前面说的借用检查器也就无法通过分析作用域保证引用的有效性了。</p>
+<p>这个时候就需要建立一套额外的规则来辅助借用检查器，将本来应该在运行时决议的事情放到编译器来完成，Rust把这套规则叫做<strong>生命周期注解</strong>，生命周期注解本身不影响引用的生命周期，它用来指定函数的引用参数和引用返回值之间的生命周期对应关系，这样编译器就可以按照这种关系进行引用生命周期推敲，生命周期注释的语法和泛型类似(这也是比较有意思的一点，将引用生命周期像类型一样来抽象):</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// &#x27;a 和泛型中的T一样，这里的注解表示:  &#x27;a 的具体生命周期等同于 x 和 y 的生命周期中较小的那一个</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">longest</span></span>&lt;<span class="symbol">&#x27;a</span>&gt;(x: &amp;<span class="symbol">&#x27;a</span> <span class="built_in">str</span>, y: &amp;<span class="symbol">&#x27;a</span> <span class="built_in">str</span>) -&gt; &amp;<span class="symbol">&#x27;a</span> <span class="built_in">str</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> x.len() &gt; y.len() &#123;</span><br><span class="line">        x</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        y</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 下面是一些例子，说明Rust编译器是如何依靠注解来保证引用的有效性的</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 例1 </span></span><br><span class="line"><span class="comment">// 根据longest的生命周期注解，result的生命周期应该等于string1,string2中较短的那个</span></span><br><span class="line"><span class="comment">// 而这里result的生命周期明显大于string2，因此借用检查器会报错</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> string1 = <span class="built_in">String</span>::from(<span class="string">&quot;long string is long&quot;</span>);</span><br><span class="line">    <span class="keyword">let</span> result;</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> string2 = <span class="built_in">String</span>::from(<span class="string">&quot;xyz&quot;</span>);</span><br><span class="line">        result = longest(string1.as_str(), string2.as_str());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;The longest string is &#123;&#125;&quot;</span>, result);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 例2</span></span><br><span class="line"><span class="comment">// 这里的result虽然早于string2声明，但由于Rust不能使用未赋值的变量，因此result的生命周期其实是从第一次赋值开始的</span></span><br><span class="line"><span class="comment">// 从而满足longest引用返回值生命周期&lt;=任一引用参数生命周期，能够正常运行</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> string1 = <span class="built_in">String</span>::from(<span class="string">&quot;long string is long&quot;</span>);</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">let</span> result;</span><br><span class="line">        <span class="keyword">let</span> string2 = <span class="built_in">String</span>::from(<span class="string">&quot;xyz&quot;</span>);</span><br><span class="line">        result = longest(string1.as_str(), string2.as_str());</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;The longest string is &#123;&#125;&quot;</span>, result);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// 例3</span></span><br><span class="line"><span class="comment">// 如果我们将longest改成这样，它将不能通过编译</span></span><br><span class="line"><span class="comment">// 因为编译器看到了longest函数返回了y，然而生命周期注解中，输入引用y和返回值引用是两个独立的生命周期，互不关联。编译器觉得自己被欺骗了。</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">longest</span></span>&lt;<span class="symbol">&#x27;a</span>,<span class="symbol">&#x27;b</span>&gt;(x: &amp;<span class="symbol">&#x27;a</span> <span class="built_in">str</span>, y: &amp;<span class="symbol">&#x27;b</span> <span class="built_in">str</span>) -&gt; &amp;<span class="symbol">&#x27;a</span> <span class="built_in">str</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> x.len() &gt; y.len() &#123;</span><br><span class="line">        x</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        y</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>生命周期注解也可用于结构体中，用于声明结构体与其字段的生命周期关系:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 这个标注意味着 ImportantExcerpt 的实例不能比其 part 字段中的引用存在的更久</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">ImportantExcerpt</span></span>&lt;<span class="symbol">&#x27;a</span>&gt; &#123;</span><br><span class="line">    part: &amp;<span class="symbol">&#x27;a</span> <span class="built_in">str</span>,</span><br><span class="line">    <span class="comment">// 如果part是String的引用，则会编译错误，因为String拥有自己数据的所有权</span></span><br><span class="line">    <span class="comment">// 生命周期注解只用来标注引用与引用间的生命周期关系(以保证引用的有效性)，而不能用于强行关联两个独立的生命周期</span></span><br><span class="line">    <span class="comment">// part: &#x27;a String,</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> i = ImportantExcerpt &#123; part: <span class="string">&quot;123&quot;</span>&#125;;</span><br><span class="line">    &#123;</span><br><span class="line">    	  <span class="comment">// 编译错误: 结构体实例i的生命周期比其引用字段part所引用的String s更长，违反了生命周期注解约束</span></span><br><span class="line">        <span class="keyword">let</span> s = <span class="built_in">String</span>::from(<span class="string">&quot;123456&quot;</span>);</span><br><span class="line">        <span class="keyword">let</span> part = s.as_str();</span><br><span class="line">        <span class="comment">// 编译成功: 这里part是字面量的不可变引用，而字面量存储二进制程序的特定位置，因此满足生命周期注解约束</span></span><br><span class="line">        <span class="comment">// let part = &quot;123456&quot;;</span></span><br><span class="line">        </span><br><span class="line">        i.part = part;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, i.part)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="4-智能指针"><a href="#4-智能指针" class="headerlink" title="4. 智能指针"></a>4. 智能指针</h4><p>前面讨论的控制权转移(确保一个值只有一个所有者，它负责这个值的回收)，引用(也就是指针，用于避免不必要的控制权转移)，生命周期注解(用于协助编译期保证引用的有效性)，主要都是围绕栈内存来的，只有String是个特例，它的实际内存会分配在堆上，以满足可变动态长度字符串的需求。在Rust中，栈内存和堆内存是被明确指定和分配的，Rust开发者通常会在出现以下情况时考虑用堆:</p>
+<ol>
+<li>当有一个在编译时未知大小的类型，而又想要在需要确切大小的上下文中使用这个类型值的时候: 比如在String，链表</li>
+<li>当有大量数据并希望在确保数据不被拷贝的情况下转移所有权的时候</li>
+<li>当希望拥有一个值并只关心它的类型是否实现了特定 trait 而不是其具体类型的时候</li>
+</ol>
+<p>在Rust中，有如下几种指针:</p>
+<ol>
+<li><code>Box&lt;T&gt;</code>: 运行将数据分配在堆上，留在栈上的是指向堆数据的指针。<code>Box&lt;T&gt;</code>会在智能指针作用域结束时回收对应堆内存。<code>Box&lt;T&gt;</code>本身的是移动语义的，类似C++ <code>auto_ptr</code>。<code>Box&lt;T&gt;</code>与Rust引用的区别在于，前者指向的是堆内存，因此总能保证是有效的，而后者通常指向的是栈内存，因此需要借用检查器，生命周期注解等机制来确保引用是有效的。</li>
+<li><code>Rc&lt;T&gt;</code>: <code>Rc&lt;T&gt;</code>类似C++<code>shared_ptr</code>，基于引用计数而非控制权+作用域来回收堆内存，但<code>Rc&lt;T&gt;</code>对共享数据是只能读的(仍然受限于借用器检查，用于避免数据竞争)。<code>Rc&lt;T&gt;</code>默认也是移动语义的，可以调用<code>Rc::Clone(rc)</code>方法(比<code>rc.clone()</code>方法更轻量)以获得独立的<code>Rc&lt;T&gt;</code>并增加引用计数。</li>
+<li><code>RefCell&lt;T&gt;</code>: 能够基于不可变值修改其内部值，对<code>RefCell&lt;T&gt;</code>的借用检查将<strong>发生运行时而非编译期</strong>。如以下代码会导致运行Panic:</li>
+</ol>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// RefCell&lt;T&gt;例子，以下代码会编译成功，但是运行Panic</span></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> x = RefCell::new(<span class="number">123</span>);</span><br><span class="line">    <span class="keyword">let</span> a = x.borrow();</span><br><span class="line">    <span class="keyword">let</span> b = x.borrow();</span><br><span class="line">    <span class="comment">// OK. 运行时借用检查允许多个不可变引用</span></span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;, &#123;&#125;&quot;</span>, a, b);</span><br><span class="line">    <span class="comment">// Panic here! 运行时检查发现同时存在可变引用和不可变引用</span></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> c = x.borrow_mut();</span><br><span class="line">    *c = <span class="number">456</span>;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, c);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>RefCell&lt;T&gt;</code>在天生保守的Rust编译规则下，为开发者提供了更高的灵活性，但也需要承担更大的运行时风险。一个<code>RefCell&lt;T&gt;</code>的应用场景是，通过Mock将原本的外部IO行为(<code>&amp;self</code>参数的trait)，替换为内部数据变更(<code>&amp;self</code>参数不变，但MockStruct通过持有<code>RefCell&lt;T&gt;</code>实现内部数据可变性)。</p>
+<p>另外，由于<code>Rc&lt;T&gt;</code>支持对相同数据同时存在多个所有者，但是只能读数据，而<code>RefCell&lt;T&gt;</code>允许在不可变语义下实现内部可变性，那么<code>Rc&lt;RefCell&lt;T&gt;&gt;</code>就可以实现基于引用计数，可存在多个具有读写数据权限的智能指针(完整版C++ <code>shared_ptr</code>):</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">fn main() &#123;</span><br><span class="line">    let x &#x3D; &amp;Rc::new(RefCell::new(123));</span><br><span class="line">    let a &#x3D; Rc::clone(x);</span><br><span class="line">    let b &#x3D; Rc::clone(x);</span><br><span class="line">    let c &#x3D; Rc::clone(x);</span><br><span class="line">    *b.borrow_mut() &#x3D; 456;</span><br><span class="line">    *c.borrow_mut() &#x3D; 789;</span><br><span class="line">    &#x2F;&#x2F; Output:</span><br><span class="line">    &#x2F;&#x2F; RefCell &#123; value: 789 &#125;, RefCell &#123; value: 789 &#125;, RefCell &#123; value: 789 &#125;</span><br><span class="line">    println!(&quot;&#123;:?&#125;, &#123;:?&#125;, &#123;:?&#125;&quot;, a, b, c)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="5-小结"><a href="#5-小结" class="headerlink" title="5. 小结"></a>5. 小结</h4><p>先总结下前面提到的Rust的各种机制是如何配合所有权系统来实现通过栈内存来管理堆内存，做到运行时零GC负担的:</p>
+<ol>
+<li>浅拷贝对象: 如i32，float，plain struct，默认直接执行栈拷贝，不涉及控制权转移，和常规语言无二</li>
+<li>深拷贝对象: 比如String，通过控制权转移来保证单所有者，在所有者退出作用域时，通过Drop trait确保数据被正确回收</li>
+<li>引用: 本质只是指针地址，借助编译器的借用检查器来避免数据竞态并保证引用的有效性，有时还需要开发者通过生命周期注解进行协助</li>
+<li>智能指针: 和String类似，也是深拷贝对象，但提供了更灵活的内存控制，包括避免深拷贝和控制权转移，动态大小，引用计数共享数据，内部可变性等</li>
+</ol>
+<p>总之，Rust编译器是天生保守的，它会尽全力拒绝那些可能不正确的程序，Rust确实能在编译期检查到很多大部分语言只能在运行期暴露的错误，这是Rust最迷人的地方之一。但是，与此同时，Rust编译器也可能会拒绝一些正确的程序，此时就需要如生命周期注解，<code>Rc&lt;T&gt;</code>等工具来辅助编译器，甚至通过<code>RefCell&lt;T&gt;</code>，unsafe等方案来绕过编译器检查。把<strong>编译器做厚</strong>，把<strong>运行时做薄</strong>，是Rust安全且高效，能够立足于系统级编程语言的根本。</p>
+<h3 id="二-函数式特性"><a href="#二-函数式特性" class="headerlink" title="二. 函数式特性"></a>二. 函数式特性</h3><p>我在<a href="https://wudaijun.com/2018/05/understand-functional-programing/">理解函数式编程</a>中提到，现在的语言不再受限于各种编程范式的约束，而是更偏实用主义，Rust也是这样的语言，它受函数式语言的影响颇深。</p>
+<h4 id="1-函数是第一类对象"><a href="#1-函数是第一类对象" class="headerlink" title="1. 函数是第一类对象"></a>1. 函数是第一类对象</h4><p>函数可作为参数，返回值，动态创建，并且动态创建的函数具备捕获当前作用域上下文的能力，也就是闭包，提供标准库容器迭代器模式并支持开发者扩展等，这些都是如今大部分语言的标配，无需过多解释。</p>
+<p>有一点需要提一下，Rust的闭包如果要捕获上下文的话，也要考虑到所有权转移的问题(转移，引用，可变引用)，并且Rust编译器会尝试自动推测你的闭包希望以那种方式来捕获环境。</p>
+<h4 id="2-变量可变性"><a href="#2-变量可变性" class="headerlink" title="2. 变量可变性"></a>2. 变量可变性</h4><p>Rust中的变量默认是不可变的，但也支持通过<code>let mut x = 5;</code>声明可变变量。合理使用不可变变量能够利用编译器检查使代码易于推导，可重入，无副作用。</p>
+<h4 id="3-模式匹配"><a href="#3-模式匹配" class="headerlink" title="3. 模式匹配"></a>3. 模式匹配</h4><p>模式匹配我最早在Erlang中接触，这个起初不是很适应的功能在用习惯之后，会发现它可以为程序提供更多对程序控制流的支配权，写出强大而简洁的代码。Rust也支持模式匹配:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Point</span></span> &#123;</span><br><span class="line">    x: <span class="built_in">i32</span>,</span><br><span class="line">    y: <span class="built_in">i32</span>,</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> p = Point &#123; x: <span class="number">7</span>, y: <span class="number">2</span> &#125;; <span class="comment">// 构造一个Point值匹配给命名变量p</span></span><br><span class="line">    <span class="keyword">match</span> p &#123;</span><br><span class="line">        Point &#123; x :<span class="number">0</span>, y&#125; =&gt; <span class="built_in">println!</span>(<span class="string">&quot;case 1: &#123;&#125;&quot;</span>, y), 	<span class="comment">// 匹配p.x==0</span></span><br><span class="line">        Point &#123; x, y: <span class="number">0</span>..=<span class="number">2</span> &#125; =&gt; <span class="built_in">println!</span>(<span class="string">&quot;case 2: &#123;&#125;&quot;</span>, x), <span class="comment">// 匹配0&lt;=p.y&lt;=2</span></span><br><span class="line">        Point &#123; x: a, y: _ &#125; =&gt; <span class="built_in">println!</span>(<span class="string">&quot;case 3: &#123;&#125;&quot;</span>, a), <span class="comment">// 匹配其它情况，并将字段x的值赋给变量a</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">let</span> Point &#123;x: <span class="number">7</span>, y: b&#125; = p &#123; <span class="comment">// 匹配 x==7，并取出y值</span></span><br><span class="line">    	<span class="built_in">println!</span>(<span class="string">&quot;case 4: &#123;&#125;&quot;</span>, b)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="三-面向对象特性"><a href="#三-面向对象特性" class="headerlink" title="三. 面向对象特性"></a>三. 面向对象特性</h3><h4 id="1-Object"><a href="#1-Object" class="headerlink" title="1. Object"></a>1. Object</h4><p>Rust提供基本的结构体字段封装和字段访问控制(可见性)，并且允许在此之上扩展结构体方法及方法的可见性:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">MyStruct</span></span> &#123;</span><br><span class="line">    x : <span class="built_in">i32</span>     <span class="comment">// 默认为私有字段</span></span><br><span class="line">    <span class="keyword">pub</span> name : <span class="built_in">String</span> <span class="comment">// 指定为公有字段</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> MyStruct &#123;</span><br><span class="line">    <span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">getx</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">i32</span> &#123;</span><br><span class="line">        <span class="keyword">self</span>.x</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="2-继承"><a href="#2-继承" class="headerlink" title="2. 继承"></a>2. 继承</h4><p>传统OOP的继承(subclass)主要有两个作用，<strong>代码复用</strong> 和 <strong>子类化(subtype)</strong> ，如C++的继承就同时实现了这两点，继承是一把双刃剑，因为传统继承不只是有代码复用和子类化的功能，它还做到了字段复用，即对象父子内存模型的一致性，当引入对象内存模型之后，各种多重继承，菱形继承所带来的问题不堪其扰。<strong>虚基类</strong>，<strong>显式指定父类作用域</strong>或者干脆<strong>不允许多重继承</strong>等方案也是头痛医头，脚痛医脚。</p>
+<p>近年兴起的新语言，如Golang就没有继承，它通过内嵌匿名结构体来实现代码复用，但丢失了dynamic dispatch，通过interface{}(声明式接口，隐式implement)来实现子类化，但也带来了运行时开销。</p>
+<p>关于subclass, subtype, dynamic dispatch等概念，可以参考我之前的<a href="https://wudaijun.com/2019/05/programing-paradigm/">编程范式游记</a>)。</p>
+<p>在Rust中，是通过trait来实现这两者的，trait本质上是<strong>实现式接口</strong>，用于对不同类型的相同方法进行抽象。Rust的trait有如下特性:</p>
+<ol>
+<li>trait是需要显式指明实现的</li>
+<li>trait可以提供默认实现，但不能包含字段(部分subclass)</li>
+<li>trait的默认实现可以调用trait中的其它方法，哪怕这些方法没有提供默认实现(dynamic dispatch)</li>
+<li>trait可以用做参数或返回值用于表达满足该接口的类型实例抽象(subtype)</li>
+<li>trait本身也可以定义依赖(supertrait)，如Copy trait依赖Clone trait</li>
+<li>作为泛型约束时trait可通过+号实现拼接，表示同时满足多个接口</li>
+</ol>
+<p>以下代码简单展示了Rust trait的基本特性:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">trait</span> <span class="title">Summary</span></span> &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">summarize_author</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">summarize</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="built_in">format!</span>(<span class="string">&quot;(Read more from &#123;&#125;...)&quot;</span>, <span class="keyword">self</span>.summarize_author())</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">trait</span> <span class="title">Title</span></span> &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">title</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">pub</span> <span class="class"><span class="keyword">struct</span> <span class="title">Tweet</span></span> &#123;</span><br><span class="line">    <span class="keyword">pub</span> username: <span class="built_in">String</span>,</span><br><span class="line">    <span class="keyword">pub</span> title: <span class="built_in">String</span>,</span><br><span class="line">    <span class="keyword">pub</span> content: <span class="built_in">String</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Summary <span class="keyword">for</span> Tweet &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">summarize_author</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="built_in">format!</span>(<span class="string">&quot;@&#123;&#125;&quot;</span>, <span class="keyword">self</span>.username)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> Title <span class="keyword">for</span> Tweet &#123;</span><br><span class="line">    <span class="function"><span class="keyword">fn</span> <span class="title">title</span></span>(&amp;<span class="keyword">self</span>) -&gt; <span class="built_in">String</span> &#123;</span><br><span class="line">        <span class="built_in">format!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="keyword">self</span>.title)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 函数声明等价于 pub fn notify&lt;T: Summary + Title&gt;(item: T) &#123;</span></span><br><span class="line"><span class="comment">// 即本质是bounded generic types的语法糖</span></span><br><span class="line"><span class="keyword">pub</span> <span class="function"><span class="keyword">fn</span> <span class="title">notify</span></span>(item: <span class="keyword">impl</span> Summary + Title) &#123;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;1 new tweet: &#123;&#125;, &#123;&#125;&quot;</span>, item.title(), item.summarize());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">        <span class="keyword">let</span> t = Tweet &#123;</span><br><span class="line">        	username: <span class="built_in">String</span>::from(<span class="string">&quot;wudaijun&quot;</span>),</span><br><span class="line">        	title: <span class="built_in">String</span>::from(<span class="string">&quot;study rust&quot;</span>),</span><br><span class="line">        	content: <span class="built_in">String</span>::from(<span class="string">&quot;rust is the best language&quot;</span>)</span><br><span class="line">        &#125;;</span><br><span class="line">        notify(t)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>总的来说，Rust对OOP的支持是比较完善的，舍弃了继承和字段复用，通过trait来完成代码复用和子类化，避免了OOP继承的各种坑。</p>
+<h3 id="四-泛型和元编程"><a href="#四-泛型和元编程" class="headerlink" title="四. 泛型和元编程"></a>四. 泛型和元编程</h3><p>Rust的泛型和元编程赋予语言更强大的灵活性。这里只列举个人目前学习到的一些要点。</p>
+<p>Rust泛型的一些特性:</p>
+<ol>
+<li>模板泛型: 在编译期填充具体类型，实现单态化</li>
+<li>支持枚举泛型: 如: <code>enum Option&lt;T&gt; &#123; Some(T), None, &#125;</code></li>
+<li>Trait Bound: <code>fn notify(item: impl Summary) &#123;...</code> 等价于 <code>fn notify&lt;T: Summary&gt;(item: T) &#123;...</code> 等价于 <code>fn notify&lt;T&gt;(item: T) where T: Summary &#123;...</code></li>
+<li>blanket implementations: 对实现了特定 trait 的类型有条件地实现方法，如标准库为任何实现了<code>Display</code> trait的类型实现了<code>ToString</code> trait: <code>impl&lt;T: Display&gt; ToString for T &#123;</code>。这意味着你实现了A trait，标准库/第三方库就可以为你实现B trait。这是trait和泛型的一种特殊结合，也是Rust trait和传统OOP不同的地方之一</li>
+</ol>
+<p>元编程能够生成代码的代码，如C++的模板由于其在预编译期处理，并且图灵完备，完全可以作为另一种语言来看待，它的执行结果就是另一种语言的代码。Rust的元编程通过宏来实现，宏的语法类似于这样:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#[macro_export]</span></span><br><span class="line"><span class="built_in">macro_rules!</span> vec &#123;</span><br><span class="line">    ( $( $x:expr ),* ) =&gt; &#123;</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut</span> temp_vec = <span class="built_in">Vec</span>::new();</span><br><span class="line">            $(</span><br><span class="line">                temp_vec.push($x);</span><br><span class="line">            )*</span><br><span class="line">            temp_vec</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这段代码能将<code>let v: Vec&lt;u32&gt; = vec![1, 2, 3];</code>转换成:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> <span class="keyword">mut</span> temp_vec = <span class="built_in">Vec</span>::new();</span><br><span class="line">temp_vec.push(<span class="number">1</span>);</span><br><span class="line">temp_vec.push(<span class="number">2</span>);</span><br><span class="line">temp_vec.push(<span class="number">3</span>);</span><br><span class="line">temp_vec</span><br></pre></td></tr></table></figure>
+<p>由于宏编程日常开发中使用较少，这里不再展开讨论。</p>
+<h3 id="五-并发编程"><a href="#五-并发编程" class="headerlink" title="五. 并发编程"></a>五. 并发编程</h3><p>基于Rust本身系统级编程语言的定位，Rust标准库本身只提供对OS Thread的基础抽象，即运行时本身不实现<strong>轻量级线程</strong>及其调度器，以保持其运行时的精简高效。</p>
+<p>Rust的所有权系统设计之初是为了简化运行时的内存管理，解决内存安全问题，而Rust作为系统级编程语言，并发自然也是绕不过去的传统难题，起初Rust觉得这是两个独立的问题，然而随着所有权系统的完善，Rust发现<strong>所有权系统也能解决一系列的并发安全问题</strong>。相较于并发领域佼佼者Erlang前辈的口号”任其崩溃(let it crash)”，Rust的并发口号也是不输分毫: “无畏并发(fearless concurrency)”。下面我们来看看Rust为何如此自信，Rust支持消息交互和共享内存两种并发编程范式。</p>
+<h4 id="1-消息交互"><a href="#1-消息交互" class="headerlink" title="1. 消息交互"></a>1. 消息交互</h4><p>Rust消息交互CSP模型，但也与Go这类CSP语言有一些区别。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> (tx, rx) = mpsc::channel();</span><br><span class="line">    <span class="keyword">let</span> val = <span class="built_in">String</span>::from(<span class="string">&quot;hi&quot;</span>);</span><br><span class="line">    thread::spawn(<span class="keyword">move</span> || &#123;</span><br><span class="line">        tx.send(val).unwrap();</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">let</span> received = rx.recv().unwrap();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;Got: &#123;&#125;&quot;</span>, received);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个小例子有如下需要关注的细节:</p>
+<ol>
+<li>Rust 在创建 channel 时无需指定其大小，因为Rust Channel的大小是没有限制的，并且明确区分发送端和接收端，对channel的写入是永远不会阻塞的</li>
+<li>Rust 在创建 channel 时也无需指定其类型，这是因为 tx 和 rx 是泛型对象，编译器会根据其实际发送的数据类型来实例化泛型(如这里的<code>std::sync::mpsc::Sender&lt;std::string::String&gt;</code>)，如果尝试对同一个 channel 发送不同类型，或者代码中没有调用<code>tx.send</code>函数都将会导致编译错误</li>
+<li>Rust编译器本身会尝试推测闭包以何种方式捕获外部变量，但通常是保守的借用。这里 move 关键字强制闭包获取其使用的环境值的所有权，因此main函数在创建线程后对val和tx的任何访问都会导致编译错误</li>
+<li><code>tx.send</code>也会导致val变量发生控制权转移，因此在新创建线程在<code>tx.send(val)</code>之后对val的任何访问也会导致编译错误</li>
+<li>Rust通过Send trait标记类型所有权是否能在线程间传递(只是标记，无需实现)，几乎所有Rust类型的所有权都是Send的(除了像<code>Rc&lt;T&gt;</code>这种为了性能刻意不支持的并发的，跨线程传递会导致编译错误。应该使用线程安全的<code>Arc&lt;T&gt;</code>)</li>
+</ol>
+<p>上面的3,4其实就是我们在并发编程常犯的错误：对相同变量的非并发安全访问，由于闭包的存在，使得这类”犯罪”的成本异常低廉。而Rust的所有权系统则巧妙地在编译器就发现了这类错误，因为变量所有权只会同时在一个线程中，也就避免了数据竞争。</p>
+<h4 id="2-共享内存"><a href="#2-共享内存" class="headerlink" title="2. 共享内存"></a>2. 共享内存</h4><p>受Rust所有权系统的影响，Rust中的内存共享初看起来有点繁杂:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::sync::&#123;Mutex, Arc&#125;;</span><br><span class="line"><span class="keyword">use</span> std::thread;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> counter = Arc::new(Mutex::new(<span class="number">0</span>));</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> handles = <span class="built_in">vec!</span>[];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="number">0</span>..<span class="number">10</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> counter = Arc::clone(&amp;counter);</span><br><span class="line">        <span class="keyword">let</span> handle = thread::spawn(<span class="keyword">move</span> || &#123;</span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut</span> num = counter.lock().unwrap();</span><br><span class="line"></span><br><span class="line">            *num += <span class="number">1</span>;</span><br><span class="line">        &#125;);</span><br><span class="line">        handles.push(handle);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> handle <span class="keyword">in</span> handles &#123;</span><br><span class="line">        handle.join().unwrap();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;Result: &#123;&#125;&quot;</span>, *counter.lock().unwrap());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>同样，这里面也有一些细节:</p>
+<ol>
+<li>和channel一样，<code>Mutex&lt;T&gt;</code>也是泛型的，并且只能通过<code>lock</code>才能得到其中的<code>T</code>值，确保不会忘记加锁</li>
+<li>Mutex会在脱离作用域时，会自动释放锁，确保不会忘记释放锁</li>
+<li>这里有多个线程需要共享Mutex的所有权，因此需要用到并发安全的引用计数智能指针<code>Arc&lt;T&gt;</code>(<code>RC&lt;T&gt;</code>不是线程安全的)</li>
+</ol>
+<h3 id="六-体会"><a href="#六-体会" class="headerlink" title="六 体会"></a>六 体会</h3><p>本文主要从所有权系统和编程范式的角度理解Rust，总的来说，这门语言给我的印象是很不错的。</p>
+<p>从系统级编程语言的角度来说，它确实兼顾了安全和高效，这中间是Rust编译器在”负重前行”，其它语言的编译器更多关注语法正确性，而Rust编译器还会想尽办法分析和保证代码安全性，这也是所有权系统及其相关机制的本意，这些规则前期可能要多适应下，但遵循这些约束能够换来巨大的健壮性和运行效率收益。</p>
+<p>从高级编程语言的角度来说，Rust从多种编程范式(过程式、函数式、面向对象、泛型、元编程等)中取其精华去其糟粕，属于编程范式融合得比较好的，比如要面向对象不要继承，要函数式编程也要控制流，可变性和性能，这让Rust具有强大的灵活性和抽象能力，在图形、音视频、Web/应用前后端等各个应用领域全面发力，包括对游戏服务器这类看重性能的应用场景而言，Rust也很有潜力。</p>
+<p>同时，由于Rust本身的多编程范式融合，以及独有的所有权系统，初学者上手Rust学习成本还是比较高的。由于对Rust缺乏实践，本文更多还是提炼汇总，如果有合适的应用场景，倒是很愿意用Rust实践下，增强理解。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2020/02/rust-basic/" title="初识 Rust">http://wudaijun.com/2020/02/rust-basic/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/rust/" rel="tag"><i class="fa fa-tag"></i> rust</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/01/go-gc-keypoint-and-monitor/" rel="prev" title="Golang GC核心要点和度量方法">
+      <i class="fa fa-chevron-left"></i> Golang GC核心要点和度量方法
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/04/language-mindmap/" rel="next" title="编程语言杂记">
+      编程语言杂记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E6%89%80%E6%9C%89%E6%9D%83%E7%B3%BB%E7%BB%9F"><span class="nav-text">一. 所有权系统</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E6%8E%A7%E5%88%B6%E6%9D%83%E8%BD%AC%E7%A7%BB"><span class="nav-text">1. 控制权转移</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E4%BD%BF%E7%94%A8%E5%BC%95%E7%94%A8%E6%9D%A5%E9%81%BF%E5%85%8D%E6%8E%A7%E5%88%B6%E6%9D%83%E8%BD%AC%E7%A7%BB"><span class="nav-text">2. 使用引用来避免控制权转移</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E6%B3%A8%E8%A7%A3"><span class="nav-text">3. 生命周期注解</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88"><span class="nav-text">4. 智能指针</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-%E5%B0%8F%E7%BB%93"><span class="nav-text">5. 小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E5%87%BD%E6%95%B0%E5%BC%8F%E7%89%B9%E6%80%A7"><span class="nav-text">二. 函数式特性</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%87%BD%E6%95%B0%E6%98%AF%E7%AC%AC%E4%B8%80%E7%B1%BB%E5%AF%B9%E8%B1%A1"><span class="nav-text">1. 函数是第一类对象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%8F%98%E9%87%8F%E5%8F%AF%E5%8F%98%E6%80%A7"><span class="nav-text">2. 变量可变性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D"><span class="nav-text">3. 模式匹配</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%89%B9%E6%80%A7"><span class="nav-text">三. 面向对象特性</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Object"><span class="nav-text">1. Object</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E7%BB%A7%E6%89%BF"><span class="nav-text">2. 继承</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-%E6%B3%9B%E5%9E%8B%E5%92%8C%E5%85%83%E7%BC%96%E7%A8%8B"><span class="nav-text">四. 泛型和元编程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%94-%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B"><span class="nav-text">五. 并发编程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E6%B6%88%E6%81%AF%E4%BA%A4%E4%BA%92"><span class="nav-text">1. 消息交互</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98"><span class="nav-text">2. 共享内存</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%AD-%E4%BD%93%E4%BC%9A"><span class="nav-text">六 体会</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

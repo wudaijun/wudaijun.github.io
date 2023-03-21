@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="OverViewErlang外部调用的几种方式： 外部接入(OS进程级)：  Ports: 用C实现的可执行程序，以Port的方式与Erlang交互。 C Nodes: 用C模拟Erlang Node行为实现的可执行程序。 Jinterface: Java和Erlang的通讯接口。 Network: 通过自定义序列化格式与Erlang节点网络交互，如bert-rpc  内部接入(和虚拟机在同一个O">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang Ports">
+<meta property="og:url" content="http://wudaijun.com/2015/08/erlang-port/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="OverViewErlang外部调用的几种方式： 外部接入(OS进程级)：  Ports: 用C实现的可执行程序，以Port的方式与Erlang交互。 C Nodes: 用C模拟Erlang Node行为实现的可执行程序。 Jinterface: Java和Erlang的通讯接口。 Network: 通过自定义序列化格式与Erlang节点网络交互，如bert-rpc  内部接入(和虚拟机在同一个O">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201508/Erlang_Port.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201508/Erlang_Port_Driver.png">
+<meta property="article:published_time" content="2015-08-23T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.604Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201508/Erlang_Port.png">
+
+<link rel="canonical" href="http://wudaijun.com/2015/08/erlang-port/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Erlang Ports | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/08/erlang-port/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Erlang Ports
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-08-24 00:00:00" itemprop="dateCreated datePublished" datetime="2015-08-24T00:00:00+08:00">2015-08-24</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/08/erlang-port/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/08/erlang-port/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="OverView"><a href="#OverView" class="headerlink" title="OverView"></a>OverView</h3><p>Erlang外部调用的几种方式：</p>
+<p>外部接入(OS进程级)：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/tutorial/c_port.html">Ports</a>: 用C实现的可执行程序，以Port的方式与Erlang交互。</li>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/tutorial/cnode.html">C Nodes</a>: 用C模拟Erlang Node行为实现的可执行程序。</li>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/apps/jinterface/jinterface_users_guide.html">Jinterface</a>: Java和Erlang的通讯接口。</li>
+<li>Network: 通过自定义序列化格式与Erlang节点网络交互，如<a target="_blank" rel="noopener" href="http://bert-rpc.org/">bert-rpc</a></li>
+</ul>
+<p>内部接入(和虚拟机在同一个OS进程内)：</p>
+<ul>
+<li>BIF: Erlang大部分BIF用C实现，如erlang:now，lists:reverse等</li>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/tutorial/c_portdriver.html)">Port Driver</a>: 以链接库方式将Port嵌入虚拟机，也叫Linkin Driver</li>
+<li><a target="_blank" rel="noopener" href="http://www.erlang.org/doc/tutorial/nif.html">NIF</a>: 虚拟机直接调用C原生代码</li>
+</ul>
+<p>下面主要理解常用的三种：Ports, Port Driver, NIF。</p>
+<span id="more"></span>
+<h3 id="Ports"><a href="#Ports" class="headerlink" title="Ports"></a>Ports</h3><p><img src="/assets/image/201508/Erlang_Port.png" alt="" title="普通端口"></p>
+<p>图一. Ports 通信模型</p>
+<p>Port是连接外部程序进程和Erlang虚拟机的桥梁，外部进程通过标准输入输出与Erlang虚拟机交互，并运行于独立的地址空间。</p>
+<p>从操作系统的角度看，外部程序和Erlang虚拟机都是独立允许的进程，只不过外部程序的标准输入输出与Erlang虚拟机对接在了一起而已。因此外部程序可以通过<code>read(0, req_buf, len)</code>来获取虚拟机发出的指令，也可通过<code>write(1, ack_buf, len)</code>来发出响应。当外部程序崩溃了，Erlang虚拟机可以检测到，可以选择重启等对应策略。由于两者在不同的地址空间，通过标准IO交互，因此外部程序的崩溃不会影响到Erlang虚拟机本身的正常运行。</p>
+<p>每个Port都有一个owner进程，通常为创建Port的进程，当owner进程终止时，Port也将被自动关闭。Ports使用示例参考<a target="_blank" rel="noopener" href="http://erlang.org/doc/tutorial/c_port.html">Ports</a>。</p>
+<p>Port的优势在于隔离性和安全性，因为外部程序的任何异常都不会导致虚拟机崩溃，并且Erlang层通过<code>receive</code>来实现同步调用等待外部程序响应时，是不会影响Erlang虚拟机调度的。至于Port的缺点，主要是效率低，由于传递的是字节流数据，因此需要对数据进行序列化反序列化，Erlang本身针对C和Java提供了对应的编解码库ei和Jinterface。</p>
+<h3 id="Port-Driver"><a href="#Port-Driver" class="headerlink" title="Port Driver"></a>Port Driver</h3><p><img src="/assets/image/201508/Erlang_Port_Driver.png" alt="" title="端口驱动"></p>
+<p>图二. Port Driver 通信模型</p>
+<p>从Erlang层来看，端口驱动和普通端口所体现的行为模式一样，收发消息，注册名字，并且共用一套Port API。但是端口驱动本身是作为一个链接库运行于Erlang虚拟机中的，也就是和Erlang虚拟机共享一个操作系统进程。</p>
+<p>Port Driver分为静态链接和动态链接两种，前者和虚拟机一起编译，在虚拟机启动时被加载，后者通过动态链接库的方式嵌入到虚拟机。出于灵活性和易用性的原因，通常使用后者。</p>
+<p>虚拟机和Port Driver的交互方式与Port一样，Port和Port Driver在Erlang层表现的语义一致。</p>
+<p>Port Driver通过一个<a target="_blank" rel="noopener" href="http://erlang.org/doc/man/driver_entry.html">driver_entry</a>结构体与虚拟机交互，该结构体注册了driver针对各种虚拟机事件的响应函数。<a href="http://wudaijun.com/2015/01/skynet-c-module/">skynet挂接service</a>的思想大概也继承于此。driver_entry结构体主要成员如下：</p>
+<pre><code>typedef struct erl_drv_entry &#123;
+// 当链接库被加载(erl_ddll:load_driver/2)时调用，同一个链接库的多个driver实例来说，只调用一次
+int (*init)(void);
+
+// 当Erlang层调用erlang:open_port/2时调用，每个driver实例执行一次
+ErlDrvData (*start)(ErlDrvPort port, char *command);
+
+// 当Port Driver被关闭(erlang:port_close/1,owner进程终止,虚拟机停止等)时执行
+void (*stop)(ErlDrvData drv_data);
+
+// 收到Erlang进程发来的消息(Port ! &#123;PortOwner, &#123;command, Data&#125;&#125; or erlang:port_command(Port, Data))
+void (*output)(ErlDrvData drv_data, char *buf, ErlDrvSizeT len);
+
+// 用于基于事件的异步Driver 通过erl_driver:driver_select函数进行事件(socket,pipe,Event等)监听
+void (*ready_input)(ErlDrvData drv_data, ErlDrvEvent event);
+void (*ready_output)(ErlDrvData drv_data, ErlDrvEvent event);
+
+// Driver名字 用于open_port/2
+char *driver_name;
+
+// 当Driver被卸载时调用(erl_ddll:unload_driver/1)，和init对应。仅针对动态链接Driver
+void (*finish)(void);
+
+// 被erlang:port_control/3(类似ioctl)触发
+ErlDrvSSizeT (*control)(ErlDrvData drv_data, unsigned int command,
+                        char *buf, ErlDrvSizeT len,
+            char **rbuf, ErlDrvSizeT rlen);
+
+// Driver定义的超时回调，通过erl_driver:driver_set_timer设置
+void (*timeout)(ErlDrvData drv_data);
+
+// output的高级版本，通过ErlIOVec避免了数据拷贝，更高效
+void (*outputv)(ErlDrvData drv_data, ErlIOVec *ev);
+
+// 用于基于线程池的异步Driver(erl_driver:driver_async) 当线程池中的的任务执行完成时，由虚拟机调度线程回调该函数                       
+void (*ready_async)(ErlDrvData drv_data, ErlDrvThreadData thread_data);
+
+// 当Driver即将关闭时，在stop之前调用 用于清理Driver队列中的数据(?)
+void (*flush)(ErlDrvData drv_data);
+
+// 被erlang:port_call/3触发 和port_control类似，但使用ei库编码ETerm
+ErlDrvSSizeT (*call)(ErlDrvData drv_data, unsigned int command,
+                     char *buf, ErlDrvSizeT len,
+         char **rbuf, ErlDrvSizeT rlen, unsigned int *flags);
+
+// Driver 监听的进程退出信号(erl_driver:driver_monitor_process)
+void (*process_exit)(ErlDrvData drv_data, ErlDrvMonitor *monitor);
+&#125; ErlDrvEntry;
+</code></pre><p>该结构体比较复杂，主要原因是Erlang Port Driver支持多种运行方式：</p>
+<ol>
+<li>运行于虚拟机调度线程的基本模式</li>
+<li>基于select事件触发的异步Driver</li>
+<li>基于异步线程池的异步Driver</li>
+</ol>
+<p>三种模式的示例参考<a target="_blank" rel="noopener" href="http://erlang.org/doc/tutorial/c_portdriver.html)">Port Driver</a>，<a href="(http://erlang.org/doc/apps/erts/driver.html)">How to Implement a Driver</a>，Driver API接口文档：<a target="_blank" rel="noopener" href="http://erlang.org/doc/man/erl_driver.html">erl_driver</a>。Erlang虚拟机提供的异步线程池可通过<code>+A</code>选项设置。</p>
+<p>端口驱动的主要优势是效率高，但是缺点是链入的动态链接库本身出现内测泄露或异常，将影响虚拟机的正常运行甚至导致虚拟机崩溃。将外部模块的问题带入了虚拟机本身。对于耗时较长或阻塞的任务，应该通过异步方式设计，避免影响虚拟机调度。</p>
+<h3 id="NIF"><a href="#NIF" class="headerlink" title="NIF"></a>NIF</h3><p>NIF是Erlang调用C代码最简单高效的方案，对Erlang层来说，调用NIF就像调用普通函数一样，只不过这个函数是由C实现的。NIF是同步语义的，运行于调度线程中，无需上下文切换，因此效率很高。但也引出一个问题，对于执行时间长的NIF，在NIF返回之前，调度线程不能做别的事情，影响了虚拟机的公平调度，甚至会影响调度线程之间的协作。因此NIF是把双刃剑，在使用的时候要尤其小心。</p>
+<p>Erlang建议的NIF执行时间不要超过1ms，针对于执行时间长的NIF，有如下几种方案：</p>
+<ol>
+<li>分割任务，将单次长时间调用切分为多次短时间调用，再合并结果。这种方案显然不通用</li>
+<li>让NIF参与调度。在NIF中恰当时机通过<code>enif_consume_timeslice</code>汇报消耗的时间片，让虚拟机确定是否放弃控制权并通过返回值通知NIF(做上下文保存等)</li>
+<li>使用脏调度器，让NIF在非调度线程中执行</li>
+</ol>
+<p>Erlang默认并未启用脏调度器，通过<code>--enable-dirty-schedulers</code>选项重新编译虚拟机可打开脏调度器，目前脏调度器只能被NIF使用。</p>
+<p>关于脏调度器，NIF测试与调优，参考：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="http://www.cnblogs.com/zhengsyao/p/dirty_scheduler_otp_17rc1.html">siyao blog</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/slfritchie/nifwait/tree/md5">nifwait</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/vinoski/bitwise/">bitwise</a>(<a target="_blank" rel="noopener" href="https://github.com/vinoski/bitwise/blob/master/vinoski-opt-native-code.pdf">其中的PDF</a>质量很高)</li>
+</ol>
+<p>Port Driver和NIF与虚拟机调度密切相关，想要在实践中用好它们，还是要加深对Erlang虚拟机调度的理解，如公平调度，进程规约，调度器协同等。再来理解异步线程池，脏调度器的存在的意义以及适用场景。另外，Port Driver和NIF还有一种用法是自己创建新的线程或线程池(Driver和NIF也提供了线程操作API)，我们项目组也这么用过，这基本是费力不讨好的一种方案，还极易出错。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/08/erlang-port/" title="Erlang Ports">http://wudaijun.com/2015/08/erlang-port/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/08/erlang-server-design1-cluster-server/" rel="prev" title="开发笔记(1) cluster server">
+      <i class="fa fa-chevron-left"></i> 开发笔记(1) cluster server
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/09/erlang-server-design2-erlang-lua-battle/" rel="next" title="开发笔记(2) 服务器Lua战斗">
+      开发笔记(2) 服务器Lua战斗 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#OverView"><span class="nav-text">OverView</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Ports"><span class="nav-text">Ports</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Port-Driver"><span class="nav-text">Port Driver</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NIF"><span class="nav-text">NIF</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

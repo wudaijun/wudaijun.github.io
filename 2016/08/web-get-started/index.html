@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一些简单的web学习笔记，用于在需要时快速搭建一个可用的网站。 基础知识 HTML: 通过一套标记标签，定义网页的内容 CSS:  通过选择器和层叠次序，定义网页的布局 JavaScript: 通过可编程的文档对象模型(DOM)和事件响应，定义网页的行为">
+<meta property="og:type" content="article">
+<meta property="og:title" content="web 初学笔记">
+<meta property="og:url" content="http://wudaijun.com/2016/08/web-get-started/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一些简单的web学习笔记，用于在需要时快速搭建一个可用的网站。 基础知识 HTML: 通过一套标记标签，定义网页的内容 CSS:  通过选择器和层叠次序，定义网页的布局 JavaScript: 通过可编程的文档对象模型(DOM)和事件响应，定义网页的行为">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2016-08-01T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.607Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="python">
+<meta property="article:tag" content="web">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2016/08/web-get-started/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>web 初学笔记 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/08/web-get-started/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          web 初学笔记
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-08-02 00:00:00" itemprop="dateCreated datePublished" datetime="2016-08-02T00:00:00+08:00">2016-08-02</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/web/" itemprop="url" rel="index"><span itemprop="name">web</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/08/web-get-started/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/08/web-get-started/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>一些简单的web学习笔记，用于在需要时快速搭建一个可用的网站。</p>
+<h3 id="基础知识"><a href="#基础知识" class="headerlink" title="基础知识"></a>基础知识</h3><ul>
+<li>HTML: 通过一套标记标签，定义网页的内容</li>
+<li>CSS:  通过选择器和层叠次序，定义网页的布局</li>
+<li>JavaScript: 通过可编程的文档对象模型(DOM)和事件响应，定义网页的行为</li>
+</ul>
+<span id="more"></span>
+<h3 id="后端框架"><a href="#后端框架" class="headerlink" title="后端框架"></a>后端框架</h3><p>由于Python的原因，选用了<a target="_blank" rel="noopener" href="http://webpy.org/docs/0.3/tutorial">web.py</a>这个非常轻量的框架，之前也看过Rails，用起来觉得很”神奇”，但约定和黑魔法太多，不合个人口味。</p>
+<p>web.py是一个web framework，它也提供了http server的功能，但在线上环境，通常需要结合更高效专业的http server(如nginx)。这里有几种结合方案:</p>
+<ol>
+<li>用nginx做反向代理，将请求路由到后端web.py</li>
+<li>将web.py作为CGI/FastCGI程序，挂接到nginx/lighttpd/apache</li>
+</ol>
+<p>第二种方式需要安装python flup库，它实现了CGI/FastCGI规范，并实现了这些规范的WSGI(定义flup这类服务与web.py这类framework的调用规范)接口。</p>
+<h4 id="CGI"><a href="#CGI" class="headerlink" title="CGI"></a>CGI</h4><p>通用网关接口(Common Gateway Interface)，是外部应用程序（CGI程序）与Web服务器之间的接口标准。CGI规范允许Web服务器执行外部程序，并将它们的输出发送给Web浏览器，CGI将Web的一组简单的静态超媒体文档变成一个完整的新的交互式媒体。</p>
+<p>我们知道http server提供的内容通常分为静态内容和动态内容，前者通常集成于web server中。而动态内容，需要web server(如nginx)将请求传递给处理程序(如web.py)并获取返回结果。那么web server传递哪些请求内容，如何传递，处理程序如何返回生成的响应内容等细节，就需要一个通信规范，并且这个规范最好抽象于双方的具体实现，这就是CGI存在的意义，CGI程序可以用任何脚本或编程语言实现，只要这种语言具有标准输入输出和环境变量。</p>
+<p>CGI规定每次有请求，都会启动一个CGI程序进程(对Shell script来说，就是sh或bash命令，对python等脚本语言来说，通常是对应解释器)，并且通过标准输入输出以及环境变量与CGI程序交互。CGI的缺点是反复进程启动/初始化/关闭比较消耗资源并且效率低下，难以扩展。目前CGI已经逐渐退出历史舞台。</p>
+<h4 id="web内置模块"><a href="#web内置模块" class="headerlink" title="web内置模块"></a>web内置模块</h4><p>针对CGI每次初始化进程(脚本解释器)的开销问题，一些web server(如apache)以插件的方式集成了CGI脚本的解释器(如mod_php,mod_perl等)，将这些解释器以模块的方式常驻，web服务器在启动时会启动这些模块，当新的动态请求到达，web服务器可利用解释器模块解析CGI脚本，避免进程fork。这种优化方式主要针对于脚本语言编写的CGI程序。</p>
+<h4 id="FastCGI"><a href="#FastCGI" class="headerlink" title="FastCGI"></a>FastCGI</h4><p>FastCGI在CGI进程常驻的前提下，通过进程池，进程管理器进一步提高了CGI的可伸缩性和容错性。web server将动态请求发给FastCGI进程管理器，后者会将请求分发给进程池中的某一个worker进程。</p>
+<p>web server和FastCGI管理进程的通信方式有socks(相同主机)和tcp(不同主机)两种，这提高了FastCGI本身的可扩展性。目前FastCGI进程管理器除了web server自带的fastcgi模块之外，还有<code>spawn-fcgi</code>(分离于lighttpd)，<code>php-fpm</code>(仅用于PHP)等可替换的独立模块。</p>
+<p>参考：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="http://hao.jser.com/archive/8184/">什么是CGI、FASTCGI、PHP-CGI、PHP-FPM、SPAWN-FCGI?</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.douban.com/note/13508388/">WSGI、flup、fastcgi、web.py的关系</a> </li>
+<li><a target="_blank" rel="noopener" href="http://blog.csdn.net/five3/article/details/7732832">nginx[+spawn-fcgi]+flup+webpy服务搭建</a></li>
+<li><a target="_blank" rel="noopener" href="http://webpy.org/install.zh-cn">http://webpy.org/install.zh-cn</a></li>
+<li><a target="_blank" rel="noopener" href="http://webpy.org/cookbook/index.zh-cn">http://webpy.org/cookbook/index.zh-cn</a></li>
+</ol>
+<h3 id="模板引擎"><a href="#模板引擎" class="headerlink" title="模板引擎"></a>模板引擎</h3><p>模板引擎用于将用户界面和业务数据分离，使用模板语言，来根据业务数据动态生成HTML网页，简化HTML的书写。简单了解了一下Python的模板引擎，<a target="_blank" rel="noopener" href="http://docs.jinkan.org/docs/jinja2/">Jinja2</a>似乎是个不错的选择，速度块，语法易懂，文档全面。控制结构，模板继承都很好用。</p>
+<h3 id="CSS框架"><a href="#CSS框架" class="headerlink" title="CSS框架"></a>CSS框架</h3><p>前端框架定义一系列可复用，可扩展的CSS样式，常用组件，和JS插件等。让用户在排版样式上少操点心，直接拿来用就行了。目前觉得<a target="_blank" rel="noopener" href="http://www.runoob.com/bootstrap/bootstrap-tutorial.html">Bootstrap</a>还不错，社区庞大，稳定，有多套可视化的布局系统。</p>
+<h3 id="JS框架"><a href="#JS框架" class="headerlink" title="JS框架"></a>JS框架</h3><p><a target="_blank" rel="noopener" href="http://www.runoob.com/jquery/jquery-tutorial.html">JQuery</a>应该是目前最火的前端JS框架了，基于CSS选择器扩展的JQuery选择器，简化了JavaScript的书写，实现脚本与内容分离。</p>
+<h3 id="其它类库"><a href="#其它类库" class="headerlink" title="其它类库"></a>其它类库</h3><p>除此之外，可能还需要用到一些第三方的类库，如Python的MongoDB库<a target="_blank" rel="noopener" href="https://github.com/mongodb/mongo-python-driver">pymongo</a>，Json的解析和渲染库<a target="_blank" rel="noopener" href="https://github.com/warfares/pretty-json">pretty-json</a>等。在开发过程中要善于搜索，提高开发效率。</p>
+<h3 id="综合使用"><a href="#综合使用" class="headerlink" title="综合使用"></a>综合使用</h3><p>写了一个简单Demo, 很Low, 没用JS, 只是用来熟悉基本流程:</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/wudaijun/pyweb">https://github.com/wudaijun/pyweb</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/08/web-get-started/" title="web 初学笔记">http://wudaijun.com/2016/08/web-get-started/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/python/" rel="tag"><i class="fa fa-tag"></i> python</a>
+              <a href="/tags/web/" rel="tag"><i class="fa fa-tag"></i> web</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/07/monitor-mongodb/" rel="prev" title="MongoDB 状态监控">
+      <i class="fa fa-chevron-left"></i> MongoDB 状态监控
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/08/gs-design-concept/" rel="next" title="一些GS设计理念">
+      一些GS设计理念 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="nav-text">基础知识</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E6%A1%86%E6%9E%B6"><span class="nav-text">后端框架</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#CGI"><span class="nav-text">CGI</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#web%E5%86%85%E7%BD%AE%E6%A8%A1%E5%9D%97"><span class="nav-text">web内置模块</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#FastCGI"><span class="nav-text">FastCGI</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E6%9D%BF%E5%BC%95%E6%93%8E"><span class="nav-text">模板引擎</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CSS%E6%A1%86%E6%9E%B6"><span class="nav-text">CSS框架</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JS%E6%A1%86%E6%9E%B6"><span class="nav-text">JS框架</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B6%E5%AE%83%E7%B1%BB%E5%BA%93"><span class="nav-text">其它类库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%BC%E5%90%88%E4%BD%BF%E7%94%A8"><span class="nav-text">综合使用</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

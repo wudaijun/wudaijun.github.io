@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="简单介绍一下Erlang常用数据结构的内部实现和特性，主要参考Erlang OTP 18.0源码，和网上很多优秀博客(参见附录)，整理了一些自己项目中常用到的。 Erlang虚拟机使用一个字(64&#x2F;32位)来表示所有类型的数据，即Eterm。具体的实施方案通过占用Eterm的后几位作为类型标签，然后根据标签类型来解释剩余位的用途。这个标签是多层级的，最外层占用两位，有三种类型：  01: list">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang 常用数据结构实现">
+<meta property="og:url" content="http://wudaijun.com/2015/12/erlang-datastructures/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="简单介绍一下Erlang常用数据结构的内部实现和特性，主要参考Erlang OTP 18.0源码，和网上很多优秀博客(参见附录)，整理了一些自己项目中常用到的。 Erlang虚拟机使用一个字(64&#x2F;32位)来表示所有类型的数据，即Eterm。具体的实施方案通过占用Eterm的后几位作为类型标签，然后根据标签类型来解释剩余位的用途。这个标签是多层级的，最外层占用两位，有三种类型：  01: list">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201512/erlang_lists_sample.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201512/erlang_tuple_format.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201512/erlang_refc_binary.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201512/erlang_sub_binary.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201512/erlang_binary_append.png">
+<meta property="article:published_time" content="2015-12-05T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.606Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201512/erlang_lists_sample.png">
+
+<link rel="canonical" href="http://wudaijun.com/2015/12/erlang-datastructures/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Erlang 常用数据结构实现 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/12/erlang-datastructures/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Erlang 常用数据结构实现
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-12-06 00:00:00" itemprop="dateCreated datePublished" datetime="2015-12-06T00:00:00+08:00">2015-12-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/12/erlang-datastructures/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/12/erlang-datastructures/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>简单介绍一下Erlang常用数据结构的内部实现和特性，主要参考<a target="_blank" rel="noopener" href="https://github.com/erlang/otp/tree/maint-18">Erlang OTP 18.0</a>源码，和网上很多优秀博客(参见附录)，整理了一些自己项目中常用到的。</p>
+<p>Erlang虚拟机使用一个字(64/32位)来表示所有类型的数据，即Eterm。具体的实施方案通过占用Eterm的后几位作为类型标签，然后根据标签类型来解释剩余位的用途。这个标签是多层级的，最外层占用两位，有三种类型：</p>
+<ul>
+<li>01: list，剩下62位是指向列表Cons的指针</li>
+<li>10: boxed对象，即复杂对象，剩余62位指向boxed对象的对象头。包括元组，大整数，外部Pid/Port等</li>
+<li>11: immediate立即数，即可以在一个字中表示的小型对象，包括小整数，本地Pid/Port，Atom，NIL等</li>
+</ul>
+<p>这三种类型是Erlang类型的大框架，前两者是可以看做是引用类型，立即数相当于是值类型，<strong>但无论对于哪种类型，Erlang Eterm本身只占用一个字</strong>，理解这一点是很重要的。</p>
+<span id="more"></span>
+<p>对于二三级标签的细分和编码，一般我们无需知道这些具体的底层细节，以下是几种常用的数据结构实现方式。</p>
+<h2 id="一-常用类型"><a href="#一-常用类型" class="headerlink" title="一. 常用类型"></a>一. 常用类型</h2><h3 id="1-atom"><a href="#1-atom" class="headerlink" title="1. atom"></a>1. atom</h3><p>atom用立即数表示，在Eterm中保存的是atom在全局atom表中的索引，依赖于高效的哈希和索引表，Erlang的atom比较和匹配像整数一样高效。atom表是不回收的，并且默认最大值为1024*1024，超过这个限制Erlang虚拟机将会崩溃，可通过<code>+t</code>参数调整该上限。</p>
+<h3 id="2-Pid-Port"><a href="#2-Pid-Port" class="headerlink" title="2.Pid/Port"></a>2.Pid/Port</h3><pre><code>/*  erts/emulator/beam/erl_term.h
+
+ *
+ *  Old pid layout(R9B及之前):
+ *  
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |s s s|n n n n n n n n n n n n n n n|N N N N N N N N|c c|0 0|1 1|
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ *  s : serial  每次n到达2^15之后 自增一次 然后n重新从低位开始
+ *  n : number  15位, 进程在本地进程表中的索引
+ *  c : creation 每次节点重启，该位自增一次
+ *  N : node number 节点名字在atom表中索引
+ *
+ *
+ *  PID layout (internal pids):
+ *
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |n n n n n n n n n n n n n n n n n n n n n n n n n n n n|0 0|1 1|
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ *  n : number 28位进程Pid
+ */
+</code></pre><p>在Old Pid表示中(R9B及之前版本)，在32位中表示了整个Pid，包括其节点名字等信息，也就是本地进程和外部进程都可以用Eterm立即数表示，显示格式为<code>&lt;N, n, s&gt;</code>。</p>
+<p>在R9B之后，随着进程数量增加和其它因素，Pid只在32位中表示本地Pid(A=0)，将32位中除了4位Tag之外的28位，都可用于进程Pid表示，出于Pid表示的历史原因，仍然保留三段式的显示，本地Pid表示变成了<code>&lt;0, Pid低15位, Pid高13位&gt;</code>。对于外部Pid，采用boxed复合对象表示，在将本地Pid发往其它node时，Erlang会自动将为Pid加上本地节点信息，并打包为一个boxed对象，占用6个字。另外，Erlang需要维护Pid表，每个条目占8个字节，当进程数量过大时，Pid表将占用大量内存，Erlang默认可以使用18位有效位来表示Pid(262144)，可通过+P参数调节，最大值为27位(2^27-1)，此时Pid表占用内存为2G。</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">Eshell V8.<span class="number">1</span>  (abort with ^G)</span><br><span class="line">(n1@T4F-MBP-<span class="number">11</span>)<span class="number">1</span>&gt; node().</span><br><span class="line">&#x27;n1@T4F-MBP-<span class="number">11</span>&#x27;</span><br><span class="line"><span class="comment">% 节点名的二进制表示</span></span><br><span class="line">(n1@T4F-MBP-<span class="number">11</span>)<span class="number">2</span>&gt; term_to_binary(node()).</span><br><span class="line">&lt;&lt;<span class="number">131</span>,<span class="number">100</span>,<span class="number">0</span>,<span class="number">13</span>,<span class="number">110</span>,<span class="number">49</span>,<span class="number">64</span>,<span class="number">84</span>,<span class="number">52</span>,<span class="number">70</span>,<span class="number">45</span>,<span class="number">77</span>,<span class="number">66</span>,<span class="number">80</span>,<span class="number">45</span>,<span class="number">49</span>,<span class="number">49</span>&gt;&gt;</span><br><span class="line">(n1@T4F-MBP-<span class="number">11</span>)<span class="number">3</span>&gt; self().</span><br><span class="line">&lt;<span class="number">0.63</span>.<span class="number">0</span>&gt;</span><br><span class="line"><span class="comment">% term_to_binary会将A对应的节点名编码进去</span></span><br><span class="line">(n1@T4F-MBP-<span class="number">11</span>)<span class="number">4</span>&gt; term_to_binary(self()).</span><br><span class="line">&lt;&lt;<span class="number">131</span>,<span class="number">103</span>,<span class="number">100</span>,<span class="number">0</span>,<span class="number">13</span>,<span class="number">110</span>,<span class="number">49</span>,<span class="number">64</span>,<span class="number">84</span>,<span class="number">52</span>,<span class="number">70</span>,<span class="number">45</span>,<span class="number">77</span>,<span class="number">66</span>,<span class="number">80</span>,<span class="number">45</span>,<span class="number">49</span>,</span><br><span class="line">  <span class="number">49</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">63</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">2</span>&gt;&gt;</span><br><span class="line">(n1@T4F-MBP-<span class="number">11</span>)<span class="number">5</span>&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="3-lists"><a href="#3-lists" class="headerlink" title="3. lists"></a>3. lists</h3><p>列表以标签01标识，剩余62位指向列表的Cons单元，Cons是[Head|Tail]的组合，在内存中体现为两个相邻的Eterm，Head可以是任何类型的Eterm，Tail是列表类型的Eterm。因此形如<code>L2 = [Elem|L1]</code>的操作，实际上构造了一个新的Cons，其中Head是Elem Eterm，Tail是L1 Eterm，然后将L2的Eterm指向了这个新的Cons，因此L2即代表了这个新的列表。对于<code>[Elem|L2] = L1</code>，实际上是提出了L1 Eterm指向的Cons，将Head部分赋给Elem，Tail部分赋给L2，注意Tail本身就是个List的Eterm，因此list是单向列表，并且构造和提取操作是很高效的。需要再次注意的是，Erlang所有类型的Eterm本身只占用一个字大小。这也是诸如list,tuple能够容纳任意类型的基础。</p>
+<p>Erlang中进程内对对象的重复引用只需占用一份对象内存(只是Eterm本身一个字的拷贝)，但是在对象跨进程时，对象会被展开，执行速深度拷贝：</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">Eshell V7.<span class="number">0.2</span>  (abort with ^G)</span><br><span class="line"><span class="number">1</span>&gt; L1 = [<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>].</span><br><span class="line">[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>]</span><br><span class="line"><span class="number">2</span>&gt; erts_debug:size(L1).		  </span><br><span class="line"><span class="number">6</span></span><br><span class="line"><span class="number">3</span>&gt; L2 = [L1,L1,L1].</span><br><span class="line">[[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>],[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>],[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>]]</span><br><span class="line"><span class="number">4</span>&gt; erts_debug:size(L2).		  <span class="comment">% 获得L2对象树的大小 3*2+6</span></span><br><span class="line"><span class="number">12</span></span><br><span class="line"><span class="number">5</span>&gt; erts_debug:flat_size(L2). 	<span class="comment">% 获得对象平坦展开后的大小 3*(2+6)</span></span><br><span class="line"><span class="number">24</span></span><br><span class="line"><span class="number">6</span>&gt; P1 = spawn(<span class="keyword">fun</span>() -&gt; <span class="keyword">receive</span> L -&gt; io:format(<span class="string">&quot;~p~n&quot;</span>,[erts_debug:size(L)]) <span class="keyword">end</span> <span class="keyword">end</span>).</span><br><span class="line">&lt;<span class="number">0.45</span>.<span class="number">0</span>&gt;</span><br><span class="line"><span class="number">7</span>&gt; P1 ! L2.					  <span class="comment">% 在跨进程时，对象被展开 执行深度拷贝</span></span><br><span class="line"><span class="number">24</span></span><br><span class="line">[[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>],[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>],[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>]]</span><br></pre></td></tr></table></figure>
+<p>此时L1, L2的内存布局如下：</p>
+<p><img src="/assets/image/201512/erlang_lists_sample.png" alt=""></p>
+<h3 id="4-tuple"><a href="#4-tuple" class="headerlink" title="4. tuple"></a>4. tuple</h3><p>tuple属于boxed对象的一种，每个boxed对象都有一个对象头(header)，boxed Eterm即指向这个header，这个header里面包含具体的boxed对象类型，如tuple的header末6位为000000，前面的位数为tuple的size：</p>
+<p><img src="/assets/image/201512/erlang_tuple_format.png" alt=""></p>
+<p>tuple实际上就是一个有头部的数组，其包含的Eterm在内存中紧凑排列，tuple的操作效率和数组是一致的。</p>
+<p>list和tuple是erlang中用得最多的数据结构，也是其它一些数据结构的基础，如record，map，摘下几个关于list，tuple操作的常用函数，便于加深对结构的理解：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 位于 $OTP_SRC/erts/emulator/beam/bif.c</span></span><br><span class="line"><span class="function">BIF_RETTYPE <span class="title">tuple_to_list_1</span><span class="params">(BIF_ALIST_1)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    Uint n;</span><br><span class="line">    Eterm *tupleptr;</span><br><span class="line">    Eterm <span class="built_in">list</span> = NIL;</span><br><span class="line">    Eterm* hp;</span><br><span class="line">	</span><br><span class="line">    <span class="keyword">if</span> (is_not_tuple(BIF_ARG_1))  &#123;</span><br><span class="line">	BIF_ERROR(BIF_P, BADARG);</span><br><span class="line">    &#125;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// 得到tuple Eterm所指向的tuple对象头</span></span><br><span class="line">    tupleptr = tuple_val(BIF_ARG_1);</span><br><span class="line">    <span class="comment">// 得到对象头中的tuple size		    </span></span><br><span class="line">    n = arityval(*tupleptr);</span><br><span class="line">    hp = HAlloc(BIF_P, <span class="number">2</span> * n);</span><br><span class="line">    tupleptr++;</span><br><span class="line">	</span><br><span class="line">	 <span class="comment">// 倒序遍历 因为list CONS的构造是倒序的</span></span><br><span class="line">    <span class="keyword">while</span>(n--) &#123;</span><br><span class="line">    <span class="comment">// 相当于hp[0]=tupleptr[n]; hp[1] = list; list = make_list(hp);</span></span><br><span class="line">    <span class="comment">// 最后返回的是指向hp的list Eterm</span></span><br><span class="line">	<span class="built_in">list</span> = CONS(hp, tupleptr[n], <span class="built_in">list</span>);</span><br><span class="line">	hp += <span class="number">2</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    BIF_RET(<span class="built_in">list</span>);</span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="function">BIF_RETTYPE <span class="title">list_to_tuple_1</span><span class="params">(BIF_ALIST_1)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    Eterm <span class="built_in">list</span> = BIF_ARG_1;</span><br><span class="line">    Eterm* cons;</span><br><span class="line">    Eterm res;</span><br><span class="line">    Eterm* hp;</span><br><span class="line">    <span class="keyword">int</span> len;</span><br><span class="line">	</span><br><span class="line">    <span class="keyword">if</span> ((len = erts_list_length(<span class="built_in">list</span>)) &lt; <span class="number">0</span> || len &gt; 		ERTS_MAX_TUPLE_SIZE) &#123;</span><br><span class="line">	BIF_ERROR(BIF_P, BADARG);</span><br><span class="line">    &#125;</span><br><span class="line">	<span class="comment">// 元素个数 + 对象头</span></span><br><span class="line">    hp = HAlloc(BIF_P, len+<span class="number">1</span>);</span><br><span class="line">    res = make_tuple(hp);</span><br><span class="line">    *hp++ = make_arityval(len);</span><br><span class="line">    <span class="keyword">while</span>(is_list(<span class="built_in">list</span>)) &#123;</span><br><span class="line">	cons = list_val(<span class="built_in">list</span>);</span><br><span class="line">	*hp++ = CAR(cons);</span><br><span class="line">	<span class="built_in">list</span> = CDR(cons);</span><br><span class="line">    &#125;</span><br><span class="line">    BIF_RET(res);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>可以看到，list，tuple中添加元素，实际上都是在拷贝Eterm本身，Erlang虚拟机会追踪这些引用，并负责垃圾回收。</p>
+<h3 id="5-binary"><a href="#5-binary" class="headerlink" title="5. binary"></a>5. binary</h3><p>Erlang binary用于处理字节块，Erlang其它的数据结构(list,tuple,record)都是以Eterm为单位的，用于处理字节块会浪费大量内存，如”abc”占用了7个字(加上ETerm本身)，binary为字节流提供一种操作高效，占用空间少的解决方案。</p>
+<p>之前我们介绍的数据结构都存放在Erlang进程堆上，进程内部可以使用对象引用，在对象跨进程传输时，会执行对象拷贝。为了避免大binary跨进程传输时的拷贝开销，Erlang针对binary作出了优化，将binary分为小binary和大binary。</p>
+<h4 id="heap-binary"><a href="#heap-binary" class="headerlink" title="heap binary"></a>heap binary</h4><p>小于64字节(定义于erl_binary.h <code>ERL_ONHEAP_BIN_LIMIT</code>宏)的小binary直接创建在进程堆上，称为heap binary，heap binary是一个boxed对象：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">erl_heap_bin</span> &#123;</span></span><br><span class="line">    Eterm thing_word;		<span class="comment">/* Subtag HEAP_BINARY_SUBTAG. */</span></span><br><span class="line">    Uint size;				<span class="comment">/* Binary size in bytes. */</span></span><br><span class="line">    Eterm data[<span class="number">1</span>];			<span class="comment">/* The data in the binary. */</span></span><br><span class="line">&#125; ErlHeapBin;</span><br></pre></td></tr></table></figure>
+<h4 id="refc-binary"><a href="#refc-binary" class="headerlink" title="refc binary"></a>refc binary</h4><p>大于64字节的binary将创建在Erlang虚拟机全局堆上，称为refc binary(reference-counted binary)，可被所有Erlang进程共享，这样跨进程传输只需传输引用即可，虚拟机会对binary本身进行引用计数追踪，以便GC。refc binary需要两个部分来描述，位于全局堆的refc binary数据本身和位于进程堆的binary引用(称作proc binary)，这两种数据结构定义于global.h中。下图描述refc binary和proc binary的关系：</p>
+<p><img src="/assets/image/201512/erlang_refc_binary.png" alt=""></p>
+<p>所有的OffHeap(进程堆之外的数据)被组织为一个单向链表，进程控制块(erl_process.h struct process)中的<code>off_heap</code>字段维护链表头和所有OffHeap对象的总大小，当这个大小超过虚拟机阀值时，将导致一次强制GC。注意，refc binary只是OffHeap对象的一种，以后可扩展其它种类。</p>
+<h4 id="sub-binary"><a href="#sub-binary" class="headerlink" title="sub binary"></a>sub binary</h4><p>sub binary是Erlang为了优化binary分割的(如<code>split_binary/2</code>)，由于Erlang变量不可变语义，拷贝分割的binary是效率比较底下的做法，Erlang通过sub binary来复用原有binary。ErlSubBin定义于<code>erl_binary.h</code>，下图描述<code>split_binary(ProBin, size1)</code>返回一个ErlSubBin二元组的过程：</p>
+<p><img src="/assets/image/201512/erlang_sub_binary.png" alt=""></p>
+<p>ProBin的size可能小于refc binary的size，如上图中的size3，这是因为refc binary通常会通过预分配空间的方式进行优化。</p>
+<p>要注意的是，sub binary只引用proc binary(通过orig)，而不直接引用refc binary，因此图中refc binary的refc字段仍然为1。只要sub binary还有效，对应的proc binary便不会被GC，refc binary的计数也就不为0。</p>
+<h4 id="bit-string"><a href="#bit-string" class="headerlink" title="bit string"></a>bit string</h4><p>当我们通过如<code>&lt;&lt;2:3,3:6&gt;&gt;</code>的位语法构建binary时，将得到<code>&lt;&lt;65,1:1&gt;&gt;</code>这种非字节对齐的数据，即二进制流，在Erlang中被称为bitstring，Erlang的bitstring基于ErlSubBin结构实现，此时bitsize为最后一个字节的有效位数，size为有效字节数(不包括未填满的最后一个字节)，对虚拟机底层来说，sub bianry和bit string是同一种数据结构。</p>
+<h4 id="binary追加构造优化"><a href="#binary追加构造优化" class="headerlink" title="binary追加构造优化"></a>binary追加构造优化</h4><p>在通过<code>C = &lt;&lt;A/binary,B/binary&gt;&gt;</code>追加构造binary时，最自然的做法应当是创建足够空间的C(heap or refc)，再将A和B的数据拷贝进去，但Erlang对binary的优化不止于此，它使用refc binary的预留空间，通过追加的方式提高大binary和频繁追加的效率。</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">Bin0 = &lt;&lt;<span class="number">0</span>&gt;&gt;,                    <span class="comment">%% 创建一个heap binary Bin0</span></span><br><span class="line">Bin1 = &lt;&lt;Bin0/binary,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>&gt;&gt;,    <span class="comment">%% 追加目标不是refc binary，创建一个refc binary，预留256字节空间，用Bin0初始化，并追加1,2,3</span></span><br><span class="line">Bin2 = &lt;&lt;Bin1/binary,<span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>&gt;&gt;,    <span class="comment">%% 追加目标为refc binary且有预留空间 直接追加4,5,6</span></span><br><span class="line">Bin3 = &lt;&lt;Bin2/binary,<span class="number">7</span>,<span class="number">8</span>,<span class="number">9</span>&gt;&gt;,    <span class="comment">%% 同样，将7,8,9追加refc binary预留空间</span></span><br><span class="line">Bin4 = &lt;&lt;Bin1/binary,<span class="number">17</span>&gt;&gt;,       <span class="comment">%% 此时不能直接追加，否则会覆盖Bin2内容，虚拟机会通过某种机制发现这一点，然后将Bin1拷贝到新的refc binary，再执行追加</span></span><br><span class="line">&#123;Bin4,Bin3&#125;</span><br><span class="line">	</span><br><span class="line"><span class="comment">% 通过erts_get_internal_state/1可以获取binary状态</span></span><br><span class="line"><span class="comment">% 对应函数源码位于$BEAM_SRC/erl_bif_info.c erts_debug_get_internal_state_1</span></span><br><span class="line"><span class="function"><span class="title">f</span><span class="params">()</span> -&gt;</span></span><br><span class="line">	B0 = &lt;&lt;<span class="number">0</span>&gt;&gt;,</span><br><span class="line">	erts_debug:set_internal_state(available_internal_state,true), <span class="comment">% 打开内部状态获取接口 同一个进程只需执行一次</span></span><br><span class="line">	f2(B0). <span class="comment">% 通过参数传递B0 是为了避免虚拟机优化 直接构造B1为heap binary</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="title">f2</span><span class="params">(B0)</span> -&gt;</span></span><br><span class="line">  io:format(<span class="string">&quot;B0: ~p~n&quot;</span>, [erts_debug:get_internal_state(&#123;binary_info,B0&#125;)]),</span><br><span class="line">  B1 = &lt;&lt;B0/binary, <span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>&gt;&gt;,</span><br><span class="line">  io:format(<span class="string">&quot;B1: ~p~n&quot;</span>, [erts_debug:get_internal_state(&#123;binary_info,B1&#125;)]),</span><br><span class="line">  B2 = &lt;&lt;B1/binary, <span class="number">4</span>,<span class="number">5</span>,<span class="number">6</span>&gt;&gt;,</span><br><span class="line">  io:format(<span class="string">&quot;B2: ~p~n&quot;</span>, [erts_debug:get_internal_state(&#123;binary_info,B2&#125;)]),</span><br><span class="line">  ok.</span><br><span class="line">	</span><br><span class="line"><span class="comment">% get_internal_state(&#123;binary_info, B&#125;)返回格式:</span></span><br><span class="line"><span class="comment">% proc binary：&#123;refc_binary, pb_size, &#123;binary, orig_size&#125;, pb_flags&#125;</span></span><br><span class="line"><span class="comment">% heap binary：heap_binary</span></span><br><span class="line">B0: heap_binary</span><br><span class="line">B1: &#123;refc_binary,<span class="number">4</span>,&#123;binary,<span class="number">256</span>&#125;,<span class="number">3</span>&#125;</span><br><span class="line">B2: &#123;refc_binary,<span class="number">7</span>,&#123;binary,<span class="number">256</span>&#125;,<span class="number">3</span>&#125;</span><br></pre></td></tr></table></figure>
+<p>binary追加实现源码位于<code>$BEAM_SRC/erl_bits.c erts_bs_append</code>，B1和B2本身是sub binary，基于同一个ProcBin，可追加的refc binary只能被一个ProcBin引用，这是因为可追加refc binary可能会在追加过程中重新分配空间，此时要更新ProcBin引用，而refc binary无法快速追踪到其所有ProcBin引用(只能遍历)，另外，多个ProcBin上的sub binary可能对refc binary覆写。</p>
+<p>只有最后追加得到的sub binary才可执行快速追加(通过sub binary和对应ProBin flags来判定)，否则会拷贝并分配新的可追加refc binary。所有的sub binary都是指向ProcBin或heap binary的，不会指向sub binary本身。</p>
+<p><img src="/assets/image/201512/erlang_binary_append.png" alt=""></p>
+<h4 id="binary降级"><a href="#binary降级" class="headerlink" title="binary降级"></a>binary降级</h4><p>Erlang通过追加优化构造出的可追加refc binary通过空间换取了效率，并且这类refc binary只能被一个proc binary引用(多个proc binary上的sub binary会造成覆写，注意，前面的B1，B2是sub binary而不是ProBin)。比如在跨进程传输时，原本只需拷贝ProBin，但对可追加的refc binary来说，不能直接拷贝ProBin，这时需对binary降级，即将可追加refc binary降级为普通refc binary：</p>
+<pre><code>bs_emasculate(Bin0) -&gt;
+Bin1 = &lt;&lt;Bin0/binary, 1, 2, 3&gt;&gt;,
+NewP = spawn(fun() -&gt; receive _ -&gt; ok end end),
+io:format(&quot;Bin1 info: ~p~n&quot;, [erts_debug:get_internal_state(&#123;binary_info, Bin1&#125;)]),
+NewP ! Bin1,
+io:format(&quot;Bin1 info: ~p~n&quot;, [erts_debug:get_internal_state(&#123;binary_info, Bin1&#125;)]),
+Bin2 = &lt;&lt;Bin1/binary, 4, 5, 6&gt;&gt;, % Bin1被收缩 这一步会执行refc binary拷贝
+io:format(&quot;Bin2 info: ~p~n&quot;, [erts_debug:get_internal_state(&#123;binary_info, Bin2&#125;)]),
+Bin2.
+
+% 运行结果
+117&gt; bs_emasculate(&lt;&lt;0&gt;&gt;).
+Bin1 info: &#123;refc_binary,4,&#123;binary,256&#125;,3&#125;
+Bin1 info: &#123;refc_binary,4,&#123;binary,4&#125;,0&#125;
+Bin2 info: &#123;refc_binary,7,&#123;binary,256&#125;,3&#125;
+&lt;&lt;0,1,2,3,4,5,6&gt;&gt;
+</code></pre><p>降级操作会重新创建一个普通的refc binary(原有可追加refc binary会被GC?)，同时，降级操作会将B1的flags置0，这保证基于B1的sub binary在执行追加时，会重新拷贝分配refc binary。</p>
+<pre><code>// 降级函数($BEAM_SRC/erl_bits.c)
+void erts_emasculate_writable_binary(ProcBin* pb)
+&#123;
+    Binary* binp;
+    Uint unused;
+
+    pb-&gt;flags = 0;
+    binp = pb-&gt;val;
+    ASSERT(binp-&gt;orig_size &gt;= pb-&gt;size);
+    unused = binp-&gt;orig_size - pb-&gt;size;
+    /* Our allocators are 8 byte aligned, i.e., shrinking with
+       less than 8 bytes will have no real effect */
+    if (unused &gt;= 8) &#123;
+    // 根据ProBin中的有效字节数，重新创建一个不可追加的refc binary
+    binp = erts_bin_realloc(binp, pb-&gt;size);
+    pb-&gt;val = binp;
+    pb-&gt;bytes = (byte *) binp-&gt;orig_bytes;
+    &#125;
+&#125;
+</code></pre><blockquote>
+<blockquote>
+<p>Q: ProcBin B1的字段被更新了，那么Erlang上层如何维护变量不可变语义? </p>
+<p>A: 变量不可变指的是Erlang虚拟机上层通过底层屏蔽后所能看到的不变语义，而不是变量底层实现，诸如Pid打包，maps hash扩展等，通过底层差异化处理后，对上层体现的语义和接口都没变，因此我们将其理解为”变量不可变”)。</p>
+</blockquote>
+</blockquote>
+<p>另外，全局堆GC也可能会对可追加refc binary的预留空间进行收缩(shrink)，可参考<code>$BEAM_SRC/erl_gc.c sweep_off_heap</code>函数。</p>
+<p>以上都是理论的实现，实际上Erlang虚拟机对二进制还做了一些基于上下文的优化，通过<code>bin_opt_info</code>编译选项可以打印出这些优化。关于binary优化的更多细节，参考<a target="_blank" rel="noopener" href="http://erlang.org/doc/efficiency_guide/binaryhandling.html">Constructing and Matching Binaries</a>。</p>
+<h2 id="二-复合类型"><a href="#二-复合类型" class="headerlink" title="二. 复合类型"></a>二. 复合类型</h2><p>基于list和tuple之上，Erlang还提供了一些其它的数据结构，这里列举几个key/value相关的数据结构，在服务器中会经常用到。</p>
+<h3 id="1-record"><a href="#1-record" class="headerlink" title="1. record"></a>1. record</h3><p>这个类型无需过多介绍，它就是一个tuple，所谓record filed在预编译后实际上都是通过数值下标来索引，因此它访问field是O(1)复杂度的。</p>
+<h3 id="2-map"><a href="#2-map" class="headerlink" title="2. map"></a>2. map</h3><p>虽然record的语法糖让我们在使用tuple时便利了不少，但是比起真正的key/value结构仍然有许多限制，如key只能是原子，key不能动态添加或删除，record变动对热更的支持很差等。proplists能够一定程度地解决这种问题，但是它适合键值少的情况，通常用来做选项配置，并且不能保证key的唯一。</p>
+<p>map是OTP 17引进的数据结构，是一个boxed对象，它支持任意类型的Key，模式匹配，动态增删Key等，并且最新的<a target="_blank" rel="noopener" href="https://github.com/comtihon/mongodb-erlang">mongodb-erlang</a>直接支持map。</p>
+<p>在<a target="_blank" rel="noopener" href="https://github.com/erlang/otp/tree/maint-17">OTP17</a>中，map的内存结构为：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//位于 $OTP_SRC/erts/emulator/beam/erl_map.h</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">map_s</span> &#123;</span></span><br><span class="line">    Eterm thing_word;	<span class="comment">// 	boxed对象header</span></span><br><span class="line">    Uint  size;			<span class="comment">// 	map 键值对个数</span></span><br><span class="line">    Eterm keys;      	<span class="comment">// 	keys的tuple</span></span><br><span class="line">&#125; <span class="keyword">map_t</span>;</span><br></pre></td></tr></table></figure>
+<p>该结构体之后就是依次存放的Value，因此maps的get操作，需要先遍历keys tuple，找到key所在下标，然后在value中取出该下标偏移对应的值。因此是O(n)复杂度的。详见maps:get源码(<code>$BEAM_SRC/erl_map.c erts_maps_get</code>)。</p>
+<p>如此的maps，只能作为record的替用，并不是真正的Key-&gt;Value映射，因此不能存放大量数据。而在OTP18中，maps加入了针对于big map的hash机制，当maps:size &lt; <code>MAP_SMALL_MAP_LIMIT</code>时，使用flatmap结构，也就是上述OTP17中的结构，当maps:size &gt;= <code>MAP_SMALL_MAP_LIMI</code>T时，将自动使用hashmap结构来高效存取数据。<code>MAP_SMALL_MAP_LIMIT</code>在erl_map.h中默认定义为32。</p>
+<p>仍然要注意Erlang本身的变量不可变原则，每次执行更新maps，都会导致新开辟一个maps，并且拷贝原maps的keys和values，在这一点上，maps:update比maps:put更高效，因为前者keys数量不会变，因此无需开辟新的keys tuple，拷贝keys tuples ETerm即可。实际使用maps时：</p>
+<ol>
+<li>更新已有key值时，使用update(:=)而不是put(=&gt;)，不仅可以检错，并且效率更高</li>
+<li>当key/value对太多时，对其进行层级划分，保证其拷贝效率</li>
+</ol>
+<p>实际测试中，OTP18中的maps在存取大量数据时，效率还是比较高的，<a target="_blank" rel="noopener" href="https://github.com/wudaijun/Code/blob/master/erlang/map_test.erl">这里</a>有一份maps和dict的简单测试函数，可通过OTP17和OTP18分别运行来查看效率区别。通常情况下，我们应当优先使用maps，比起dict，它在模式匹配，mongodb支持，可读性上都有很大优势。</p>
+<h3 id="3-array"><a href="#3-array" class="headerlink" title="3. array"></a>3. array</h3><p>Erlang有个叫array的结构，其名字容易给人误解，它有如下特性：</p>
+<ol>
+<li>array下标从0开始</li>
+<li>array有两种模式，一种固定大小，另一种按需自动增长大小，但不会自动收缩</li>
+<li>支持稀疏存储，执行array:set(100,value,array:new())，那么[0,99]都会被设置为默认值(undefined)，该默认值可修改。</li>
+</ol>
+<p>在实现上，array最外层被包装为一个record:</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">-record</span><span class="params">(array, &#123;</span></span><br><span class="line"><span class="params">	size :: non_neg_integer(),	<span class="comment">%% number of defined entries</span></span></span><br><span class="line"><span class="params">	max  :: non_neg_integer(),	<span class="comment">%% maximum number of entries</span></span></span><br><span class="line"><span class="params">	default,	<span class="comment">%% the default value (usually &#x27;undefined&#x27;)</span></span></span><br><span class="line"><span class="params">    elements :: elements(_)     <span class="comment">%% the tuple tree</span></span></span><br><span class="line"><span class="params">&#125;)</span>.</span><br></pre></td></tr></table></figure>
+<p>elements是一个tuple tree，即用tuple包含tuple的方式组成的树，叶子节点就是元素值，元素默认以10个为一组，亦即完全展开的情况下，是一颗十叉树。但是对于没有赋值的节点，array用其叶子节点数量代替，并不展开：</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">Eshell V7.<span class="number">0.2</span>  (abort with ^G)</span><br><span class="line"><span class="number">1</span>&gt; array:set(<span class="number">9</span>,value,array:new()).</span><br><span class="line">&#123;array,<span class="number">10</span>,<span class="number">10</span>,undefined, <span class="comment">% 全部展开</span></span><br><span class="line">       &#123;undefined,undefined,undefined,undefined,undefined,</span><br><span class="line">undefined,undefined,undefined,undefined,value&#125;&#125;</span><br><span class="line">	</span><br><span class="line"><span class="comment">% 只展开了19所在的子树 其它9个节点未展开 </span></span><br><span class="line"><span class="comment">% 注意tuple一共有11个元素，最后一个元素代表本层节点的基数，这主要是出于效率考虑，能够快速检索到元素所在子节点</span></span><br><span class="line"><span class="number">2</span>&gt; array:set(<span class="number">19</span>,value,array:new()).</span><br><span class="line">&#123;array,<span class="number">20</span>,<span class="number">100</span>,undefined,</span><br><span class="line">       &#123;<span class="number">10</span>,		</span><br><span class="line">        &#123;undefined,undefined,undefined,undefined,undefined，	undefined,undefined,undefined,undefined,value&#125;,</span><br><span class="line">        <span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>&#125;&#125;</span><br><span class="line">	</span><br><span class="line"><span class="comment">% 逐级展开了199所在的子树</span></span><br><span class="line"><span class="number">3</span>&gt; array:set(<span class="number">199</span>,value,array:new()).</span><br><span class="line">&#123;array,<span class="number">200</span>,<span class="number">1000</span>,undefined,</span><br><span class="line">       &#123;<span class="number">100</span>,</span><br><span class="line">        &#123;<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>,</span><br><span class="line">         &#123;undefined,undefined,undefined,undefined,undefined,</span><br><span class="line"> undefined,undefined,undefined,undefined,value&#125;,</span><br><span class="line">         <span class="number">10</span>&#125;,</span><br><span class="line">        <span class="number">100</span>,<span class="number">100</span>,<span class="number">100</span>,<span class="number">100</span>,<span class="number">100</span>,<span class="number">100</span>,<span class="number">100</span>,<span class="number">100</span>,<span class="number">100</span>&#125;&#125;</span><br><span class="line"><span class="number">4</span>&gt;</span><br></pre></td></tr></table></figure>
+<p>由于完全展开的tuple tree是一颗完全十叉树，因此实际上array的自动扩容也是以10为基数的。在根据Index查找元素时，通过div/rem逐级算出Index所属节点:</p>
+<figure class="highlight erlang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">%% 位于$OTP_SRC/lib/stdlib/src/array.erl</span></span><br><span class="line"><span class="function"><span class="title">get</span><span class="params">(I, #array&#123;size = N, max = M, elements = E, default = D&#125;)</span></span></span><br><span class="line"><span class="function">  <span class="title">when</span> <span class="title">is_integer</span><span class="params">(I)</span>, I &gt;= 0 -&gt;</span></span><br><span class="line">    <span class="keyword">if</span> I &lt; N -&gt;		<span class="comment">% 有效下标</span></span><br><span class="line">	    get_1(I, E, D);</span><br><span class="line">       M &gt; <span class="number">0</span> -&gt;		<span class="comment">% I&gt;=N 并且 array处于自动扩容模式 直接返回DefaultValue </span></span><br><span class="line">	    D;</span><br><span class="line">       <span class="literal">true</span> -&gt;		<span class="comment">% I&gt;=N 并且 array为固定大小  返回badarg</span></span><br><span class="line">	    erlang:error(badarg)</span><br><span class="line">    <span class="keyword">end</span>;</span><br><span class="line"><span class="function"><span class="title">get</span><span class="params">(_I, _A)</span> -&gt;</span></span><br><span class="line">    erlang:error(badarg).</span><br><span class="line">	</span><br><span class="line"><span class="comment">%% The use of NODEPATTERN(S) to select the right clause is just a hack,</span></span><br><span class="line"><span class="comment">%% but it is the only way to get the maximum speed out of this loop</span></span><br><span class="line"><span class="comment">%% (using the Beam compiler in OTP 11).</span></span><br><span class="line">	</span><br><span class="line"><span class="comment">% -define(NODEPATTERN(S), &#123;_,_,_,_,_,_,_,_,_,_,S&#125;). % NODESIZE+1 elements!</span></span><br><span class="line"><span class="function"><span class="title">get_1</span><span class="params">(I, E=?NODEPATTERN(S)</span>, D) -&gt;</span>		<span class="comment">% 到达已展开的中间节点 向下递归</span></span><br><span class="line">    get_1(I rem S, element(I div S + <span class="number">1</span>, E), D);</span><br><span class="line"><span class="function"><span class="title">get_1</span><span class="params">(_I, E, D)</span> <span class="title">when</span> <span class="title">is_integer</span><span class="params">(E)</span> -&gt;</span>	<span class="comment">% 到达未展开的中间节点 返回默认值</span></span><br><span class="line">    D;</span><br><span class="line"><span class="function"><span class="title">get_1</span><span class="params">(I, E, _D)</span> -&gt;</span>						<span class="comment">% 到达叶子节点层</span></span><br><span class="line">    element(I+<span class="number">1</span>, E).</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="title">set</span><span class="params">(I, Value, #array&#123;size = N, max = M, default = D, elements = E&#125;=A)</span></span></span><br><span class="line"><span class="function">  <span class="title">when</span> <span class="title">is_integer</span><span class="params">(I)</span>, I &gt;= 0 -&gt;</span></span><br><span class="line">    <span class="keyword">if</span> I &lt; N -&gt;</span><br><span class="line">	    A#array&#123;elements = set_1(I, E, Value, D)&#125;;</span><br><span class="line">       I &lt; M -&gt;		<span class="comment">% 更新size, size的主要作用是让读取更加高效 </span></span><br><span class="line">	    <span class="comment">%% (note that this cannot happen if M == 0, since N &gt;= 0)</span></span><br><span class="line">	    A#array&#123;size = I+<span class="number">1</span>, elements = set_1(I, E, Value, D)&#125;;</span><br><span class="line">       M &gt; <span class="number">0</span> -&gt;		<span class="comment">% 自动扩容</span></span><br><span class="line">	    &#123;E1, M1&#125; = grow(I, E, M),</span><br><span class="line">	    A#array&#123;size = I+<span class="number">1</span>, max = M1,</span><br><span class="line">		    elements = set_1(I, E1, Value, D)&#125;;</span><br><span class="line">       <span class="literal">true</span> -&gt;</span><br><span class="line">	    erlang:error(badarg)</span><br><span class="line">    <span class="keyword">end</span>;</span><br><span class="line"><span class="function"><span class="title">set</span><span class="params">(_I, _V, _A)</span> -&gt;</span></span><br><span class="line">    erlang:error(badarg).</span><br><span class="line">	</span><br><span class="line"><span class="comment">%% See get_1/3 for details about switching and the NODEPATTERN macro.</span></span><br><span class="line">	</span><br><span class="line"><span class="function"><span class="title">set_1</span><span class="params">(I, E=?NODEPATTERN(S)</span>, X, D) -&gt;</span>		<span class="comment">% 所在节点已展开，向下递归</span></span><br><span class="line">    I1 = I <span class="keyword">div</span> S + <span class="number">1</span>,</span><br><span class="line">    setelement(I1, E, set_1(I rem S, element(I1, E), X, D));</span><br><span class="line"><span class="function"><span class="title">set_1</span><span class="params">(I, E, X, D)</span> <span class="title">when</span> <span class="title">is_integer</span><span class="params">(E)</span> -&gt;</span>	<span class="comment">% 所在节点未被展开，递归展开节点 并赋值</span></span><br><span class="line">    expand(I, E, X, D);</span><br><span class="line"><span class="function"><span class="title">set_1</span><span class="params">(I, E, X, _D)</span> -&gt;</span>						<span class="comment">% 到达叶子节点</span></span><br><span class="line">    setelement(I+<span class="number">1</span>, E, X).</span><br></pre></td></tr></table></figure>
+<p>更多细节可以参见源码，了解了这些之后，再来看看Erlang array和其它语言数组不一样的地方：</p>
+<ul>
+<li>索引不是O(1)复杂度，而是O(log10n)</li>
+<li>array并不自动收缩</li>
+<li>array中的max和size字段，和array具体占用内存没多大关系(节点默认未展开)</li>
+<li>array中并没有subarray之类的操作，因为它根本不是线性存储的，而是树形的，因此如果用它来做递归倒序遍历之类的操作，复杂度不是O(n)，而是O(n*log10n)</li>
+<li>array中对于没有赋值的元素，给予默认值undefined，这个默认值可以在array:new()中更改，对使用者来说，明确赋值undefined和默认值undefined并无多大区别，但对array内部来说，可能会导致节点展开。</li>
+</ul>
+<h2 id="三-参考"><a href="#三-参考" class="headerlink" title="三. 参考"></a>三. 参考</h2><ol>
+<li>Erlang数据结构实现文章汇总: <a target="_blank" rel="noopener" href="http://www.iroowe.com/erlang_eterm_implementation/">http://www.iroowe.com/erlang_eterm_implementation/</a></li>
+<li>[zhengsyao] Erlang系列精品博客(文中大部分图片出处): <a target="_blank" rel="noopener" href="http://www.cnblogs.com/zhengsyao/category/387871.html">http://www.cnblogs.com/zhengsyao/category/387871.html</a></li>
+<li>[坚强2002] Erlang array: <a target="_blank" rel="noopener" href="http://www.cnblogs.com/me-sa/archive/2012/06/14/erlang-array.html">http://www.cnblogs.com/me-sa/archive/2012/06/14/erlang-array.html</a></li>
+<li>Erlang Effciency Guide: <a target="_blank" rel="noopener" href="http://erlang.org/doc/efficiency_guide/introduction.html">http://erlang.org/doc/efficiency_guide/introduction.html</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/12/erlang-datastructures/" title="Erlang 常用数据结构实现">http://wudaijun.com/2015/12/erlang-datastructures/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/11/erlang-map2record/" rel="prev" title="Erlang Map映射到Record">
+      <i class="fa fa-chevron-left"></i> Erlang Map映射到Record
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/01/erlang-server-design5-server-node/" rel="next" title="开发笔记(5) cluster_server集群优化">
+      开发笔记(5) cluster_server集群优化 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-%E5%B8%B8%E7%94%A8%E7%B1%BB%E5%9E%8B"><span class="nav-text">一. 常用类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-atom"><span class="nav-text">1. atom</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Pid-Port"><span class="nav-text">2.Pid&#x2F;Port</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-lists"><span class="nav-text">3. lists</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-tuple"><span class="nav-text">4. tuple</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-binary"><span class="nav-text">5. binary</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#heap-binary"><span class="nav-text">heap binary</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#refc-binary"><span class="nav-text">refc binary</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#sub-binary"><span class="nav-text">sub binary</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#bit-string"><span class="nav-text">bit string</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#binary%E8%BF%BD%E5%8A%A0%E6%9E%84%E9%80%A0%E4%BC%98%E5%8C%96"><span class="nav-text">binary追加构造优化</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#binary%E9%99%8D%E7%BA%A7"><span class="nav-text">binary降级</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C-%E5%A4%8D%E5%90%88%E7%B1%BB%E5%9E%8B"><span class="nav-text">二. 复合类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-record"><span class="nav-text">1. record</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-map"><span class="nav-text">2. map</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-array"><span class="nav-text">3. array</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89-%E5%8F%82%E8%80%83"><span class="nav-text">三. 参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

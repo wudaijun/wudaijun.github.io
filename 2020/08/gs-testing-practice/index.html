@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="在之前的博客中几次简单提及过给GS做测试，关于测试的必要性不用再多说，但在实际实践过程中，却往往会因为如下原因导致想要推进测试规范困难重重: -. Q1: 写测试代码困难: 代码耦合重，各种相互依赖，全局依赖，导致写测试代码”牵一发而动全身”，举步维艰-. Q2: 测试时效性低: 需求变更快，数值变更频繁，可能导致今天写好的测试代码，明天就”过时”了-. Q3: 开发进度紧: 不想浪费过多时间来写">
+<meta property="og:type" content="article">
+<meta property="og:title" content="GS 测试规范实践">
+<meta property="og:url" content="http://wudaijun.com/2020/08/gs-testing-practice/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="在之前的博客中几次简单提及过给GS做测试，关于测试的必要性不用再多说，但在实际实践过程中，却往往会因为如下原因导致想要推进测试规范困难重重: -. Q1: 写测试代码困难: 代码耦合重，各种相互依赖，全局依赖，导致写测试代码”牵一发而动全身”，举步维艰-. Q2: 测试时效性低: 需求变更快，数值变更频繁，可能导致今天写好的测试代码，明天就”过时”了-. Q3: 开发进度紧: 不想浪费过多时间来写">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-08-14T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.615Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="gameserver">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2020/08/gs-testing-practice/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>GS 测试规范实践 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2020/08/gs-testing-practice/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          GS 测试规范实践
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-08-15 00:00:00" itemprop="dateCreated datePublished" datetime="2020-08-15T00:00:00+08:00">2020-08-15</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2020/08/gs-testing-practice/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/08/gs-testing-practice/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在之前的博客中几次简单提及过给GS做测试，关于测试的必要性不用再多说，但在实际实践过程中，却往往会因为如下原因导致想要推进测试规范困难重重:</p>
+<p>-. Q1: 写测试代码困难: 代码耦合重，各种相互依赖，全局依赖，导致写测试代码”牵一发而动全身”，举步维艰<br>-. Q2: 测试时效性低: 需求变更快，数值变更频繁，可能导致今天写好的测试代码，明天就”过时”了<br>-. Q3: 开发进度紧: 不想浪费过多时间来写测试代码，直接开发感觉开发效率更高</p>
+<p>要想推进测试规范，上面的三个问题是必须解决的。这里简单聊聊我们在Golang游戏后端中的测试实践和解决方案。我们在GS中尝试的测试方案主要分为四种: 单元测试，集成测试，压力测试，以及模拟测试。</p>
+<span id="more"></span>
+<h3 id="单元测试"><a href="#单元测试" class="headerlink" title="单元测试"></a>单元测试</h3><p>单元测的优点是与业务逻辑和外部环境关联度最小，同时go test也很容易集成到CI/CD流程中。单元测试的缺点就是上面提到的Q1(耦合依赖问题)，对此，我们的解决方案是:</p>
+<ol>
+<li>持续重构，解耦降低依赖。有点废话，但是写易于测试的代码确实是一种修行</li>
+<li>通过<a target="_blank" rel="noopener" href="https://github.com/smartystreets/goconvey">goconvey</a>测试框架简化单元测试的编写</li>
+<li>通过<a target="_blank" rel="noopener" href="https://github.com/golang/mock">gomock</a> Mock掉接口依赖</li>
+<li>实在Mock不掉的，通过<a target="_blank" rel="noopener" href="https://github.com/agiledragon/gomonkey">gomonkey</a> Hack掉依赖，不过要记得禁用内联</li>
+<li>对于一些复杂的单元测试，如涉及到发消息，创建玩家，启动定时器等，可以创建通用的Mock组件和环境，便于使用</li>
+</ol>
+<p>goconvey+gomonkey+gomock 三件套在实践中足够灵活强大，具体使用参考文档即可，比较简单，就不展示了。</p>
+<h3 id="集成测试"><a href="#集成测试" class="headerlink" title="集成测试"></a>集成测试</h3><p>集成测试我们又称之为用例测试，它是一种黑盒测试，以C/S交互协议为边界，站在客户端视角来测试服务器运行结果，黑盒测试本质上是消息流测试。它的优点是覆盖面广，网络层，集群管理，消息路由等细节都被会覆盖到。黑盒测试的难点在于易变性，协议变更，配置更新等都可能造成测试用例不可用，即上面提到的Q2(用例时效性问题)。对此，我们的实践是:</p>
+<ol>
+<li>将消息流测试离线化，即封装基本原语(Send,Wait,Expect,Select等)，化编译型为解释型，让测试用例可以通过类似配置文件的方式来描述，简化与服务器的交互细节，甚至理论做到交付给非技术人员使用。技术上除了对模拟客户端的封装外，主要是对json的处理: <a target="_blank" rel="noopener" href="https://github.com/thedevsaddam/gojsonq">gojsonq</a>, <a target="_blank" rel="noopener" href="https://github.com/nsf/jsondiff">jsondiff</a>, <a target="_blank" rel="noopener" href="https://github.com/mkideal/pkg/tree/master/encoding/jsonx">jsonx</a></li>
+<li>写可重入的测试用例，可重入即用例不应该依赖于当前服务器和用例机器人的初始状态，做到可重复执行</li>
+<li>保存一份专用于用例测试策划配置快照，避免频繁的数值调整导致测试用例不可用。服务器和测试客户端都使用这份配置。即GS需要支持不同的配置源(如DB/File)</li>
+</ol>
+<p>以下是一个省掉很多细节的测试用例(yml格式描述):</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"># 封装一个Function，从预定义变量varRole[n]中提取字段放到自定义变量中</span><br><span class="line">InitAttackCmds:</span><br><span class="line">  - find LoginAck.city.coord.X from varRole1 to varCity1X</span><br><span class="line">  - find LoginAck.city.coord.Z from varRole1 to varCity1Z</span><br><span class="line">  - find LoginAck.city.cityID from varRole1 to varCity1ID</span><br><span class="line"></span><br><span class="line"># 单个测试用例</span><br><span class="line">AttackPersonCityWinTest:</span><br><span class="line">  # 创建两个Robot，以Rbt1 Rbt2 标识</span><br><span class="line">  - newrobot 2</span><br><span class="line">  # 此时机器人已经登录完成，初始化自定义变量</span><br><span class="line">  - call InitAttackCmds</span><br><span class="line">  # 获取Rbt1初始化城防值</span><br><span class="line">  - Rbt1 send CityDefenseReq &#123;&#125;</span><br><span class="line">  # wait 后面的消息支持json局部字段比较(包含匹配)</span><br><span class="line">  - Rbt1 wait CityDefenseAck &#123;isCombustion:false&#125;</span><br><span class="line">  - Rbt1 find cityDefense from varLastAck to varCityDefensePreVal</span><br><span class="line">  # Rbt2 向 Rbt1 城池行军</span><br><span class="line">  - Rbt2 send NewTroopReq &#123;&quot;Action&quot;:1,&quot;Soldiers&quot;:&#123;&quot;11211001&quot;:500,&quot;11211301&quot;:500&#125;,&quot;EndCoord&quot;:&#123;&quot;X&quot;:%v,&quot;Z&quot;:%v&#125;,&quot;Mission&quot;:&#123;&quot;IsCampAfterHunt&quot;:false,&quot;IsRally&quot;:false&#125;,&quot;TargetID&quot;:%v&#125; varCity1X varCity1Z varCity1ID</span><br><span class="line">  - Rbt2 wait NewTroopAck &#123;errCode:0,action:1&#125;</span><br><span class="line">  # 防守失败后被烧城</span><br><span class="line">  - Rbt1 wait CombustionStateNtf &#123;isCombustion:true&#125;</span><br><span class="line">  - Rbt1 find cityDefense from varLastAck to varCityDefensePostVal</span><br><span class="line">  # 掉城防值</span><br><span class="line">  - should varCityDefensePostVal &lt; varCityDefensePreVal</span><br></pre></td></tr></table></figure>
+<h3 id="压力测试"><a href="#压力测试" class="headerlink" title="压力测试"></a>压力测试</h3><p>压力测试也是黑盒测试的一种，它的目标是放大服务器的性能问题以及并发状态下的正确性问题。我在<a href="https://wudaijun.com/2019/09/gs-pressure-test/">如何给GS做压测</a>中简单地阐述过压测的一些注意事项。简单来说，用例测试注重特例和自动化，而压力测试注重随机和覆盖率。</p>
+<h3 id="模拟测试"><a href="#模拟测试" class="headerlink" title="模拟测试"></a>模拟测试</h3><p>模拟测试是指通过类似console的方式来模拟客户端，它的功能主要分为两部分:</p>
+<ol>
+<li>动态构造消息并返回响应数据</li>
+<li>支持一些简单的GM，如查看/修改自身数据</li>
+</ol>
+<p>它最大的优点在于灵活性，主要有两个作用:</p>
+<ol>
+<li>服务器新功能开发完成进行快速自测验证(脱离客户端)，提升开发效率</li>
+<li>出现某些疑似服务器的BUG时，登录已有角色进行数据验证和Debug</li>
+</ol>
+<p>以下是我们的模拟测试的样子:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; 注: FC[...]# 为输入行，其余为输出行    &quot;&#x2F;&#x2F;...&quot;表示省略消息具体内容</span><br><span class="line">FakeClient connect successed</span><br><span class="line">FC[NotAuth]# auth test</span><br><span class="line">send msg: AuthReq:type:&quot;anonymous&quot; passport:&quot;user_fakeclienttest&quot; password:&quot;user_fakeclienttest&quot;</span><br><span class="line">recv msg: AuthAck &#x2F;&#x2F;... </span><br><span class="line">FC[Authed:281474976712031]#</span><br><span class="line">FC[Authed:281474976712031]# char login 11</span><br><span class="line">send msg: LoginReq: &#x2F;&#x2F; ...</span><br><span class="line">recv msg: LoginAck playerID:27113 &#x2F;&#x2F; ...</span><br><span class="line">FC[Logined:27113]#</span><br><span class="line">FC[Logined:27113]#send HeartBeatReq &#123;ClientTs:111&#125;</span><br><span class="line">send msg: HeartBeatReq:clientTs:111 </span><br><span class="line">recv msg: HeartBeatAck clientTs:111 serverTs:1597664509306</span><br><span class="line">FC[Logined:27113]#</span><br><span class="line">FC[Logined:27113]# self all</span><br><span class="line">&#123;&quot;ID&quot;:27113,&quot;name&quot;:&quot;Newbie 27113&quot;, &#x2F;&#x2F; ...</span><br></pre></td></tr></table></figure>
+<h3 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h3><p>集成测试，压力测试，模拟测试，核心都需要一个模拟客户端，因此完全可以构建一套通用的fakeclient逻辑，包含基础网络通信，登录流程，数据状态同步等等。比如我们还基于fakeclient搭建了用于监控线上服务器可用性的监控机器人。</p>
+<p>前面分别提到Q1，Q2的解决方案，至于Q3，我们的经验是，同学们之所以不愿意写测试，大部分原因都是测试框架还不够完善易用。另外，应该达成共识的是，开发效率并不只算单方面当前的开发时间，还应该包括客户端联调，QA验证反馈，后续重构负担等的时间，从这个角度来说，良好的测试规范起到的作用毋容置疑。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2020/08/gs-testing-practice/" title="GS 测试规范实践">http://wudaijun.com/2020/08/gs-testing-practice/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/gameserver/" rel="tag"><i class="fa fa-tag"></i> gameserver</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/04/language-mindmap/" rel="prev" title="编程语言杂记">
+      <i class="fa fa-chevron-left"></i> 编程语言杂记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/12/go-generics/" rel="next" title="Go 泛型特性速览">
+      Go 泛型特性速览 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95"><span class="nav-text">单元测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9B%86%E6%88%90%E6%B5%8B%E8%AF%95"><span class="nav-text">集成测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95"><span class="nav-text">压力测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E6%8B%9F%E6%B5%8B%E8%AF%95"><span class="nav-text">模拟测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%80%E5%90%8E"><span class="nav-text">最后</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

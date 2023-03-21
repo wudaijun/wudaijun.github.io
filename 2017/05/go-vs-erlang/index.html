@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="源于从Erlang转到Go的一些思维碰撞，整理下来记于此。 Erlang ActorActor模型，又叫参与者模型，其”一切皆参与者(Actor)”的理念与面向对象编程的“一切皆是对象”类似，但是面向对象编程中对象的交互通常是顺序执行的(占用调用方的时间片)，而Actor模型中Actor的交互是并行执行的(不占用调用方的时间片)。 在Actor模型中，Actor的交互通过向对方Actor发送消息来">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go vs Erlang">
+<meta property="og:url" content="http://wudaijun.com/2017/05/go-vs-erlang/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="源于从Erlang转到Go的一些思维碰撞，整理下来记于此。 Erlang ActorActor模型，又叫参与者模型，其”一切皆参与者(Actor)”的理念与面向对象编程的“一切皆是对象”类似，但是面向对象编程中对象的交互通常是顺序执行的(占用调用方的时间片)，而Actor模型中Actor的交互是并行执行的(不占用调用方的时间片)。 在Actor模型中，Actor的交互通过向对方Actor发送消息来">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2017-05-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.609Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta property="article:tag" content="golang">
+<meta property="article:tag" content="actor">
+<meta property="article:tag" content="csp">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2017/05/go-vs-erlang/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Go vs Erlang | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2017/05/go-vs-erlang/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Go vs Erlang
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-05-31 00:00:00" itemprop="dateCreated datePublished" datetime="2017-05-31T00:00:00+08:00">2017-05-31</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/golang/" itemprop="url" rel="index"><span itemprop="name">golang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2017/05/go-vs-erlang/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2017/05/go-vs-erlang/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>源于从Erlang转到Go的一些思维碰撞，整理下来记于此。</p>
+<h3 id="Erlang-Actor"><a href="#Erlang-Actor" class="headerlink" title="Erlang Actor"></a>Erlang Actor</h3><p>Actor模型，又叫参与者模型，其”一切皆参与者(Actor)”的理念与面向对象编程的“一切皆是对象”类似，但是面向对象编程中对象的交互通常是顺序执行的(占用调用方的时间片)，而Actor模型中Actor的交互是并行执行的(不占用调用方的时间片)。</p>
+<p>在Actor模型中，Actor的交互通过向对方Actor发送消息来完成。即Actor只关注要和谁通信，并不关注对方在哪里、如何和对方通信。模型只提供<strong>异步消息交互</strong>一种通信原语，甚至不保证对端一定能正确收到消息。</p>
+<p>从Actor自身来说，它的行为模式很简单:</p>
+<ul>
+<li>发送消息给其它的Actor</li>
+<li>接收并处理消息，更新自己的数据状态</li>
+<li>创建其它的Actor</li>
+</ul>
+<p>每个Actor都有一个通信信箱(mailbox，FIFO消息队列)，用于保存已经收到但尚未被处理的消息。actorA要向actorB发消息，只需持有actorB ID(mailbox邮箱地址)，发送的消息将被Push到actorB的消息信箱尾部，然后返回。因此Actor的通信原语是异步的。消息QoS和请求-响应机制完全交给应用层去实现。这是Actor分布式友好的基础。</p>
+<p>由于Actor这种”最坏预期”的设计理念，Actor模型天然有如下好处:</p>
+<ul>
+<li>由于Actor只通过消息交互，因此避免了锁的问题</li>
+<li>由于Actor并不关心对方具体位置以及通信介质，这种位置透明的特性使得它在分布式下具备很好的扩展性</li>
+<li>由于Actor只提供异步消息交互，因此整个系统的下限更高(锁和同步调用是高可用系统深深的痛)</li>
+</ul>
+<p>Erlang作为最早的Actor模型实践者，同时也是Actor模型的推广者和标杆。Erlang实现了完整的轻量级Actor(Erlang Process)，包括位置透明性、异步交互、基于规约的公平调度器等。使得它在并发和分布式方面有得天独厚的优势。</p>
+<p>除此之外，Erlang OTP还在Actor模型的基础上，扩展了容错和热更两大杀手级工业特性: 容错和热更。</p>
+<p>Erlang 热更我在<a href="https://wudaijun.com/2015/04/erlang-hotcode/">这里</a>有提到，Erlang热更是非常完备成熟的，配合<code>gen_server State</code>和FP，让”永不停服”成为了可能。</p>
+<p>至于容错，一些文章将容错作为Actor模型的核心理念之一，我个人不是很认同，如<a target="_blank" rel="noopener" href="https://zh.m.wikipedia.org/zh-hans/%E6%BC%94%E5%91%98%E6%A8%A1%E5%9E%8B">WIKI Actor模型</a>介绍的，Actor本身更多强调Actor本身的行为抽象和交互方式。而容错是Erlang link和supervisor机制提供的，可能由于Erlang代言Actor太成功了，以至于不少人认为: “没有容错的Actor不是纯正的Actor”。我在<a href="https://wudaijun.com/2018/07/gs-flexiblity-reliability/">这里</a>提到过一些Erlang的”let it crash”理念。</p>
+<p>因为本文主要聊Erlang Actor 和 Golang CSP，因此热更和容错不作为重点暂开。前面说了Actor的优点，凡事都有两面性，再来看看Actor(仍以Erlang为例)的缺点:</p>
+<ol>
+<li>由于只提供不可靠异步交互原语，因此消息QoS，请求响应语义，都需要应用层实现，并且Erlang中的同步请求效率是很低的(需要遍历mailbox)</li>
+<li>Actor有隔离和边界带来的并发和分布式的优势，也有其劣势，典型地如Actor聚合管理，消息流控等，OOM也是Erlang最常见的问题(Actor数量过大、Mailbox积压消息过多等)</li>
+<li>强业务耦合Actor交互场景下，通常只能舍弃强一致性而使用最终一致性，对Actor的建模和划分粒度比较考究。</li>
+</ol>
+<h3 id="Golang-CSP"><a href="#Golang-CSP" class="headerlink" title="Golang CSP"></a>Golang CSP</h3><p>顺序通信进程(Communicating sequential processes，CSP)和Actor模型一样，都由独立的，并发的执行实体(process)构成，执行实体间通过消息进行通信。但CSP模型并不关注实体本身，而关注发送消息使用的通道(channel)，在CSP中，channel是第一类对象，process只管向channel写入或读取消息，并不知道也不关心channel的另一端是谁在处理。channel和process是解耦的，可以单独创建和读写，一个process可以读写(订阅)个channel，同样一个channel也可被多个process读写(订阅)。</p>
+<p>对每个process来说：</p>
+<ul>
+<li>从命名channel取出并处理消息</li>
+<li>向命名channel写入消息</li>
+<li>创建新的process</li>
+</ul>
+<p>Golang并没有完全实现CSP理论(参见<a target="_blank" rel="noopener" href="https://www.zhihu.com/question/26192499">知乎讨论</a>)，只提取了CSP的process和channel的概念为并发提供理论支持。目前Go已经是CSP的代表性语言。</p>
+<h3 id="Golang-CSP-vs-Erlang-Actor"><a href="#Golang-CSP-vs-Erlang-Actor" class="headerlink" title="Golang CSP vs Erlang Actor"></a>Golang CSP vs Erlang Actor</h3><p>从Actor和CSP模型来说:</p>
+<ul>
+<li>Actor 和 CSP 有相同的宗旨：”不要通过共享内存来通信，而应该通过通信来共享内存”</li>
+<li>Actor 和 CSP 都有独立的，并发执行的通信实体</li>
+<li>Actor中第一类对象为执行实体(Actor)，CSP第一类对象为通信介质(Channel)</li>
+<li>Actor中实体和通信介质是紧耦合的，一个Actor持有一个Mailbox，而CSP中process和channel是解耦的，没有从属关系。从这一层来说，CSP更加灵活</li>
+<li>Actor模型中Actor是主体，Mailbox是匿名的，CSP模型中Channel是主体，Process是匿名的。从这一层来说，由于Actor不关心通信介质，底层通信对应用层是透明的。因此在分布式和容错方面更有优势。大部分的Actor框架原生支持分布式和容错</li>
+</ul>
+<p>具体到Golang和Erlang中的实现来说:</p>
+<ul>
+<li>两者均实现了语言级的轻量级Actor，在阻塞时能自动让出调度资源，在可执行时重新接受调度。Erlang调度更注重公平性(实时性)，Golang调度更注重吞吐量(性能)</li>
+<li>Golang的Channel是有容量限制的，因此只能一定程度地异步(本质上仍然是同步的)，Erlang的Mailbox是无限制的(也带来了消息队列膨胀的风险)，并且Erlang并不保证消息是否能到达和被正确处理(但保证消息顺序)，是纯粹的异步语义，Actor之间做到完全解耦，奠定其在分布式和容错方面的基础。</li>
+<li>Erlang/OTP在Actor上扩展了对分布式(支持异质节点)、热更和容错的原生支持，Golang在这些方面还有一段路要走(受限于Channel，想要在语言级别支持分布式是比较困难的)</li>
+<li>Golang CSP具备更灵活地并发机制，因为Channel的两个特性: 有容量限制并独立于Goroutine存在。前者可以控制消息流量并反馈消息处理进度，后者让Goroutine本身有更高的处理灵活性。典型的应用场景是扇入扇出，生产者消费者，多路IO复用等。而在Erlang中实现这些则比较困难。另外，Erlang中的做同步请求需要遍历MailBox，而如果用Golang做同步调用，通过单独的Channel来做则更优雅高效</li>
+</ul>
+<h3 id="CSP-with-Actor"><a href="#CSP-with-Actor" class="headerlink" title="CSP with Actor"></a>CSP with Actor</h3><p>在用Go写GameServer框架时，发现可以将CSP和Actor的一些特性结合起来:</p>
+<ul>
+<li>游戏中的独立业务实体，如玩家，公会，具备强状态和功能聚合性，适合作为Actor的职责边界，即一个实体一个Goroutine</li>
+<li>实体与实体之间只通过消息交互，每个实体暴露一个Logic Channel与其它实体进行逻辑交互，再做一层服务发现，即可让请求方只关注对方ID而不关注对方Channel</li>
+<li>实体还有一些内部的Channel，如定时器，外部命令等。实体Goroutine对这些不同的消息来源Channel进行统一Select，形成多路IO复用的消息泵，并且可以独立控制各Channel大小</li>
+<li>实体在行为和交互模型上，如Actor一样，从消息泵取出消息进行处理，并更新自己的数据，通过消息与其他Actor(本质是Channel)交互。但由于通信介质是Channel，可以封装更高级易用的交互语义，如同步、请求响应、扇入扇出、流控等</li>
+<li>当然，基于Golang CSP支持有限，分布式，容错这些就只能框架自己搭建了</li>
+</ul>
+<p>如此，即有Actor的封装与边界，又有一定CSP的灵活性。</p>
+<p>在研究这个问题的过程中，发现已经有人已经用Golang实现了Actor模型: <a target="_blank" rel="noopener" href="https://github.com/AsynkronIT/protoactor-go。">https://github.com/AsynkronIT/protoactor-go。</a> 支持分布式，甚至supervisor，整体思想和用法和erlang非常像，真是有种他山逢知音的感觉。:)</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2017/05/go-vs-erlang/" title="Go vs Erlang">http://wudaijun.com/2017/05/go-vs-erlang/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+              <a href="/tags/golang/" rel="tag"><i class="fa fa-tag"></i> golang</a>
+              <a href="/tags/actor/" rel="tag"><i class="fa fa-tag"></i> actor</a>
+              <a href="/tags/csp/" rel="tag"><i class="fa fa-tag"></i> csp</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017/03/erlang-lua-reconstruction/" rel="prev" title="Erlang+Lua的一次重构">
+      <i class="fa fa-chevron-left"></i> Erlang+Lua的一次重构
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2017/08/go-conetxt-usage/" rel="next" title="用context库规范化Go的异步调用">
+      用context库规范化Go的异步调用 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Erlang-Actor"><span class="nav-text">Erlang Actor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Golang-CSP"><span class="nav-text">Golang CSP</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Golang-CSP-vs-Erlang-Actor"><span class="nav-text">Golang CSP vs Erlang Actor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CSP-with-Actor"><span class="nav-text">CSP with Actor</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="目前所在的项目基于erlang cluster搭建框架，再接入lua用于写逻辑。由于之前有一些erlang+lua的开发经验，因此着手项目的重构和优化，过程中一些体会，记录于此。 先简述一下项目架构，erlang做集群，网络层，节点交互，DB交互等，lua层只写逻辑。一个erlang的Actor持有一个luastate，为了加速erlang和lua之间的交互效率：  将逻辑数据置于lua中而不是e">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang+Lua的一次重构">
+<meta property="og:url" content="http://wudaijun.com/2017/03/erlang-lua-reconstruction/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="目前所在的项目基于erlang cluster搭建框架，再接入lua用于写逻辑。由于之前有一些erlang+lua的开发经验，因此着手项目的重构和优化，过程中一些体会，记录于此。 先简述一下项目架构，erlang做集群，网络层，节点交互，DB交互等，lua层只写逻辑。一个erlang的Actor持有一个luastate，为了加速erlang和lua之间的交互效率：  将逻辑数据置于lua中而不是e">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2017-03-21T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.609Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="lua">
+<meta property="article:tag" content="erlang">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2017/03/erlang-lua-reconstruction/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Erlang+Lua的一次重构 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2017/03/erlang-lua-reconstruction/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Erlang+Lua的一次重构
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-03-22 00:00:00" itemprop="dateCreated datePublished" datetime="2017-03-22T00:00:00+08:00">2017-03-22</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2017/03/erlang-lua-reconstruction/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2017/03/erlang-lua-reconstruction/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>目前所在的项目基于<a href="http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/">erlang cluster</a>搭建框架，再接入lua用于写逻辑。由于之前有一些erlang+lua的开发经验，因此着手项目的重构和优化，过程中一些体会，记录于此。</p>
+<p>先简述一下项目架构，erlang做集群，网络层，节点交互，DB交互等，lua层只写逻辑。一个erlang的Actor持有一个luastate，为了加速erlang和lua之间的交互效率：</p>
+<ol>
+<li>将逻辑数据置于lua中而不是erlang中，在落地时，以二进制格式丢给erlang进行DB操作</li>
+<li>以<code>lual_ref</code>和msgid等方式，尽量用整数代理字符串</li>
+<li>erlang和lua异步运行，lua跑在原生线程池中，这在<a href="http://wudaijun.com/2015/09/erlang-server-design2-erlang-lua-battle/">这篇博文</a>中介绍过</li>
+</ol>
+<span id="more"></span>
+<p>除了这些，还需要注意lua的沙盒环境管理，错误处理，热更新等，这里不再详述。就目前这种结构而言，还有一些缺陷：</p>
+<ol>
+<li>原子线程池忙碌可能导致的erlang虚拟机假死，需要保证原生线程池最多占用的核数不超过erlang虚拟机能使用的核数</li>
+<li>lua state本身带来的不稳定性，特别是内存，在Actor过多时将会非常明显</li>
+</ol>
+<p>第二点，也是目前我们遇到的最棘手的问题，我们知道，在lua中，模块，函数，均是一个闭包，闭包包含函数和外部环境(UpValue，ENV等)，因此在lua中，每个lua state都完整包含加载的所有模块和函数，并且很难共享。我们项目通过一个share lua state完成了对配置表这类静态数据的共享(跨系统进程级的共享可参考<a target="_blank" rel="noopener" href="http://blog.codingnow.com/2012/07/dev_note_24.html">云风blog</a>)，但本身逻辑代码占用内存仍然很大，随着逻辑和功能模块的增加，基本一个lua state加载完模块什么也不做，会占用6-7M内存。意味着如果一个玩家一个lua state，那么一台16G内存的服务器，基本只能容纳2000个玩家，内存吃紧，而CPU过剩。因此本次重构也只要针对这个问题。</p>
+<p>之前项目组曾针对玩家进行了优化，将主城位于一个岛的玩家归位一组，再将岛按照<code>%M</code>的方式放到M个lua state容器上，这样得到一个复杂的，三层逻辑的lua state。针对玩家这一块的内存占用确实大大减少了，但调试难度也提升了，并且扩展性不好，不能将这种容器扩展到其它service(如Union)上。</p>
+<p>按照系统本身的理想设计，一个service(player, union)对应一个lua state，由一个erlang process代理这个lua state，并且通过cluster注册/共享这个service的状态信息。但由于lua state的内存占用，不能再奢侈地将service和lua state 1:1调配，多service在逻辑代码中共用一个lua state已经无可避免，我们可以简单将整个系统分为几个层级，</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>service</th>
+<th>lua state</th>
+<th>erlang process</th>
+<th>cluster</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>N</td>
+<td>1</td>
+<td>?</td>
+<td>?</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>因此有以下几种可能的方案：</p>
+<ol>
+<li><code>N 1 N N</code>：每个service对应一个erlang process，多个erlang process将代理同一个lua state，这就需要lua state可以”被并发”，也就是同一个lua state只能绑定一个原生线程池上执行，这一点是可以实现的。这种方案在erlang层会获得更好的并发性能，并且cluster层语义不变。</li>
+<li><code>N 1 1 N</code>：一个erlang process作为container的概念代理一个lua state，容纳N个service，并且将service和erlang process的映射关系写入cluster，cluster层对外提供的语义不变，但service的actor属性被弱化，service的一致性状态是个问题。</li>
+<li><code>N 1 1 1</code>：与上种方案类似，只不过将service到container的映射通过算法算出来，而不写入cluster，container本身被编号（编号时，可考虑将serverid编入，这样开新服有一定的扩展性，PS: <a target="_blank" rel="noopener" href="http://yikun.github.io/2016/06/09/%E4%B8%80%E8%87%B4%E6%80%A7%E5%93%88%E5%B8%8C%E7%AE%97%E6%B3%95%E7%9A%84%E7%90%86%E8%A7%A3%E4%B8%8E%E5%AE%9E%E8%B7%B5/">一致性哈希</a>方案不适用于游戏这类强状态逻辑），某个service将始终分配在指定container上。这种方案减少了cluster负担，并且减少了service不一致性的BUG。但由于container有状态，在每次系统启动后，service和container的映射关系就确定了，因此整个集群的可伸缩性降低了。</li>
+</ol>
+<p>经过几番讨论，我们最终选择了第三个方案，虽然个人认为这类固定分配的方案，与分布式的理念是相悖的，但目前稳定性和一致性才是首要目标。由于采用计算而不是通过mnesia保存映射关系，mnesia的性能和系统一致性得到了提升。本次重构在某些方面与我上一个项目<a href="http://wudaijun.com/2016/01/erlang-server-design5-server-node/">针对cluster的优化</a>有点相似，一个对系统服务进行横向切割，另一个则纵向切割，前者的初衷是为了更好地交互效率，后者则是处于对lua state资源的复用，两者都降低了系统的可伸缩性，得到了”一个更大粒度”的service。</p>
+<p>整个重构过程中，有几点感触：</p>
+<p>erlang和lua结合本身不是一种好的解决方案，或者说，erlang接入其它语言写逻辑都不合适，异质化的系统会打乱erlang本身的调度(不管通过nif还是线程池)，并且给整个系统带来不稳定性(CPU，内存)。另外，接入其它语言可能破坏erlang的原子语义和并发性。拿lua来说，原生线程池会和erlang调度线程抢占CPU并且很难管控，加之lua有自己的GC，因此在内存和CPU这两块关键资源上，erlang失去了控制权，给系统带来不稳定性。再加之lua state的内存占用以及lua state不支持并发，你可能要花更多的时间来调整系统结构，最终得到一个相对稳定的系统。如果处理得不好，用erlang做底层的可靠性和并发性将荡然无存。</p>
+<p>系统设计，是一个不断根据当前情况取舍的过程，想要一步到位是不可能的。简单，可控，开发效率高才是主要指标，才能最大程度地适应各种变化，快速响应需求。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2017/03/erlang-lua-reconstruction/" title="Erlang+Lua的一次重构">http://wudaijun.com/2017/03/erlang-lua-reconstruction/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/lua/" rel="tag"><i class="fa fa-tag"></i> lua</a>
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017/02/lua-notes/" rel="prev" title="Lua 闭包 环境 包管理">
+      <i class="fa fa-chevron-left"></i> Lua 闭包 环境 包管理
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2017/05/go-vs-erlang/" rel="next" title="Go vs Erlang">
+      Go vs Erlang <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

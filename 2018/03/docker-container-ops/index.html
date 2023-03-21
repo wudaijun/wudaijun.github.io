@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. 容器资源限制Docker资源限制主要靠Linux cgroups技术实现，简单说，cgroups是一个个的进程组(实际上是进程树)，这些进程树通过挂接 subsystem(事实上是挂接到 cgroup 上层的hierarchy)来实现对各种资源的限制和追踪，subsystem是内核附加在程序上的一系列钩子（hooks），通过程序运行时对资源的调度触发相应的钩子以达到资源追踪和限制的目的。cg">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Docker 容器管理">
+<meta property="og:url" content="http://wudaijun.com/2018/03/docker-container-ops/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. 容器资源限制Docker资源限制主要靠Linux cgroups技术实现，简单说，cgroups是一个个的进程组(实际上是进程树)，这些进程树通过挂接 subsystem(事实上是挂接到 cgroup 上层的hierarchy)来实现对各种资源的限制和追踪，subsystem是内核附加在程序上的一系列钩子（hooks），通过程序运行时对资源的调度触发相应的钩子以达到资源追踪和限制的目的。cg">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-03-24T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.611Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="docker">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2018/03/docker-container-ops/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Docker 容器管理 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/03/docker-container-ops/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Docker 容器管理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-03-25 00:00:00" itemprop="dateCreated datePublished" datetime="2018-03-25T00:00:00+08:00">2018-03-25</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/tool/" itemprop="url" rel="index"><span itemprop="name">tool</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/03/docker-container-ops/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/03/docker-container-ops/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="一-容器资源限制"><a href="#一-容器资源限制" class="headerlink" title="一. 容器资源限制"></a>一. 容器资源限制</h3><p>Docker资源限制主要靠Linux cgroups技术实现，简单说，cgroups是一个个的进程组(实际上是进程树)，这些进程树通过挂接 subsystem(事实上是挂接到 cgroup 上层的hierarchy)来实现对各种资源的限制和追踪，subsystem是内核附加在程序上的一系列钩子（hooks），通过程序运行时对资源的调度触发相应的钩子以达到资源追踪和限制的目的。cgroups 技术的具体介绍和实现参考文末链接。</p>
+<span id="more"></span>
+<h4 id="1-CPU"><a href="#1-CPU" class="headerlink" title="1. CPU"></a>1. CPU</h4><p>默认情况下，Docker容器对 CPU 资源的访问是无限制的，可使用如下参数控制容器的 CPU 访问:</p>
+<p><code>--cpus</code>: 控制容器能够使用的最大 CPU 核数，参数为一个精度为两位小数的浮点数(默认值为0，即不限制 CPU)，不能超出物理机的 CPU 核数。</p>
+<pre><code># 通过 stress 开启三个 worker 跑满 CPU 的 worker，并设置容器能访问的 cpus 为1.5
+&gt; docker run --rm -it --cpus 1.5 progrium/stress --cpu 3
+stress: info: [1] dispatching hogs: 3 cpu, 0 io, 0 vm, 0 hdd
+stress: dbug: [1] using backoff sleep of 9000us
+stress: dbug: [1] --&gt; hogcpu worker 3 [7] forked
+stress: dbug: [1] using backoff sleep of 6000us
+stress: dbug: [1] --&gt; hogcpu worker 2 [8] forked
+stress: dbug: [1] using backoff sleep of 3000us
+stress: dbug: [1] --&gt; hogcpu worker 1 [9] forked
+
+# 开启另一个窗口查看 CPU 占用情况
+top
+# ...
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+ 4296 root      20   0    7316    100      0 R  51.8  0.0   0:07.04 stress
+ 4294 root      20   0    7316    100      0 R  51.5  0.0   0:07.02 stress
+ 4295 root      20   0    7316    100      0 R  46.5  0.0   0:06.42 stress
+</code></pre><p>三个 worker 进程各自占用了50%的 CPU，共计150%，符合<code>--cpus</code>指定的1.5核约束。</p>
+<p><code>--cpu-shares</code>: 通过权重来控制同一物理机上的各容器的 CPU 占用，默认值为1024(该值应该是起源于 Linux2.6+中 CFS 调度算法的默认进程优先级)，它是一个软限制，仅在物理机 CPU 不够用时生效，当 CPU 够用时，容器总是尽可能多地占用 CPU。</p>
+<pre><code># 开启8个 cpu worker 跑满所有核 默认 cpu-shares 为1024
+&gt; docker run --rm -it  progrium/stress --cpu 8
+# 开新窗口查看 CPU 状态
+&gt; top
+# ...
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+ 4477 root      20   0    7316     96      0 R 100.0  0.0   0:08.51 stress
+ 4481 root      20   0    7316     96      0 R 100.0  0.0   0:08.52 stress
+ 4474 root      20   0    7316     96      0 R  99.7  0.0   0:08.50 stress
+ 4476 root      20   0    7316     96      0 R  99.7  0.0   0:08.50 stress
+ 4478 root      20   0    7316     96      0 R  99.7  0.0   0:08.50 stress
+ 4479 root      20   0    7316     96      0 R  99.7  0.0   0:08.50 stress
+ 4480 root      20   0    7316     96      0 R  99.7  0.0   0:08.50 stress
+ 4475 root      20   0    7316     96      0 R  99.3  0.0   0:08.48 stress
+# 再开8个 cpu worker，设置 cpu-shares 为 512
+docker run --rm -it  --cpu-shares 512 progrium/stress --cpu 8
+# 再次查看 CPU 占用
+&gt; top
+# ...
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+ 4815 root      20   0    7316     96      0 R  67.0  0.0   0:28.56 stress
+ 4816 root      20   0    7316     96      0 R  67.0  0.0   0:28.30 stress
+ 4820 root      20   0    7316     96      0 R  67.0  0.0   0:28.13 stress
+ 4821 root      20   0    7316     96      0 R  67.0  0.0   0:28.31 stress
+ 4817 root      20   0    7316     96      0 R  66.7  0.0   0:28.04 stress
+ 4818 root      20   0    7316     96      0 R  66.7  0.0   0:28.42 stress
+ 4819 root      20   0    7316     96      0 R  66.7  0.0   0:28.24 stress
+ 4822 root      20   0    7316     96      0 R  66.7  0.0   0:28.38 stress
+ 4961 root      20   0    7316     96      0 R  33.3  0.0   0:03.93 stress
+ 4962 root      20   0    7316     96      0 R  33.3  0.0   0:03.96 stress
+ 4965 root      20   0    7316     96      0 R  33.3  0.0   0:03.95 stress
+ 4966 root      20   0    7316     96      0 R  33.3  0.0   0:04.02 stress
+ 4968 root      20   0    7316     96      0 R  33.3  0.0   0:03.90 stress
+ 4963 root      20   0    7316     96      0 R  33.0  0.0   0:04.01 stress
+ 4964 root      20   0    7316     96      0 R  33.0  0.0   0:03.97 stress
+ 4967 root      20   0    7316     96      0 R  33.0  0.0   0:03.94 stress
+</code></pre><p>可以看到最开始的8个 worker CPU 占用由100%降到67%左右，而新启动的 worker CPU 占用为32%左右，大致满足2/3和1/3的权重占比。</p>
+<p>除此之外，Docker还可以通过<code>--cpuset-cpus</code>参数限制容器运行在某些核上，但环境依赖太强(需要知道主机上有几个CPU核)，有违容器初衷，并且通常都不需要这样做。在 Docker1.13之后，还支持容器的实时调度配置(realtime scheduler)，就应用层而言，基本用不到这项配置，参考: <a target="_blank" rel="noopener" href="https://docs.docker.com/config/containers/resource_constraints/#configure-the-realtime-scheduler。">https://docs.docker.com/config/containers/resource_constraints/#configure-the-realtime-scheduler。</a></p>
+<h4 id="2-内存"><a href="#2-内存" class="headerlink" title="2. 内存"></a>2. 内存</h4><p>同 CPU 一样，默认情况下，Docker没有对容器内存进行限制。内存相关的几个概念:</p>
+<p>memory: 即容器可用的物理内存(RES)，包含 kernel-memory 和 user-memory，即内核内存和用户内存。<br>kernel-memory: 内核内存，每个进程都会占用一部分内核内存，和user-memory 的最大区别是不能被换入换出，因此进程的内核内存占用过大可能导致阻塞系统服务。<br>swap: 容器可用的交换区大小，会swap+memory限制着进程最大能够分配的虚拟页，也是进程理论上能够使用的最大”内存”(虚拟内存)。</p>
+<p>以下大部分配置的参数为正数，加上内存单位，如”4m”, “128k”。</p>
+<ul>
+<li><code>-m</code> or <code>--memory</code>: 容器可以使用的最大内存限制，最小为4m</li>
+<li><code>--memory-swap</code>: 容器使用的内存和交换区的总大小</li>
+<li><code>--memory-swappiness</code>: 默认情况下，主机可以把容器使用的匿名页(anonymous page) swap 出来，这个参数可以配置可被swap的比例(0-100)</li>
+<li><code>--memory-reservation</code>: 内存软限制，每次系统内存回收时，都会尝试将进程的内存占用降到该限制以下(尽可能换出)。该参数的主要作用是避免容器长时间占用大量内存。</li>
+<li><code>--kernel-memory</code>: 内核内存的大小</li>
+<li><code>--memory-swappiness</code>: 设置容器可被置换的匿名页的百分比，值为[0,100]，为0则关闭匿名页交换，容器的工作集都在内存中活跃，默认值从父进程继承</li>
+<li><code>--oom-kill-disable</code>: 当发生内存不够用(OOM) 时，内核默认会向容器中的进程发送 kill 信号，添加该参数将避免发送 kill 信号。该参数一般与<code>-m</code> 一起使用，因为如果没有限制内存，而又启用了 oom-kill-disable，OS 将尝试 kill 其它系统进程。(PS: 该参数我在 Ubuntu 16.04 LTS/Docker17.09.0-ce环境下，没有测试成功，仍然会直接 kill)</li>
+<li><code>--oom-score-adj</code>: 当发生 OOM 时，进程被 kill 掉的优先级，取值[-1000,1000]，值越大，越可能被 kill 掉</li>
+</ul>
+<p><code>--memory</code>和<code>--memory-swap</code>:</p>
+<pre><code>1. 当 memory-swap &gt; memory &gt; 0: 此时容器可使用的 swap 大小为: swap = memory-swap - memory
+2. memory-swap == 0 或 &lt; memory: 相当于没有设置(如果&lt; memory, docker 会错误提示)，使用默认值，此时容器可使用的 swap 大小为: swap == memory，即 memory-swap = = 2*memory
+3. memory-swap == memory &gt; 0: 容器不能使用交换空间: swap = memory-swap - memory = 0
+4. memory-swap == -1: 容器可使用主机上所有可用的 swap 空间，即无限制
+</code></pre><p>在配置<code>--memory-swap</code> 参数时，可能遇到如下提示:</p>
+<pre><code>WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap.
+</code></pre><p>解决方案为:</p>
+<pre><code>To enable memory and swap on system using GNU GRUB (GNU GRand Unified Bootloader), do the following:
+1. Log into Ubuntu as a user with sudo privileges.
+2. Edit the /etc/default/grub file.
+3. Set the GRUB_CMDLINE_LINUX value as follows:
+    GRUB_CMDLINE_LINUX=&quot;cgroup_enable=memory swapaccount=1&quot;
+4. Save and close the file.
+5. Update GRUB.
+    $ sudo update-grub
+Reboot your system.
+</code></pre><p>示例:</p>
+<p>我们通过一个 带有 stress 命令的 ubuntu 镜像来进行测试:</p>
+<pre><code>&gt; cat Dockerfile
+FROM ubuntu:latest
+
+RUN apt-get update &amp;&amp; \
+apt-get install stress
+
+&gt; docker build -t ubuntu-stress:latest .
+
+# 示例一:
+# memory 限制为100M，swap 空间无限制，分配1000M 内存
+&gt; docker run -it --rm -m 100M --memory-swap -1 ubuntu-stress:latest /bin/bash
+root@e618f1fc6ff9:/# stress --vm 1 --vm-bytes 1000M
+# docker stats 查看容器内存占用，此时容器物理内存已经达到100M 限制
+&gt; docker stats e618f1fc6ff9
+CONTAINER           CPU %               MEM USAGE / LIMIT   MEM %               NET I/O             BLOCK I/O           PIDS
+e618f1fc6ff9        15.62%              98.25MiB / 100MiB   98.25%              3.39kB / 0B         22GB / 22.4GB       3
+&gt; pgrep stress
+27158
+27159 # stress worker 子进程 PID
+# 通过 top 可以看到进程物理内存占用为100M，虚拟内存占用为1000M
+&gt; top -p 27159
+top - 19:30:08 up 31 days,  1:55,  3 users,  load average: 1.63, 1.43, 1.03
+Tasks:   1 total,   0 running,   1 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  1.8 us,  4.3 sy,  2.1 ni, 81.2 id, 10.3 wa,  0.0 hi,  0.3 si,  0.0 st
+KiB Mem : 16361616 total,   840852 free,  3206616 used, 12314148 buff/cache
+KiB Swap: 16705532 total, 15459856 free,  1245676 used. 12681868 avail Mem
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+27159 root      20   0 1031484  98844    212 D  14.3  0.6   0:53.11 stress
+
+# 示例二:
+# memory 限制为100M，swap 比例为 50%
+&gt; docker run -it --rm -m 100M --memory-swappiness 50 ubuntu-stress:latest /bin/bash
+root@e3fdd8b75f1d:/# stress --vm 1 --vm-bytes 190M # 分配190M 内存
+# 190M 内存正常分配，因为190M*50%的页面可以被 swap，剩下50%的页面放在内存中
+&gt; top -p 29655
+# ...
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+29655 root      20   0  202044  98296    212 D   9.7  0.6   0:17.52 stress
+# 停止 stress，重新尝试分配210M 内存，210M*50%&gt;100M，内存不够，进程被 kill 掉
+&gt; root@e3fdd8b75f1d:/# stress --vm 1 --vm-bytes 210M
+stress: info: [13] dispatching hogs: 0 cpu, 0 io, 1 vm, 0 hdd
+stress: FAIL: [13] (415) &lt;-- worker 14 got signal 9
+stress: WARN: [13] (417) now reaping child worker processes
+stress: FAIL: [13] (451) failed run completed in 4s
+
+# 示例三:
+# memory 限制为100M, swap 比例为60%, memory-swap 为130M
+# 可以得到，容器能使用的最大虚拟内存为 min(100/(1-60%), 130) = 130M，现在来简单验证
+docker run -it --rm -m 100M --memory-swappiness 50 --memory-swap 30M ubuntu-stress:latest /bin/bash
+# 分配120M 内存, OK
+root@b54444b40706:/# stress --vm 1 --vm-bytes 120M
+stress: info: [11] dispatching hogs: 0 cpu, 0 io, 1 vm, 0 hdd
+^C
+# 分配140M 内存，Error
+root@b54444b40706:/# stress --vm 1 --vm-bytes 140M
+stress: info: [13] dispatching hogs: 0 cpu, 0 io, 1 vm, 0 hdd
+stress: FAIL: [13] (415) &lt;-- worker 14 got signal 9
+stress: WARN: [13] (417) now reaping child worker processes
+stress: FAIL: [13] (451) failed run completed in 1s
+</code></pre><h3 id="二-容器监控"><a href="#二-容器监控" class="headerlink" title="二. 容器监控"></a>二. 容器监控</h3><h4 id="1-docker-inspect"><a href="#1-docker-inspect" class="headerlink" title="1. docker inspect"></a>1. docker inspect</h4><p><code>docker inspect</code>用于查看容器的静态配置，容器几乎所有的配置信息都在里面:</p>
+<pre><code>&gt; docker inspect 5c004516ee59 0e9300806926
+[
+    &#123;
+        &quot;Id&quot;: &quot;5c004516ee592b53e3e83cdee69fc93713471d4ce06778e1c6a9f783a576531b&quot;,
+        &quot;Created&quot;: &quot;2018-03-27T16:44:27.521434182Z&quot;,
+        &quot;Path&quot;: &quot;game&quot;,
+        &quot;Args&quot;: [],
+        &quot;State&quot;: &#123;
+            &quot;Status&quot;: &quot;running&quot;,
+            &quot;Running&quot;: true,
+        ...
+</code></pre><p><code>docker inspect</code>接收一个容器 ID 列表，返回一个 json 数组，包含容器的各项参数，可以通过 docker format 过滤输出:</p>
+<pre><code># 显示容器 IP
+&gt; docker inspect --format &#39;&#123;&#123; .NetworkSettings.IPAddress &#125;&#125;&#39; 5c004516ee59
+172.17.0.2
+</code></pre><h4 id="2-docker-stats"><a href="#2-docker-stats" class="headerlink" title="2. docker stats"></a>2. docker stats</h4><p><code>docker stats</code>可实时地显示容器的资源使用(内存, CPU, 网络等):</p>
+<pre><code># 查看指定容器
+&gt; docker stats ngs-game-1
+CONTAINER           CPU %               MEM USAGE / LIMIT    MEM %               NET I/O             BLOCK I/O           PIDS
+ngs-game-1          0.55%               127.4MiB / 15.6GiB   0.80%               0B / 0B             0B / 0B             18
+
+# 以容器名代替容器ID查看所有运行中的容器状态
+&gt; docker stats $(docker ps --format=&#123;&#123;.Names&#125;&#125;)
+CONTAINER           CPU %               MEM USAGE / LIMIT    MEM %               NET I/O             BLOCK I/O           PIDS
+ngs-game-1          0.74%               127.4MiB / 15.6GiB   0.80%               0B / 0B             0B / 0B             18
+ngs-game-4          0.54%               21.99MiB / 15.6GiB   0.14%               0B / 0B             0B / 0B             20
+ngs-auth-1          0.01%               11.11MiB / 15.6GiB   0.07%               0B / 0B             0B / 0B             20
+</code></pre><h4 id="3-docker-attach"><a href="#3-docker-attach" class="headerlink" title="3. docker attach"></a>3. docker attach</h4><p>将本地的标准输入/输出以及错误输出 attach 到运行中的container 上。</p>
+<pre><code>&gt; docker run -d -it --name ubuntu1 ubuntu-stress /bin/bash
+da01f119000f7370780eea0220a0fbf6e7b6d8d0dac1d635fc5dd480a64e4f68
+&gt; docker attach ubuntu1
+root@da01f119000f:/#
+# 开启另一个 terminal，再次 attach，此时两个 terminal 的输入输出会自动同步
+&gt; docker attach ubuntu1
+</code></pre><p>由于本地输入完全重定向到容器，因此输入 exit 或<code>CTRL-d</code>会退出容器，要 dettach 会话，输入<code>CTRL-p</code> <code>CTRL-q</code>。</p>
+<h3 id="三-容器停止"><a href="#三-容器停止" class="headerlink" title="三. 容器停止"></a>三. 容器停止</h3><ul>
+<li>docker stop: 分为两个阶段，第一个阶段向容器主进程(Pid==1)发送SIGTERM信号，容器主进程可以捕获这个信号并进入退出处理流程，以便优雅地停止容器。第一阶段是有时间限制的(通过<code>-t</code>参数指明，默认为10s)，如果超过这个时间容器仍然没有停止，则进入第二阶段: 向容器主进程发送SIGKILL信号强行终止容器(SIGKILL无法被忽略或捕获)。</li>
+<li>docker kill: 不带参数则相当于直接进入docker stop的第二阶段，可通过<code>-s</code>参数指定要发送的信号(默认是SIGKILL)。</li>
+</ul>
+<p>docker stop/kill仅向容器主进程(Pid==1)发送信号，因此对于ENTRYPOINT/CMD的Shell格式来说，可能导致应用无法接收的信号，Docker命令文档也提到了这一点:</p>
+<blockquote>
+<blockquote>
+<p>Note: ENTRYPOINT and CMD in the shell form run as a subcommand of /bin/sh -c, which does not pass signals. This means that the executable is not the container’s PID 1 and does not receive Unix signals.</p>
+</blockquote>
+</blockquote>
+<p>参考:</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://docs.docker.com/config/containers/resource_constraints/">https://docs.docker.com/config/containers/resource_constraints/</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.docker.com/engine/reference/run/#runtime-constraints-on-resources">https://docs.docker.com/engine/reference/run/#runtime-constraints-on-resources</a></li>
+<li><a target="_blank" rel="noopener" href="https://coolshell.cn/articles/17049.html">DOCKER基础技术：LINUX CGROUP</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.infoq.com/cn/articles/docker-kernel-knowledge-cgroups-resource-isolation">Docker背后的内核知识——cgroups资源限制</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/03/docker-container-ops/" title="Docker 容器管理">http://wudaijun.com/2018/03/docker-container-ops/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/docker/" rel="tag"><i class="fa fa-tag"></i> docker</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/03/docker-swarm/" rel="prev" title="Docker Swarm - 轻量级容器编排工具">
+      <i class="fa fa-chevron-left"></i> Docker Swarm - 轻量级容器编排工具
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/04/go-pprof/" rel="next" title="go pprof 性能分析">
+      go pprof 性能分析 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E5%AE%B9%E5%99%A8%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6"><span class="nav-text">一. 容器资源限制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-CPU"><span class="nav-text">1. CPU</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%86%85%E5%AD%98"><span class="nav-text">2. 内存</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E5%AE%B9%E5%99%A8%E7%9B%91%E6%8E%A7"><span class="nav-text">二. 容器监控</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-docker-inspect"><span class="nav-text">1. docker inspect</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-docker-stats"><span class="nav-text">2. docker stats</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-docker-attach"><span class="nav-text">3. docker attach</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E5%AE%B9%E5%99%A8%E5%81%9C%E6%AD%A2"><span class="nav-text">三. 容器停止</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

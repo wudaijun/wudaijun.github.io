@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. 分布式ErlangErlang为分布式提供的基础设施  良好的函数式编程语义，为并发而生 异步通信模型，屏蔽底层通讯细节(Erlang进程间&#x2F;系统进程间&#x2F;物理机间)，将本地代码扩展为分布式程序非常容易 透明的通信协议，完善的序列化&#x2F;反序列化支持 完善的监控能力：监督(supervisor), 监视(monitor), 链接(link)等 其它分布式组件：如global,epmd,mnesia">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang 分布式系统(2)">
+<meta property="og:url" content="http://wudaijun.com/2016/03/erlang-distribution-2/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. 分布式ErlangErlang为分布式提供的基础设施  良好的函数式编程语义，为并发而生 异步通信模型，屏蔽底层通讯细节(Erlang进程间&#x2F;系统进程间&#x2F;物理机间)，将本地代码扩展为分布式程序非常容易 透明的通信协议，完善的序列化&#x2F;反序列化支持 完善的监控能力：监督(supervisor), 监视(monitor), 链接(link)等 其它分布式组件：如global,epmd,mnesia">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2016-03-25T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.606Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta property="article:tag" content="distributed">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2016/03/erlang-distribution-2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Erlang 分布式系统(2) | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/03/erlang-distribution-2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Erlang 分布式系统(2)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-03-26 00:00:00" itemprop="dateCreated datePublished" datetime="2016-03-26T00:00:00+08:00">2016-03-26</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/03/erlang-distribution-2/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/03/erlang-distribution-2/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一-分布式Erlang"><a href="#一-分布式Erlang" class="headerlink" title="一. 分布式Erlang"></a>一. 分布式Erlang</h2><p>Erlang为分布式提供的基础设施</p>
+<ol>
+<li>良好的函数式编程语义，为并发而生</li>
+<li>异步通信模型，屏蔽底层通讯细节(Erlang进程间/系统进程间/物理机间)，将本地代码扩展为分布式程序非常容易</li>
+<li>透明的通信协议，完善的序列化/反序列化支持</li>
+<li>完善的监控能力：监督(supervisor), 监视(monitor), 链接(link)等</li>
+<li>其它分布式组件：如global,epmd,mnesia等</li>
+</ol>
+<span id="more"></span>
+<h2 id="二-Erlang分布式基础"><a href="#二-Erlang分布式基础" class="headerlink" title="二. Erlang分布式基础"></a>二. Erlang分布式基础</h2><h3 id="1-Erlang-node"><a href="#1-Erlang-node" class="headerlink" title="1. Erlang node"></a>1. Erlang node</h3><p>一个Erlang分布式系统由多个Erlang节点(node)组成，每一个节点即为一个Erlang虚拟机，这些节点可以彼此通信。不同节点节点上Pid之间通信(link,monitor等)，是完全透明的。</p>
+<p>集群中每个Erlang节点都有自己的名字，通过<code>-sname</code>或<code>-name</code>设置节点名字，前者在局域网中使用，后者在广域网中使用，两种命名方式的节点不能相互通信。也可在节点启动后通过<code>net_kernel:start/1</code>来将一个独立节点转换为分布式节点。</p>
+<p>Erlang节点之间通过TCP/IP建立连接并通信，集群中的节点是松散连接的(loosely connected)，只有当第一次用到其它节点名字时，才会和该节点建立连接(并且校验cookie)。但同时连接也是扩散(transitive)的，比如现有节点A,B相连，C,D相连，此时节点B连接节点C，那么A,B,C,D将两两相连形成一个全联通集群。要关闭Erlang节点的transitive行为，使用虚拟机启动选项<code>-connect_all false</code>。当节点挂掉后，其上所有的连接都会被关闭，也可通过<code>erlang:disconnect_node/1</code>关闭与指定节点的连接。</p>
+<h3 id="2-cookie"><a href="#2-cookie" class="headerlink" title="2. cookie"></a>2. cookie</h3><p>cookie是Erlang节点连接时的简单验证机制，只有具有相同cookie的节点才能连接。通过<code>-setcookie</code>选项或<code>erlang:set_cookie/2</code>设置cookie，后者可以为一个节点设置多个cookie，在连接不同的节点时使用不同的cookie，连接到多个集群中。如果没有指定，将使用<code>~/.erlang.cookie</code>中的字符串作为cookie。由于cookie是明文的，并且共享于所有节点，更像是一种分隔集群的方式，而不是一种安全机制。</p>
+<h3 id="3-hidden-node"><a href="#3-hidden-node" class="headerlink" title="3. hidden node"></a>3. hidden node</h3><p>通过为节点启动参数<code>-hidden</code>，让一个节点成为hidden节点，hidden节点与其它节点的连接不会扩展，它们必须被显示建立。通过<code>nodes(hidden)</code>或<code>nodes(connected)</code>才能看到与本节点连接的hidden节点。</p>
+<h3 id="4-net-kernel"><a href="#4-net-kernel" class="headerlink" title="4. net_kernel"></a>4. net_kernel</h3><p>net_kernel管理节点之间的连接，通过<code>-sname</code>或<code>-name</code>启动参数或在代码中调用<code>net_kernel:start/1</code>可以启动net_kernel进程。net_kernel默认会在引用到其它节点时(如rpc:call/5, spawn/4, link/1等)，自动与该节点建立连接，通过<code>-dist_auto_connect false</code>选项可以关闭这种行为，如此只能通过<code>net_kernel:connect_node/1</code>手动显式地建立连接。</p>
+<h3 id="5-epmd"><a href="#5-epmd" class="headerlink" title="5. epmd"></a>5. epmd</h3><p>epmd(Erlang Port Mapper Daemon)是Erlang节点所在主机上的守护进程，它维护本机上所有Erlang节点名到节点地址(Host:Port)的映射。</p>
+<p>epmd会在主机上第一个Erlang分布式节点启动时自动后台启动，默认监听4369端口。当分布式节点启动时，VM会监听一个端口(可通过<code>inet_dist_listen_min</code>和<code>inet_dist_listen_max</code>限制端口范围)用于接收其它节点连接请求，之后节点会将节点名(@前半部分)和监听地址发给epmd进程，当节点和epmd进程断开TCP连接后，epmd会注销该节点地址信息。</p>
+<p>当节点A(<code>node_a@myhost1</code>)尝试连接节点B(<code>node_b@myhost2</code>)时，节点A会先向myhost2上的empd进程(<code>myhost2:4369</code>)根据节点B名字(nodeb)查询节点监听地址，之后再连接这个监听地址和B节点通信。</p>
+<p>默认配置下，epmd在物理机上的监听端口为4369，这意味着：</p>
+<ol>
+<li>因为是周知端口，所以通过查询目标机器上的4369，就可以知道这个机器上节点的情况。</li>
+<li>在同一机器可能会部署不同的Erlang集群，希望不要互相干扰。</li>
+<li>防火墙不允许过4369端口，或者不在开放端口之列表。</li>
+</ol>
+<p>我们可以指定epmd监听端口：</p>
+<pre><code>// 单独启动epmd进程
+empd -daemon -port 5000
+// epmd随分布式节点启动而自动启动时，也可指定epmd的启动方案
+erl -name hello -epmd &quot;epmd -port 5001 -daemon&quot; -epmd_port 5001
+</code></pre><p>可以在虚拟机启动时，通过<code>-epmd_port</code>(或<code>ERL_EPMD_PORT</code>环境变量)指定要连接的epmd端口：</p>
+<pre><code>// 通过启动选项
+erl -name hello -epmd_port 5000
+// 通过环境变量
+ERL_EPMD_PORT=5000 erl -name hello
+</code></pre><p>需要注意的是，一旦节点采用定制的epmd port，那么节点在连接其它节点的时候，也将使用定制的epmd端口访问epmd。因此，<strong>同一个集群的epmd端口必须是一致的</strong>。</p>
+<p>参考：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/man/epmd.html">http://erlang.org/doc/man/epmd.html</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.cnblogs.com/me-sa/p/erlang-epmd.html">http://www.cnblogs.com/me-sa/p/erlang-epmd.html</a></li>
+<li><a target="_blank" rel="noopener" href="http://erlang.org/doc/apps/erts/erl\_dist\_protocol.html">http://erlang.org/doc/apps/erts/erl\_dist\_protocol.html</a></li>
+</ol>
+<h3 id="6-global"><a href="#6-global" class="headerlink" title="6. global"></a>6. global</h3><p>global模块功能主要通过global_name_server进程完成，该进程在节点启动时启动。global模块主要包含如下功能：</p>
+<h4 id="全局锁"><a href="#全局锁" class="headerlink" title="全局锁"></a>全局锁</h4><p>global模块提供全局锁功能，可以在集群内对某个资源进行访问控制，当某个节点尝试lock某个资源时，global_name_server会muticall集群中所有节点上的global_name_server进程，只要其中一个节点上操作失败，本次lock也会失败，并引发下次重试或整个操作的失败。</p>
+<p>global模块会在当前所有known(<code>nodes()</code>)节点中推选出一个Boss节点(简单通过<code>lists:max(Nodes)</code>选出)，在设置全局锁时，会先尝试在Boss节点上上锁，再对其它节点上锁，这样保证全局资源的唯一性，又不需要单独设置中心节点。</p>
+<h4 id="全局名字管理"><a href="#全局名字管理" class="headerlink" title="全局名字管理"></a>全局名字管理</h4><p>global_name_server另一个职责是管理集群全局名字信息，global_name_server将全局名字信息缓存在ets，因此对全局名字的解析是非常快的，甚至不走消息流程。但是对名字的注册，需要先上全局锁，再muticall所有的global_name_server，进行本地ets名字更新，整个过程至少要muticall集群所有节点两次，对于这类耗时的操作，global_name_server有一个小技巧：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"> </span><br><span class="line"></span><br><span class="line">% 外部进程（call调用）</span><br><span class="line">gen_server:call(global_server, &#123;something, Args&#125;)</span><br><span class="line"></span><br><span class="line">% global_name_server（任务异步分发）</span><br><span class="line">handle_call(&#123;something Args&#125;, State) -&gt;</span><br><span class="line">	State<span class="meta">#state.worker ! &#123;someting, Args, self()&#125;</span></span><br><span class="line"></span><br><span class="line">% Worker进程（实际任务，通过gen_server:reply手动模拟call返回）</span><br><span class="line">loop_the_worker() -&gt;</span><br><span class="line">    receive </span><br><span class="line">        &#123;do_something, Args, From&#125; -&gt;</span><br><span class="line">            gen_server:reply(From, do_something(Args));</span><br><span class="line">	Other -&gt;</span><br><span class="line">            unexpected_message(Other)</span><br><span class="line">    end,</span><br><span class="line">    loop_the_worker().</span><br><span class="line">   </span><br></pre></td></tr></table></figure>
+<h4 id="维护全联通网络"><a href="#维护全联通网络" class="headerlink" title="维护全联通网络"></a>维护全联通网络</h4><p>global的最后一个职责就是维护全联通网络，在global模块的源码注释中可以看到其网络信息同步协议：</p>
+<pre><code>%% Suppose nodes A and B connect, and C is connected to A.
+%% Here&#39;s the algorithm&#39;s flow:
+%%
+%% Node A
+%% ------
+%% &lt;&lt; &#123;nodeup, B&#125;
+%%   TheLocker ! &#123;nodeup, ..., Node, ...&#125; (there is one locker per node)
+%% B ! &#123;init_connect, ..., &#123;..., TheLockerAtA, ...&#125;&#125;
+%% &lt;&lt; &#123;init_connect, TheLockerAtB&#125;
+%%   [The lockers try to set the lock]
+%% &lt;&lt; &#123;lock_is_set, B, ...&#125;
+%%   [Now, lock is set in both partitions]
+%% B ! &#123;exchange, A, Names, ...&#125;
+%% &lt;&lt; &#123;exchange, B, Names, ...&#125;
+%%   [solve conflict]
+%% B ! &#123;resolved, A, ResolvedA, KnownAtA, ...&#125;
+%% &lt;&lt; &#123;resolved, B, ResolvedB, KnownAtB, ...&#125;
+%% C ! &#123;new_nodes, ResolvedAandB, [B]&#125;
+%%
+%% Node C
+%% ------
+%% &lt;&lt; &#123;new_nodes, ResolvedOps, NewNodes&#125;
+%%   [insert Ops]
+%% ping(NewNodes)
+%% &lt;&lt; &#123;nodeup, B&#125;
+%% &lt;ignore this one&gt;
+</code></pre><p>在上面的源码注释中，可以看到global模块的全联通维护机制，集群中被连接的节点(Node A)，会将新加入的节点(Node B)介绍给集群中的其它节点(Node C)。同名字注册一样，global_name_server将全联通集群管理放在另一个Worker中执行。</p>
+<p>global模块的名字注册只能在全联通网络下进行，这样才能在任意节点进行信息更新。在非全联通集群中(<code>-connect_all false</code>)，全局锁机制仍然是可用的。</p>
+<p>注意到整个同步协议中，nodeup和nodedown消息是由net_kernel进程发布的。</p>
+<p>global模块更加具体的实现细节没有细究，待后续详细理解。能够在不可靠的网络上实现一套全局锁和全联通管理方案，本身就是非常复杂的，因此还是值得一读。</p>
+<h3 id="7-mnesia"><a href="#7-mnesia" class="headerlink" title="7. mnesia"></a>7. mnesia</h3><p>参见：<a href="http://wudaijun.com/2015/04/erlang-mnesia/">http://wudaijun.com/2015/04/erlang-mnesia/</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/03/erlang-distribution-2/" title="Erlang 分布式系统(2)">http://wudaijun.com/2016/03/erlang-distribution-2/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+              <a href="/tags/distributed/" rel="tag"><i class="fa fa-tag"></i> distributed</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/03/erlang-distribution-1/" rel="prev" title="Erlang 分布式系统(1)">
+      <i class="fa fa-chevron-left"></i> Erlang 分布式系统(1)
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/04/learning-mistakes/" rel="next" title="技术学习误区">
+      技术学习误区 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-%E5%88%86%E5%B8%83%E5%BC%8FErlang"><span class="nav-text">一. 分布式Erlang</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C-Erlang%E5%88%86%E5%B8%83%E5%BC%8F%E5%9F%BA%E7%A1%80"><span class="nav-text">二. Erlang分布式基础</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Erlang-node"><span class="nav-text">1. Erlang node</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-cookie"><span class="nav-text">2. cookie</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-hidden-node"><span class="nav-text">3. hidden node</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-net-kernel"><span class="nav-text">4. net_kernel</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-epmd"><span class="nav-text">5. epmd</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-global"><span class="nav-text">6. global</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%A8%E5%B1%80%E9%94%81"><span class="nav-text">全局锁</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%A8%E5%B1%80%E5%90%8D%E5%AD%97%E7%AE%A1%E7%90%86"><span class="nav-text">全局名字管理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%BB%B4%E6%8A%A4%E5%85%A8%E8%81%94%E9%80%9A%E7%BD%91%E7%BB%9C"><span class="nav-text">维护全联通网络</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-mnesia"><span class="nav-text">7. mnesia</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

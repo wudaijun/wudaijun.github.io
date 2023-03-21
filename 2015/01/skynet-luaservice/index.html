@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="C模块的导出从skynet核心模块来看，它只认得C服务，每个服务被编译为动态库，在需要时由skynet加载。skynet提供发送消息和注册回调函数的接口，并保证消息的正确到达，并调用目标服务回调函数。其它东西，如消息调度，线程池等，对于用户来说都是透明的。 skynet服务可以由lua编写，因此skynet将C模块核心接口通过skynet&#x2F;lualib-src&#x2F;lua-skynet.c导出为 sk">
+<meta property="og:type" content="article">
+<meta property="og:title" content="skynet lua服务">
+<meta property="og:url" content="http://wudaijun.com/2015/01/skynet-luaservice/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="C模块的导出从skynet核心模块来看，它只认得C服务，每个服务被编译为动态库，在需要时由skynet加载。skynet提供发送消息和注册回调函数的接口，并保证消息的正确到达，并调用目标服务回调函数。其它东西，如消息调度，线程池等，对于用户来说都是透明的。 skynet服务可以由lua编写，因此skynet将C模块核心接口通过skynet&#x2F;lualib-src&#x2F;lua-skynet.c导出为 sk">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2015-01-10T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.602Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="lua">
+<meta property="article:tag" content="skynet">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2015/01/skynet-luaservice/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>skynet lua服务 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/01/skynet-luaservice/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          skynet lua服务
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-01-11 00:00:00" itemprop="dateCreated datePublished" datetime="2015-01-11T00:00:00+08:00">2015-01-11</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/01/skynet-luaservice/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/01/skynet-luaservice/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="C模块的导出"><a href="#C模块的导出" class="headerlink" title="C模块的导出"></a>C模块的导出</h2><p>从skynet核心模块来看，它只认得C服务，每个服务被编译为动态库，在需要时由skynet加载。skynet提供发送消息和注册回调函数的接口，并保证消息的正确到达，并调用目标服务回调函数。其它东西，如消息调度，线程池等，对于用户来说都是透明的。</p>
+<p>skynet服务可以由lua编写，因此skynet将C模块核心接口通过skynet/lualib-src/lua-skynet.c导出为 skynet.so提供给lua使用。在lua层，通过skynet/lualib/skynet.lua加载C模块(<code>require &quot;skynet.core&quot;</code>)完成对C API的封装。主要涉及lua服务的加载和退出，消息的发送，回调函数的注册等。用户定义的lua服务通过<code>require &quot;skynet&quot;</code>的接口即可完成服务的注册，启动和退出等。关于skynet lua api可以参见<a target="_blank" rel="noopener" href="https://github.com/cloudwu/skynet/wiki/LuaAPI" title="skynet wiki">skynet wiki</a>。</p>
+<span id="more"></span>
+<p>skynet.lua 中，提供的比较重要的接口有：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">-- 注册特定类型消息的处理函数</span><br><span class="line">function skynet.dispatch(typename, func)</span><br><span class="line"></span><br><span class="line">-- 服务启动函数 在lua服务中调用该函数启动服务 并执行用户定义的start_func</span><br><span class="line">function skynet.start(start_func)</span><br><span class="line"></span><br><span class="line">-- 启动一个lua服务，name为lua脚本名字,返回服务地址</span><br><span class="line">function skynet.newservice(name, ...)</span><br><span class="line"></span><br><span class="line">-- 启动一个C服务，第一个参数为服务名字，后续为服务参数。返回服务地址</span><br><span class="line">function skynet.launch(...)</span><br><span class="line"></span><br><span class="line">-- 为服务地址映射一个全局名字	</span><br><span class="line">function skynet.name(name, handle)</span><br><span class="line"></span><br><span class="line">-- 向其它服务发送消息</span><br><span class="line">function skynet.send(addr, typename, ...)</span><br><span class="line"></span><br><span class="line">-- 同步发送消息 并阻塞等待回应	</span><br><span class="line">function skynet.call(addr, typename, ...)</span><br></pre></td></tr></table></figure>
+<h2 id="lua服务如何关联到C核心层"><a href="#lua服务如何关联到C核心层" class="headerlink" title="lua服务如何关联到C核心层"></a>lua服务如何关联到C核心层</h2><p>下面主要提一下skynet是如何在这套C框架上承载lua服务的。</p>
+<p>skynet 预置了一个C服务，叫snlua(位于skynet/service-src/skynet_snlua.c)，这个服务的主要任务就是承载lua服务。一个snlua服务可以承载一个lua服务，可以启动任意份snlua服务。我们直接从snlua这个C服务开始，介绍一个lua服务是如何融合到C框架中的。当需要加载一个名为”console.lua””的服务时，我们将启动一个参数为”console”的snlua服务。主要流程：</p>
+<ol>
+<li>调用skynet.launch(“sunlua”, “console”)</li>
+<li><p>skynet.launch对应C中的cmd_launch，它通过skynet_context_new加载snlua服务：</p>
+<p> a.创建服务对应的skynet_context</p>
+<p>  b.加载snlua.so模块，并调用模块导出的snlua_create创建snlua服务，snlua_create会创建一个lua_State，这样每个lua服务拥有自己的lua_State。</p>
+<p> c.创建服务消息队列，并为skynet_context绑定唯一handle，将消息队列放入全局消息队列中</p>
+<p> d.调用snlua_init初始化服务，在snlua_init中，完成对snlua回调函数的注册。并且构造一条消息，将要加载的lua服务名(“console”)发给自己。</p>
+</li>
+</ol>
+<ol>
+<li>在snlua服务的消息回调函数中，先注销回调函数。然后通过加载并运行一个叫loader.lua的脚本，并解析收到的数据(“console”)来完成实际服务的加载。</li>
+<li>loader.lua在指定路径(可配置)下找到console.lua脚本，并执行 console.lua 脚本</li>
+<li>此时回调函数就返回了。由于之前已经注销了snlua的回调函数。此时snlua看似”报废”了。而事实在重点在console.lua 当中：</li>
+</ol>
+<p>每个skynet lua服务都需要有一个启动函数，通过调用 <code>skynet.start(function ... end )</code>来启动lua服务。在skynet.start中：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">c &#x3D; require &quot;skynet.core&quot;</span><br><span class="line">function skynet.start(start_func)</span><br><span class="line">	c.callback(dispatch_message)</span><br><span class="line">	skynet.timeout(0, function()</span><br><span class="line">		init_service(start_func)</span><br><span class="line">	end)</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+<p>通过c.callback注册了lua服务的回调函数dispatch_message，c.callback由skynet.so导出，它最终调用skynet_callback这个函数完成对本服务(当前是snlua)的回调函数注册。dispatch_message也定义于skynet.lua中，它主要的功能是根据消息类型(C层定义于skynet.h中，lua层定义于skynet.lua)将消息分发到lua服务指定的回调函数，前面提到过skynet.dispatch可以注册特定类型的处理函数。c.callback将dispatch_message注册为snlua新的回调函数。此时snlua这个服务就承载了lua服务，因为它收到的消息将通过dispath_message转发到lua服务注册的回调函数中。</p>
+<p>那么c.callback如何将一个lua函数(dispatch_message)注册为一个C服务(snlua)的回调函数的呢？在skynet/lualib-src/lua-skynet.c中，c.callback对应的C函数实现如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">static int</span><br><span class="line">_callback(lua_State *L) &#123;</span><br><span class="line">	struct skynet_context * context &#x3D; lua_touserdata(L, lua_upvalueindex(1));</span><br><span class="line">	int forward &#x3D; lua_toboolean(L, 2);</span><br><span class="line">	luaL_checktype(L,1,LUA_TFUNCTION);</span><br><span class="line">	lua_settop(L,1);</span><br><span class="line">	lua_rawsetp(L, LUA_REGISTRYINDEX, _cb);</span><br><span class="line"></span><br><span class="line">	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_MAINTHREAD);</span><br><span class="line">	lua_State *gL &#x3D; lua_tothread(L,-1);</span><br><span class="line"></span><br><span class="line">	if (forward) &#123;</span><br><span class="line">		skynet_callback(context, gL, forward_cb);</span><br><span class="line">	&#125; else &#123;</span><br><span class="line">		skynet_callback(context, gL, _cb);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>_callback将lua服务消息回调dispatch_message以_cb函数地址为key保存到lua注册表中。再将_cb函数作为lua服务的”代理回调函数”注册到C核心框架中。这样真正的回调函数_cb就能够满足C服务回调函数形式。这里C中的_cb和lua中的\dispatch_message都是预先定义好的，可以通过lua全局注册表做一一映射。</p>
+<p>当消息到达snlua时，在_cb中，通过<code>lua_rawgetp(L, LUA_REGISTRYINDEX, _cb);</code>从lua注册表中取出lua服务的真正回调函数dispatch_message，压入消息参数。然后调用dispatch_message。dispatch_message根据消息类型将消息分到到lua服务注册的回调函数中。</p>
+<p>总结一下，snlua帮lua服务做了如下工作：</p>
+<ul>
+<li>创建服务上下文skynet_context</li>
+<li>创建lua_State</li>
+<li>分配并绑定唯一handle</li>
+<li>创建服务消息队列</li>
+<li>执行指定lua服务脚本</li>
+</ul>
+<p>在最后一步中，lua服务脚本会通过skynet.start启动服务，后者通过c.callback完成回调函数的替换。之后snlua便成功代理了lua服务，它收到的消息都会转发给lua层的dispatch_message。</p>
+<h2 id="launcher服务"><a href="#launcher服务" class="headerlink" title="launcher服务"></a>launcher服务</h2><p>skynet中所有的lua服务都是通过snlua来承载的，skynet提供了一个lua服务launcher.lua(skynet/service/下)专门用来启动其它lua服务，launcer服务本身通过skynet.launch(“snlua”, “launcher”)来创建，而其它的lua服务则更推荐使用skynet.newservice(“console”)来启动：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">function skynet.newservice(name, ...)</span><br><span class="line">	return skynet.call(&quot;.launcher&quot;, &quot;lua&quot; , &quot;LAUNCH&quot;, &quot;snlua&quot;, name, ...)</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+<p>根据前面skynet.call的原型，skynet.call向名为”.launcher”的服务发送一条类型为”lua”的消息，之后的参数便是消息数据，一般来说，消息的第一个字段代表命令，如这里向”.launcher”服务发送了一个”LAUNCH”命令。launcher.lua的实现比较简单，通过它也能了解lua服务的惯用写法。因此这里我摘录了部分重要代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line">local services &#x3D; &#123;&#125; -- 记录各lua服务的启动时参数</span><br><span class="line">local command &#x3D; &#123;&#125; -- 保存各命令对应的处理函数</span><br><span class="line">local instance &#x3D; &#123;&#125; -- for confirm (function command.LAUNCH &#x2F; command.ERROR &#x2F; command.LAUNCHOK)</span><br><span class="line"></span><br><span class="line">-- 通过skynet.launch完成服务的加载 并返回服务地址</span><br><span class="line">local function launch_service(service, ...)</span><br><span class="line">	local param &#x3D; table.concat(&#123;...&#125;, &quot; &quot;)</span><br><span class="line">	local inst &#x3D; skynet.launch(service, param)</span><br><span class="line">	local response &#x3D; skynet.response()</span><br><span class="line">	if inst then</span><br><span class="line">		services[inst] &#x3D; service .. &quot; &quot; .. param</span><br><span class="line">		instance[inst] &#x3D; response</span><br><span class="line">	else</span><br><span class="line">		response(false)</span><br><span class="line">		return</span><br><span class="line">	end</span><br><span class="line">	return inst</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">-- 加载lua服务</span><br><span class="line">function command.LAUNCH(_, service, ...)</span><br><span class="line">	launch_service(service, ...)</span><br><span class="line">	return NORET</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">-- lua服务加载完成 通常在skynet.start完成服务初始化后 发送该命令通知launcher</span><br><span class="line">function command.LAUNCHOK(address)</span><br><span class="line">	-- init notice</span><br><span class="line">	local response &#x3D; instance[address]</span><br><span class="line">	if response then</span><br><span class="line">		response(true, address)</span><br><span class="line">		instance[address] &#x3D; nil</span><br><span class="line">	end</span><br><span class="line"></span><br><span class="line">	return NORET</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">-- 注册&quot;lua&quot;类型(对应C中的type字段为PTYPE_LUA)消息的回调函数</span><br><span class="line">skynet.dispatch(&quot;lua&quot;, function(session, address, cmd , ...)</span><br><span class="line">	cmd &#x3D; string.upper(cmd)</span><br><span class="line">	local f &#x3D; command[cmd]</span><br><span class="line">	if f then</span><br><span class="line">		local ret &#x3D; f(address, ...)</span><br><span class="line">		if ret ~&#x3D; NORET then</span><br><span class="line">			skynet.ret(skynet.pack(ret))</span><br><span class="line">		end</span><br><span class="line">	else</span><br><span class="line">		skynet.ret(skynet.pack &#123;&quot;Unknown command&quot;&#125; )</span><br><span class="line">	end</span><br><span class="line">end)</span><br><span class="line"></span><br><span class="line">-- lua服务启动函数</span><br><span class="line">skynet.start(function() end)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>这样lua服务的启动通过launcher服务添加一层沙盒，更加安全。launcher还会记录服务的加载状态，输出日志等。launcher一般在bootstrap.lua中创建，并且为其命名”.launcher”。bootstrap.lua是skynet启动执行的第一个lua脚本。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/01/skynet-luaservice/" title="skynet lua服务">http://wudaijun.com/2015/01/skynet-luaservice/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/lua/" rel="tag"><i class="fa fa-tag"></i> lua</a>
+              <a href="/tags/skynet/" rel="tag"><i class="fa fa-tag"></i> skynet</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/01/skynet-c-module/" rel="prev" title="skynet C模块">
+      <i class="fa fa-chevron-left"></i> skynet C模块
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/01/false-sharing/" rel="next" title="false sharing">
+      false sharing <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#C%E6%A8%A1%E5%9D%97%E7%9A%84%E5%AF%BC%E5%87%BA"><span class="nav-text">C模块的导出</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lua%E6%9C%8D%E5%8A%A1%E5%A6%82%E4%BD%95%E5%85%B3%E8%81%94%E5%88%B0C%E6%A0%B8%E5%BF%83%E5%B1%82"><span class="nav-text">lua服务如何关联到C核心层</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#launcher%E6%9C%8D%E5%8A%A1"><span class="nav-text">launcher服务</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

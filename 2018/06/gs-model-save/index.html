@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="现在的游戏服务器通常使用NoSQL作为DB以满足Model设计上的灵活性，特别是即将到来的MongoDB 4.0将提供多文档事务支持，这意味着，SQL转向NoSQL的最后障碍已经被消除。 理想的MongoDB使用场景是将单个对象映射为单个文档，比如玩家数据，公会数据等，但一方面MongoDB对单文档大小硬限制为16M，另一方面，我们需要根据对象更新频度，固有特性等进一步优化，提高DB性能。这里简单">
+<meta property="og:type" content="article">
+<meta property="og:title" content="谈谈GS对象的落地">
+<meta property="og:url" content="http://wudaijun.com/2018/06/gs-model-save/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="现在的游戏服务器通常使用NoSQL作为DB以满足Model设计上的灵活性，特别是即将到来的MongoDB 4.0将提供多文档事务支持，这意味着，SQL转向NoSQL的最后障碍已经被消除。 理想的MongoDB使用场景是将单个对象映射为单个文档，比如玩家数据，公会数据等，但一方面MongoDB对单文档大小硬限制为16M，另一方面，我们需要根据对象更新频度，固有特性等进一步优化，提高DB性能。这里简单">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.612Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="gameserver">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2018/06/gs-model-save/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>谈谈GS对象的落地 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2018/06/gs-model-save/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          谈谈GS对象的落地
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-06-20 00:00:00" itemprop="dateCreated datePublished" datetime="2018-06-20T00:00:00+08:00">2018-06-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2018/06/gs-model-save/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2018/06/gs-model-save/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>现在的游戏服务器通常使用NoSQL作为DB以满足Model设计上的灵活性，特别是即将到来的<a target="_blank" rel="noopener" href="https://docs.mongodb.com/master/release-notes/4.0/">MongoDB 4.0</a>将提供多文档事务支持，这意味着，SQL转向NoSQL的最后障碍已经被消除。</p>
+<p>理想的MongoDB使用场景是将单个对象映射为单个文档，比如玩家数据，公会数据等，但一方面MongoDB对单文档大小硬限制为16M，另一方面，我们需要根据对象更新频度，固有特性等进一步优化，提高DB性能。这里简单谈谈那些GS对象落地的方方面面。</p>
+<span id="more"></span>
+<h3 id="一-存储方案"><a href="#一-存储方案" class="headerlink" title="一. 存储方案"></a>一. 存储方案</h3><h4 id="1-单文档"><a href="#1-单文档" class="headerlink" title="1. 单文档"></a>1. 单文档</h4><p>最简单的模型，将对象放在一个文档中，需要能够预估对象空间占用总量，比如玩家数据，单服内所有已经使用的玩家名字等。</p>
+<h4 id="2-分组保存"><a href="#2-分组保存" class="headerlink" title="2. 分组保存"></a>2. 分组保存</h4><p>将N个小对象分为M个文档保存，可以按照逻辑或者底层统一划分，比如简单按照<code>对象ID%M</code>得到，这种方案主要用于减少文档数量(文档数量对MongoDB序列化时间的影响是比较可观的)。分组保存主要有两种更新方式：基于$set/$unset的增量式更新(GroupSet)，以及基于文档的覆写更新(GroupWrite)。</p>
+<h4 id="3-GridFS"><a href="#3-GridFS" class="headerlink" title="3. GridFS"></a>3. GridFS</h4><p>MongoDB GridFS用于以二进制格式保存大文件，这种方案的优点的简单，将数据整块打包为二进制即可。缺点也很明显:</p>
+<ol>
+<li>对大对象的序列化时间通常较长(毫秒级别)</li>
+<li>二进制存储，DB对运维运营和数据分析不友好</li>
+<li>GridFS只能覆写，也就和读写优化搭不上边了</li>
+</ol>
+<p>因此通常我不建议在GS中使用GridFS。</p>
+<h3 id="二-存储优化"><a href="#二-存储优化" class="headerlink" title="二. 存储优化"></a>二. 存储优化</h3><h4 id="1-批量读写"><a href="#1-批量读写" class="headerlink" title="1. 批量读写"></a>1. 批量读写</h4><p>这个是DB操作层的优化，用于提高落地效率，主流的MongoDB驱动都提供的批量操作接口。</p>
+<h4 id="2-脏标记"><a href="#2-脏标记" class="headerlink" title="2. 脏标记"></a>2. 脏标记</h4><p>这是逻辑层的优化，主要用于减少和DB不必要的交互。脏标记控制对对象的写操作，对对象打上脏标记。主要用于不常变动的对象，比如玩家Cache，但针对数据结构复杂的对象，维护脏标记状态的工作量就比较大了，否则可能漏存数据。脏标记通常需要语言或框架层有访问控制或Hook机制(提供统一的修改入口)。另外就是脏标记本身有一定的不一致性风险，比如DB操作失败，但脏标记已被清除。</p>
+<h4 id="3-初始标记"><a href="#3-初始标记" class="headerlink" title="3. 初始标记"></a>3. 初始标记</h4><p>和脏标记类似，但主要用于减少DB数据量，提升加载效率。Origin标记用于判断一个对象是否是初始状态，如果是初始状态，则不写入DB，当DB加载时，通过配置生成这些Origin对象。比如SLG大地图上的格子，通常SLG大地图绝大部分格子都处于初始状态(未被占领)，因此这类对象通过初始标记优化，可以极大程度提升地图加载效率。当一个格子由初始状态被占领时，该格子落地，当这个格子被玩家放弃回到初始状态时，这个格子被删掉。这个功能在调试期间很有用，在线上也能帮助服务器平滑过渡峰值(开服期间人多，但需要落地的地少，后期地多，但人少)。</p>
+<h4 id="4-局部更新"><a href="#4-局部更新" class="headerlink" title="4. 局部更新"></a>4. 局部更新</h4><p>针对比较复杂的对象，比如玩家，公会，对其子模块进行局部脏标记并局部更新(mongodb $set)，和脏标记一样，这减少了DB交互。但是通常用得不多，主要原因一是和脏标记一样，需要语言框架的支持，二是粒度不好把控，粒度太细会导致开发负担增大，带来的弊大于利。</p>
+<h3 id="三-存储时机"><a href="#三-存储时机" class="headerlink" title="三. 存储时机"></a>三. 存储时机</h3><h4 id="1-定时落地"><a href="#1-定时落地" class="headerlink" title="1. 定时落地"></a>1. 定时落地</h4><p>GS中大部分的对象并不需要实时地将更新写入DB，只需要每隔一段时间(Tick，通常几分钟)落地即可。定时落地通常会结合分组落地(每次Tick只落地一个分组)，脏标记等优化方案。</p>
+<h4 id="2-实时落地"><a href="#2-实时落地" class="headerlink" title="2. 实时落地"></a>2. 实时落地</h4><p>对于少数关键数据，比如支付订单，通常是实时落地的，即数据产生或变更时立即写入数据库。</p>
+<h4 id="3-停服落地"><a href="#3-停服落地" class="headerlink" title="3. 停服落地"></a>3. 停服落地</h4><p>停服落地通常会与定时落地不同，为了数据安全性，停服落地可以采用刷盘操作，以再一次确保DB数据一致性。</p>
+<h3 id="四-DB交互"><a href="#四-DB交互" class="headerlink" title="四. DB交互"></a>四. DB交互</h3><h4 id="1-同异步"><a href="#1-同异步" class="headerlink" title="1. 同异步"></a>1. 同异步</h4><p>DB交互本质上是外部IO交互，应该放到单独的DB线程中去完成，正常情况下，逻辑线程与DB线程只能异步交互，但在开服和停服逻辑中，为了简化流程，可以同步加载/落地。</p>
+<h4 id="2-时序性"><a href="#2-时序性" class="headerlink" title="2. 时序性"></a>2. 时序性</h4><p>为了提升DB模块的效率，通常我们会开个DB Worker Pool来完成实际的DB工作，但要考虑到同一个调用方的多个DB请求的时序性保证，最简单的实现是将来自同一个逻辑模块的DB请求全部交给同一个DB Worker来完成。</p>
+<h4 id="3-深拷贝"><a href="#3-深拷贝" class="headerlink" title="3. 深拷贝"></a>3. 深拷贝</h4><p>由于对象需要交由DB模块来落地，因此需要对对象深拷贝(同步保存不需要)，也可以直接序列化为Bson之后再交给DB模块。</p>
+<h4 id="4-事务支持"><a href="#4-事务支持" class="headerlink" title="4. 事务支持"></a>4. 事务支持</h4><p>就我目前的开发经验而言，GS逻辑中基本是用不到事务的，或者说，需要用到事务的地方，都可以通过其它方式绕过去，大部分时候，GS都只是将DB作为内存持久化工具，进行单文档读写操作，用不到复杂的多文档事务。</p>
+<h3 id="五-总结"><a href="#五-总结" class="headerlink" title="五. 总结"></a>五. 总结</h3><p>这里只是简单提了下DB落地需要考虑的方方面面，在Model层设计上，应该赋予对象存储足够的灵活性，让对象自己根据存储时机，同异步去选择自己的存储方案和存储优化，对通用的存储方案，应该尽量抽象它们的操作，比如批量写，分组保存等。设计准则仍然是开发效率和灵活度优先，然后再是优化层面。具体实现上，还要结合具体的语言框架，比如对Go语言来说，由于其访问控制很弱，也没有Hook机制，因此对对象做脏标记要谨慎。</p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2018/06/gs-model-save/" title="谈谈GS对象的落地">http://wudaijun.com/2018/06/gs-model-save/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/gameserver/" rel="tag"><i class="fa fa-tag"></i> gameserver</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/06/consistent-hashing/" rel="prev" title="一致Hash算法">
+      <i class="fa fa-chevron-left"></i> 一致Hash算法
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/07/gs-flexiblity-reliability/" rel="next" title="谈谈架构灵活性和可靠性">
+      谈谈架构灵活性和可靠性 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-%E5%AD%98%E5%82%A8%E6%96%B9%E6%A1%88"><span class="nav-text">一. 存储方案</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%8D%95%E6%96%87%E6%A1%A3"><span class="nav-text">1. 单文档</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%88%86%E7%BB%84%E4%BF%9D%E5%AD%98"><span class="nav-text">2. 分组保存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-GridFS"><span class="nav-text">3. GridFS</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E5%AD%98%E5%82%A8%E4%BC%98%E5%8C%96"><span class="nav-text">二. 存储优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E6%89%B9%E9%87%8F%E8%AF%BB%E5%86%99"><span class="nav-text">1. 批量读写</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E8%84%8F%E6%A0%87%E8%AE%B0"><span class="nav-text">2. 脏标记</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E5%88%9D%E5%A7%8B%E6%A0%87%E8%AE%B0"><span class="nav-text">3. 初始标记</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E5%B1%80%E9%83%A8%E6%9B%B4%E6%96%B0"><span class="nav-text">4. 局部更新</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E5%AD%98%E5%82%A8%E6%97%B6%E6%9C%BA"><span class="nav-text">三. 存储时机</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%AE%9A%E6%97%B6%E8%90%BD%E5%9C%B0"><span class="nav-text">1. 定时落地</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%AE%9E%E6%97%B6%E8%90%BD%E5%9C%B0"><span class="nav-text">2. 实时落地</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E5%81%9C%E6%9C%8D%E8%90%BD%E5%9C%B0"><span class="nav-text">3. 停服落地</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-DB%E4%BA%A4%E4%BA%92"><span class="nav-text">四. DB交互</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%90%8C%E5%BC%82%E6%AD%A5"><span class="nav-text">1. 同异步</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E6%97%B6%E5%BA%8F%E6%80%A7"><span class="nav-text">2. 时序性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E6%B7%B1%E6%8B%B7%E8%B4%9D"><span class="nav-text">3. 深拷贝</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E4%BA%8B%E5%8A%A1%E6%94%AF%E6%8C%81"><span class="nav-text">4. 事务支持</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%94-%E6%80%BB%E7%BB%93"><span class="nav-text">五. 总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

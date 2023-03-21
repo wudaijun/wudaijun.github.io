@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="mnesia是基于Erlang的分布式数据库管理系统，是Erlang OTP的重要组件。 基础特性1. 分布式的etsmnesia数据库被组织为一个表的集合，每个表由记录(通常被定义为Erlang Record)构成，表本身也包含一些属性，如类型，位置和持久性。这种表集合和记录的概念，和ets表很类似。事实上，mnesia中的数据在节点内就是以ets表存储的。因此，mnesia实际上是一个分布式的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Erlang mnesia">
+<meta property="og:url" content="http://wudaijun.com/2015/04/erlang-mnesia/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="mnesia是基于Erlang的分布式数据库管理系统，是Erlang OTP的重要组件。 基础特性1. 分布式的etsmnesia数据库被组织为一个表的集合，每个表由记录(通常被定义为Erlang Record)构成，表本身也包含一些属性，如类型，位置和持久性。这种表集合和记录的概念，和ets表很类似。事实上，mnesia中的数据在节点内就是以ets表存储的。因此，mnesia实际上是一个分布式的">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2015-04-07T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.603Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="erlang">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2015/04/erlang-mnesia/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Erlang mnesia | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/04/erlang-mnesia/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Erlang mnesia
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-04-08 00:00:00" itemprop="dateCreated datePublished" datetime="2015-04-08T00:00:00+08:00">2015-04-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/04/erlang-mnesia/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/04/erlang-mnesia/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>mnesia是基于Erlang的分布式数据库管理系统，是Erlang OTP的重要组件。</p>
+<h2 id="基础特性"><a href="#基础特性" class="headerlink" title="基础特性"></a>基础特性</h2><h3 id="1-分布式的ets"><a href="#1-分布式的ets" class="headerlink" title="1. 分布式的ets"></a>1. 分布式的ets</h3><p>mnesia数据库被组织为一个表的集合，每个表由记录(通常被定义为Erlang Record)构成，表本身也包含一些属性，如类型，位置和持久性。这种表集合和记录的概念，和ets表很类似。事实上，mnesia中的数据在节点内就是以ets表存储的。因此，mnesia实际上是一个分布式的ets。</p>
+<h3 id="2-表的存储形式"><a href="#2-表的存储形式" class="headerlink" title="2. 表的存储形式"></a>2. 表的存储形式</h3><p>mnesia中的表在节点内有三种存储形式：</p>
+<ul>
+<li><code>ram_copies</code>: 表仅存储于内存，可通过<code>mnesia:dump_tables(TabList)</code>来将数据导入到硬盘。</li>
+<li><code>disc_copies</code>: 表存储于内存中，但同时拥有磁盘备份，对表的写操作会分为两步：1.将写操作写入日志文件 2. 对内存中的表执行写操作</li>
+<li><code>disc_only_copies</code>: 表仅存储于磁盘中，对表的读写将会更慢，但是不会占用内存</li>
+</ul>
+<p>表的存储形式可以在表的创建中指出，默认为ram_copies。也可以在创建表后通过<code>mnesia:change_table_copy_type/3</code>来修改。</p>
+<span id="more"></span>
+<h3 id="3-表的重要属性"><a href="#3-表的重要属性" class="headerlink" title="3. 表的重要属性"></a>3. 表的重要属性</h3><p>表的属性由<code>mnesia:create_table(Name, TableDef)</code>中的TableDef指定，TableDef是一个Tuple List，其中比较重要的属性有：</p>
+<ul>
+<li><code>type</code>: 表的类型，主要有set, ordered_set和bag三种。前两者要求key唯一，bag不要求key唯一，但要求至少有一个字段不同。另外set和bag通过哈希表实现，而ordered_set则使用其它数据结构(如红黑树)以对key排序。type属性默认为set。</li>
+<li><code>attributes</code>: 表中条目的字段，通常由record_info(fields, myrecord)得出，而myrecord一般则用作表名。</li>
+<li><code>local_content</code>: 标识该表是否为本地表，local_content属性为true的表将仅本地可见，不会共享到集群中。local_content默认为false。</li>
+<li><code>index</code>: 表的索引。</li>
+<li><code>ram_copies</code>: 指名该表在哪些节点上存储为ram_copies。默认值为[node()]。即新建表默认都存储为ram_copies。</li>
+<li><code>disc_copies</code>: 该表在哪些节点上存储为disc_copies。默认为[]。</li>
+<li><code>disc_only_copies</code>: 该表在哪些节点上存储为disc_only_copies。默认为[]。</li>
+</ul>
+<h3 id="4-schema表"><a href="#4-schema表" class="headerlink" title="4. schema表"></a>4. schema表</h3><p>schema表是mnesia数据库一张特殊的表，又叫模式表。它记录数据库中其它表的信息，schema表只能有ram_copies或disc_copies两种存储形式。并且一旦schema表存储为ram_copies，那么该节点上的其它表，也将只能存储为ram_copies。</p>
+<p>mnesia需要schema表的初始化自身，可在mnesia启动前，通过<code>mnesia:create_schema/1</code>来创建一个disc_copies类型的schema表，如果不调用<code>mnesia:create_schema/1</code>，直接启动<code>mnesia:start/0</code>，默认生成一个ram_copies类型的schema表，此时我们称该mnesia节点为”无盘节点”，因为其所有表都不能存储于磁盘中。</p>
+<h3 id="5-单节点使用示例"><a href="#5-单节点使用示例" class="headerlink" title="5. 单节点使用示例"></a>5. 单节点使用示例</h3><pre><code>➜  ~  erl -mnesia dir &#39;&quot;Tmp/ErlDB/test&quot;&#39;
+
+Erlang/OTP 17 [erts-6.3.1] [source] [64-bit] [smp:4:4] [async-threads:10] [hipe] [kernel-poll:false] [dtrace]
+
+Eshell V6.3.1  (abort with ^G)
+# 创建disc_copies存储类型的schema表 但其它表的默认存储类型仍然为ram_copies
+1&gt; mnesia:create_schema([node()]).
+ok
+2&gt; mnesia:start().
+ok
+3&gt; rd(person, &#123;name, sex, age&#125;).
+person
+# 创建disc_copies存储类型的table，table的fields即为person记录的fields
+4&gt; mnesia:create_table(person, [&#123;disc_copies, [node()]&#125;, &#123;attributes, record_info(fields, person)&#125;]).
+&#123;atomic,ok&#125;
+# 等价于mnesia:dirty_write(&#123;person, &quot;wdj&quot;, undefined, 3&#125;)
+5&gt; mnesia:dirty_write(#person&#123;name=&quot;wdj&quot;, age=3&#125;).
+ok
+6&gt; mnesia:dirty_read(person, &quot;wdj&quot;).
+[#person&#123;name = &quot;wdj&quot;,sex = undefined,age = 3&#125;]
+</code></pre><p><code>record_info(fileds, person)</code>返回<code>[name,sex,age]</code>，<code>mnesia:create_table/2</code>默认将attributes属性中的第一个field作为key，即name。</p>
+<p>mnesia:read, mnesia:write, mnesia:select等API均不能直接调用，需要封装在事务（transaction）中使用：</p>
+<pre><code>F = fun() -&gt;  
+    Rec = #person&#123;name=&quot;BigBen&quot;, sex=1, age=99&#125;,  
+    mnesia:write(Rec)  
+end,  
+mnesia:transaction(F). 
+</code></pre><p>而对应的<code>mnesia:dirty_read</code>，<code>mnesia:dirty_write</code>，即”脏操作”，无需事务保护，也就没有锁，事务管理器等。dirty版本的读写一般要比事务性读写快十倍以上。但是失去了原子性和隔离性。</p>
+<h3 id="6-表名与记录名"><a href="#6-表名与记录名" class="headerlink" title="6. 表名与记录名"></a>6. 表名与记录名</h3><p>mnesia表由记录组成，记录第一个元素为是记录名，第二个元素为标识记录的键。{表名，键}可以唯一标识表中特定记录，又称为记录的对象标识(Oid)。</p>
+<p>mnesia要求表中所有的记录必须为同一个record的实例，前面的例子中，表名即为记录名，表字段则为记录的域。而实际上，记录名可以是但不一定是表名，记录名可通过record_name属性指出，没有指定table_name则记录名默认为create_table第一参数指定的表名。</p>
+<pre><code>mnesia:dirty_write(Record) -&gt;
+    Tab = element(1, Record), 
+    mnesia:dirty_write(Tab, Record). % 这里提取出表名，表名和表中记录原型实际上是分离的
+</code></pre><p>表名和记录名不一致使我们可以定义多个以同一record的原型的table。</p>
+<h2 id="集群管理"><a href="#集群管理" class="headerlink" title="集群管理"></a>集群管理</h2><pre><code>% 创建集群 需要各节点的mnesia都未启动
+mnesia:create_schema([&#39;node1@host,&#39;node2@host&#39;])
+% 创建表 指明在各节点上的存储类型 如果没指定，则为remote类型
+mnesia:create_table(person, [&#123;ram_copies,[&#39;node1@host&#39;]&#125;])
+% 删除表的所有备份
+mnesia:delete_table(person)
+% 删除整个schema和表数据(包含持久化文件)
+mnesia:delete_table([&#39;node1@host,&#39;node2@host&#39;])
+
+% 集群动态配置能力
+% 动态加入集群(等价于启动参数：-mnesia extra_db_nodes NodeList)
+mnesia:change_config(extra_db_nodes, [&#39;node3@host&#39;])
+% 动态修改表的存储类型
+mnesia:change_table_copy_type(person, node(), disc_copies)
+% 添加远程表的本地备份
+mnesia:add_table_copy(person, &#39;node3@host&#39;, ram_copies)
+% 迁移表备份 表存储类型不变
+mnesia:move_table_copy(person, &#39;node3@host&#39;, &#39;node4host&#39;)
+% 删除表的本节点备份
+mnesia:del_table_copy(person, &#39;node3@host&#39;)
+% 对表的元数据和所有记录进行热升级
+mnesia:transform_table(Tab, Fun, NewAttributeList, NewRecordName)
+</code></pre><ul>
+<li><a target="_blank" rel="noopener" href="http://veniceweb.googlecode.com/svn/trunk/public/daily_tech_doc/erlang_faq_20091125.txt">这篇FAQ</a>中归纳了mnesia集群的大多数问题</li>
+<li>在新节点动态加入集群的过程中，如果新节点mnesia已经启动，启动的节点会尝试将其表定义与其它节点带来的表定义合并。这也应用于模式表自身的定义</li>
+<li>mnesia会同步集群中节点上所有的表信息，如果某节点需要自己本地维护一张表而不希望共享该表，可以在创建表时指定<code>local_content</code>属性。该类型的表表名对mnesia可见，但每个节点写入的数据不会被同步，即每个节点都只能看到自己写入的数据</li>
+<li>mnesia后台同步时，会形成一个全联通网络(即使集群节点都是hidden节点)</li>
+<li>如果新加入节点和已有集群的schema表都是disc_copies，则会merge schema failed</li>
+</ul>
+<h2 id="特性总结"><a href="#特性总结" class="headerlink" title="特性总结"></a>特性总结</h2><p>mneisa的优势:</p>
+<ul>
+<li>与Erlang的完美契合，记录字段可以是任意Erlang Term，具备强大的描述能力</li>
+<li>和传统数据库一样，支持事务，索引，分片等特性</li>
+<li>分布式特性，表的存储类型和位置对应用透明，支持分布式事务</li>
+<li>强大的动态配置能力，包括集群的动态伸缩，表的动态配置，增删，转移，升级等</li>
+</ul>
+<p>mnesia缺点：</p>
+<ul>
+<li>多节点事务带来的开销，尽可能少使用事务(在逻辑上配合做处理)</li>
+<li>mnesia全联通网络的维护开销，在使用时需要控制集群节点数量</li>
+<li>不适合存储大量数据，这会带来网络负载</li>
+</ul>
+<h2 id="参考文档"><a href="#参考文档" class="headerlink" title="参考文档"></a>参考文档</h2><ul>
+<li><a target="_blank" rel="noopener" href="http://www.erlang.org/doc/man/mnesia.html" title="erlang mnesia">Erlang Mnesia Man Page</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.erlang.org/doc/apps/mnesia/Mnesia_chap3.html" title="building a mnesia database">Building A Mnesia Database</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.hitb.com.cn/c/document_library/get_file?p_l_id=10190&amp;folderId=11012&amp;name=DLFE-1103.pdf" title="mnesia用户手册">Mnesia 中文版 用户手册</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/04/erlang-mnesia/" title="Erlang mnesia">http://wudaijun.com/2015/04/erlang-mnesia/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/erlang/" rel="tag"><i class="fa fa-tag"></i> erlang</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/03/cpp-compile-model/" rel="prev" title="C++ 编译模型">
+      <i class="fa fa-chevron-left"></i> C++ 编译模型
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/04/erlang-hotcode/" rel="next" title="Erlang 热更新">
+      Erlang 热更新 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E7%89%B9%E6%80%A7"><span class="nav-text">基础特性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%88%86%E5%B8%83%E5%BC%8F%E7%9A%84ets"><span class="nav-text">1. 分布式的ets</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%A1%A8%E7%9A%84%E5%AD%98%E5%82%A8%E5%BD%A2%E5%BC%8F"><span class="nav-text">2. 表的存储形式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E8%A1%A8%E7%9A%84%E9%87%8D%E8%A6%81%E5%B1%9E%E6%80%A7"><span class="nav-text">3. 表的重要属性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-schema%E8%A1%A8"><span class="nav-text">4. schema表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%8D%95%E8%8A%82%E7%82%B9%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="nav-text">5. 单节点使用示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E8%A1%A8%E5%90%8D%E4%B8%8E%E8%AE%B0%E5%BD%95%E5%90%8D"><span class="nav-text">6. 表名与记录名</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%9B%86%E7%BE%A4%E7%AE%A1%E7%90%86"><span class="nav-text">集群管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%89%B9%E6%80%A7%E6%80%BB%E7%BB%93"><span class="nav-text">特性总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3"><span class="nav-text">参考文档</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

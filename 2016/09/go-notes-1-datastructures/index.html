@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="学习一下go中常用的几种数据结构，结合源码了解其实现原理。 一. 类型系统1. array123456789func f(x [2]int)&amp;#123;	x[1] &#x3D; 9&amp;#125;func main()&amp;#123;	a :&#x3D; [3]int&amp;#123;1,2,3&amp;#125;	b :&#x3D; [2]int&amp;#123;4,5&amp;#125;	f(a) &#x2F;&#x2F; error: cannot use a (type [">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go 笔记(1) 常用数据结构及实现">
+<meta property="og:url" content="http://wudaijun.com/2016/09/go-notes-1-datastructures/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="学习一下go中常用的几种数据结构，结合源码了解其实现原理。 一. 类型系统1. array123456789func f(x [2]int)&amp;#123;	x[1] &#x3D; 9&amp;#125;func main()&amp;#123;	a :&#x3D; [3]int&amp;#123;1,2,3&amp;#125;	b :&#x3D; [2]int&amp;#123;4,5&amp;#125;	f(a) &#x2F;&#x2F; error: cannot use a (type [">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201609/go-slice-implement.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201609/go-string-implement.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201609/go-map-implement.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201609/go-chan-implement.png">
+<meta property="article:published_time" content="2016-09-08T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.608Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="go">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201609/go-slice-implement.png">
+
+<link rel="canonical" href="http://wudaijun.com/2016/09/go-notes-1-datastructures/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Go 笔记(1) 常用数据结构及实现 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/09/go-notes-1-datastructures/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Go 笔记(1) 常用数据结构及实现
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-09-09 00:00:00" itemprop="dateCreated datePublished" datetime="2016-09-09T00:00:00+08:00">2016-09-09</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/go/" itemprop="url" rel="index"><span itemprop="name">go</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/09/go-notes-1-datastructures/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/09/go-notes-1-datastructures/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>学习一下go中常用的几种数据结构，结合源码了解其实现原理。</p>
+<h2 id="一-类型系统"><a href="#一-类型系统" class="headerlink" title="一. 类型系统"></a>一. 类型系统</h2><h3 id="1-array"><a href="#1-array" class="headerlink" title="1. array"></a>1. array</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">f</span><span class="params">(x [2]<span class="keyword">int</span>)</span></span>&#123;</span><br><span class="line">	x[<span class="number">1</span>] = <span class="number">9</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	a := [<span class="number">3</span>]<span class="keyword">int</span>&#123;<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>&#125;</span><br><span class="line">	b := [<span class="number">2</span>]<span class="keyword">int</span>&#123;<span class="number">4</span>,<span class="number">5</span>&#125;</span><br><span class="line">	f(a) <span class="comment">// error: cannot use a (type [3]int) as type [2]int in argument to f</span></span><br><span class="line">	f(b) <span class="comment">// 数组是值语义 因此f无法改变b中元素内容</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>array的特性:</p>
+<ul>
+<li>固定大小，且大小为类型的一部分</li>
+<li>数组元素在内存中连续存放</li>
+<li>值语义: 数组本身(传参会完整拷贝数组)</li>
+</ul>
+<h3 id="2-slice"><a href="#2-slice" class="headerlink" title="2. slice"></a>2. slice</h3><h4 id="数组切片"><a href="#数组切片" class="headerlink" title="数组切片"></a>数组切片</h4><p>slice(切片)，提供描述array部分连续元素的能力。</p>
+<blockquote>
+<blockquote>
+<p>A slice is a data structure describing a contiguous section of an array stored separately from the slice variable itself. A slice is not an array. A slice describes a piece of an array.</p>
+</blockquote>
+</blockquote>
+<p>slice只持有array的引用，而不会拷贝元素，因此它在实现上只需持有指向array元素的pointer和slice长度length即可。但由于slice的length可以收缩或扩张，因此slice还需要一个字段capacity来保存其最初引用的array的size，当length &gt; capacity时，说明对array的访问越界，触发panic错误。</p>
+<p>因此slice一共有三个字段：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> sliceHeader&#123;</span><br><span class="line">	Length 	<span class="keyword">int</span>			<span class="comment">// slice长度</span></span><br><span class="line">	Capacity 	<span class="keyword">int</span> 		<span class="comment">// slice引用的array size</span></span><br><span class="line">	Elem 	 	*ElemType <span class="comment">// 指向slice第一个元素array中的地址</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>比如:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 直接创建slice 等价于:</span></span><br><span class="line"><span class="comment">// tmp := [5]int&#123;2,3,5,7,11&#125;</span></span><br><span class="line"><span class="comment">// a := tmp[0:5]</span></span><br><span class="line">a := []<span class="keyword">int</span>&#123;<span class="number">2</span>,<span class="number">3</span>,<span class="number">5</span>,<span class="number">7</span>,<span class="number">11</span>&#125;</span><br><span class="line">b := a[<span class="number">1</span>:<span class="number">3</span>]</span><br></pre></td></tr></table></figure>
+<p>此时a,b的sliceHeader示意图为:</p>
+<p><img src="/assets/image/201609/go-slice-implement.png" alt=""></p>
+<p>由于slice b在slice a中的起始偏移为1，因此 cap(b) = cap(a)-1 = 4。但b只能访问到a[1],a[2]两个元素:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 尝试访问&gt;=length(2)的元素，会触发panic error</span></span><br><span class="line">fmt.Println(b[<span class="number">2</span>])</span><br><span class="line"><span class="comment">// 等价于 c := b[0:len(b)] c和b引用完全相同的数组切片</span></span><br><span class="line">c := b[:]</span><br><span class="line"><span class="comment">// 虽然b只能访问数组[1],[2]两个元素，但d可以在[0,cap(b)]再次切片扩展引用的数组范围</span></span><br><span class="line">d := b[<span class="number">0</span>:<span class="built_in">cap</span>(b)]</span><br><span class="line">fmt.Println(d[<span class="number">3</span>]) <span class="comment">// 11</span></span><br></pre></td></tr></table></figure>
+<p>那么slice这种数组切片的概念，究竟带来了什么好处？比如我们有一个操作，要去掉数组的首尾元素，在C中，我们会创建(动态分配)一个新数组，然后将arr[1,n-1)拷贝出来。在C++中，有vector会方便一些，但移除元素会导致后续元素移动拷贝开销。而在Go中，<code>slice = slice[1:len(slice)-1]</code>即可完成操作，这中间不会涉及到内存分配，移动拷贝等，是个非常高效的操作。当然，由于slice是引用的数组元素，因此slice修改数组元素时，对其它引用到该元素的slice也是可见的。</p>
+<p>下面来说说slice的值语义。前面提到的sliceHeader，实际就是slice的值语义，我们创建一个slice，在底层就创建了一个sliceHeader结构体。在参数传递时，将会拷贝sliceHeader，但由于sliceHeader中持有指针，因此在调用函数内可修改数组元素，但无法修改sliceHeader结构体的成员值：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Extend</span><span class="params">(slice []<span class="keyword">int</span>, element <span class="keyword">int</span> )</span></span>&#123;</span><br><span class="line">	n := <span class="built_in">len</span>(slice)</span><br><span class="line">	slice = slice[<span class="number">0</span> : n+<span class="number">1</span>] <span class="comment">// 不会影响到传入的slice的length</span></span><br><span class="line">	slice[n] = element <span class="comment">// 修改了数组内容，对传入的slice可见</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>再次摘录一段<a target="_blank" rel="noopener" href="https://blog.golang.org/slices">golang blog</a>关于slice值语义的描述:</p>
+<blockquote>
+<blockquote>
+<p>It’s important to understand that even though a slice contains a pointer, it is itself a value. Under the covers, it is a struct value holding a pointer and a length. It is not a pointer to a struct.</p>
+</blockquote>
+</blockquote>
+<p>BTW，在Go里面的参数传递都是值传递的，只是针对各种类型，其值语义不同，比如int,array它们的值语义就是数据本身，不包含对外的引用(指针)，因此在传参时会完整拷贝整个数据，当然，这里的拷贝是浅拷贝，比如对指针数组这类结构而言，仍然是有副作用的，但这是应用层的东西，就数组容器本身而言，是值拷贝的。而对slice来说，其值语义中包含对数组的引用，因此在传参时，其引用内容可能被修改，但其值语义(sliceHeader)本身仍然是完整拷贝的。</p>
+<h4 id="动态数组"><a href="#动态数组" class="headerlink" title="动态数组"></a>动态数组</h4><p>前面提到slice本质上是数组切片，但slice本身也可以作为动态数组:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	a := [<span class="number">5</span>]<span class="keyword">int</span>&#123;<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>&#125;</span><br><span class="line">	s := a[<span class="number">0</span>:<span class="number">3</span>]</span><br><span class="line">	fmt.Println(<span class="string">&quot;cap: &quot;</span>,<span class="built_in">cap</span>(s),<span class="string">&quot;len: &quot;</span>,<span class="built_in">len</span>(s),<span class="string">&quot;slice: &quot;</span>,s,<span class="string">&quot;array: &quot;</span>,a)</span><br><span class="line">	<span class="comment">// len=3 cap=5 capacity足够 无需重新分配 因此修改会作用于a之上</span></span><br><span class="line">	s = <span class="built_in">append</span>(s, <span class="number">6</span>, <span class="number">7</span>)</span><br><span class="line">	fmt.Println(<span class="string">&quot;cap: &quot;</span>,<span class="built_in">cap</span>(s),<span class="string">&quot;len: &quot;</span>,<span class="built_in">len</span>(s),<span class="string">&quot;slice: &quot;</span>,s,<span class="string">&quot;array: &quot;</span>,a)</span><br><span class="line">	<span class="comment">// len=5 cap=5 append通过make()重新分配新的slice 并通过copy()拷贝已有元素</span></span><br><span class="line">	<span class="comment">// 此后s不再指向a 而指向新分配的连续内存空间</span></span><br><span class="line">	s = <span class="built_in">append</span>(s, <span class="number">8</span>)</span><br><span class="line">	fmt.Println(<span class="string">&quot;cap: &quot;</span>,<span class="built_in">cap</span>(s),<span class="string">&quot;len: &quot;</span>,<span class="built_in">len</span>(s),<span class="string">&quot;slice: &quot;</span>,s,<span class="string">&quot;array: &quot;</span>,a)</span><br><span class="line">	<span class="comment">// 对s的修改将不在作用于a上</span></span><br><span class="line">	s[<span class="number">0</span>] = <span class="number">0</span></span><br><span class="line">	fmt.Println(<span class="string">&quot;cap: &quot;</span>,<span class="built_in">cap</span>(s),<span class="string">&quot;len: &quot;</span>,<span class="built_in">len</span>(s),<span class="string">&quot;slice: &quot;</span>,s,<span class="string">&quot;array: &quot;</span>,a)</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 输出:</span></span><br><span class="line"><span class="built_in">cap</span>:  <span class="number">5</span> <span class="built_in">len</span>:  <span class="number">3</span> slice:  [<span class="number">1</span> <span class="number">2</span> <span class="number">3</span>] array:  [<span class="number">1</span> <span class="number">2</span> <span class="number">3</span> <span class="number">4</span> <span class="number">5</span>]</span><br><span class="line"><span class="built_in">cap</span>:  <span class="number">5</span> <span class="built_in">len</span>:  <span class="number">5</span> slice:  [<span class="number">1</span> <span class="number">2</span> <span class="number">3</span> <span class="number">6</span> <span class="number">7</span>] array:  [<span class="number">1</span> <span class="number">2</span> <span class="number">3</span> <span class="number">6</span> <span class="number">7</span>]</span><br><span class="line"><span class="built_in">cap</span>:  <span class="number">10</span> <span class="built_in">len</span>:  <span class="number">6</span> slice:  [<span class="number">1</span> <span class="number">2</span> <span class="number">3</span> <span class="number">6</span> <span class="number">7</span> <span class="number">8</span>] array:  [<span class="number">1</span> <span class="number">2</span> <span class="number">3</span> <span class="number">6</span> <span class="number">7</span>]</span><br><span class="line"><span class="built_in">cap</span>:  <span class="number">10</span> <span class="built_in">len</span>:  <span class="number">6</span> slice:  [<span class="number">0</span> <span class="number">2</span> <span class="number">3</span> <span class="number">6</span> <span class="number">7</span> <span class="number">8</span>] array:  [<span class="number">1</span> <span class="number">2</span> <span class="number">3</span> <span class="number">6</span> <span class="number">7</span>]</span><br></pre></td></tr></table></figure>
+<p>append会在<strong>len(s)+添加的元素个数&gt;cap(s)时</strong>，重新分配(make)一个slice，拷贝(copy)已有元素，添加新元素，最后返回这个新的slice。在使用append时，需要保存其返回值，因为append传入的是slice的值，也就是sliceHeader结构体，当slice capacity扩展时，append函数内不能修改sliceHeader中的Length和Capacity字段，因此需要返回一个新的sliceHeader。</p>
+<p>为了避免混淆，不要像上例一样将slice的切片特性和动态数组特性混用，使用动态数组时，使用空的slice(<code>var s []int</code>)或make(<code>make([]int, len, cap)</code>)初始化一个slice会比较好。</p>
+<h3 id="3-string"><a href="#3-string" class="headerlink" title="3. string"></a>3. string</h3><p>Go中的string更像是C中的字符串字面量，而不是字符数组：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">str := <span class="string">&quot;Hello, 世界&quot;</span></span><br><span class="line"><span class="comment">//str[0] = &#x27;X&#x27; // error 不可改变字符串(类似字面常量)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 字符串可通过 + 进行拼接</span></span><br><span class="line">str += <span class="string">&quot; !&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 以ANSI字符遍历 ch是一个byte n=15(每个中文在UTF-8中占3个字节)</span></span><br><span class="line">n := <span class="built_in">len</span>(str)</span><br><span class="line"><span class="keyword">for</span> i := <span class="number">0</span>; i&lt; n; i++ &#123;</span><br><span class="line">    ch := str[i]</span><br><span class="line">    fmt.Println(i, ch)</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 以Unicode字符遍历 ch是一个rune 而不是byte 此时遍历得到11个Unicode字符</span></span><br><span class="line"><span class="keyword">for</span> i, ch := <span class="keyword">range</span> str&#123;</span><br><span class="line">    fmt.Println(i, ch)                </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在实现上，string是个read-only byte slice，另外，string的”sliceHeader”没有capacity字段：</p>
+<p><img src="/assets/image/201609/go-string-implement.png" alt=""></p>
+<pre><code>s := &quot;hello&quot;
+t := s[2:3] // &quot;l&quot;
+v := t[0:2] // 没有capacity字段，无法扩展，触发panic error: out of range
+</code></pre><p>由于string的slice特性，len(s)操作非常高效，字符串切割也给代码处理带来很高的灵活度，如官方runtime/string.go的atoi函数是这样写的:</p>
+<pre><code>func atoi(s string) int&#123;
+    n := 0
+       for len(s) &gt; 0 &amp;&amp; &#39;0&#39; &lt;= s[0] &amp;&amp; s[0] &lt;= &#39;9&#39; &#123;
+        n = n*10 + int(s[0]) - &#39;0&#39;
+        s = s[1:]
+    &#125;
+    return n
+&#125;
+</code></pre><p>PS，slice的这种切片特性，与Erlang的<a href="http://wudaijun.com/2015/12/erlang-datastructures/#refc-bianry">refc binary和sub binary</a>实现有相似之处，这种高效的处理方案有个老大难问题，那就是slice string未释放，那么它引用的string本身也不会被GC，哪怕只引用了很小一部分。</p>
+<h3 id="4-map"><a href="#4-map" class="headerlink" title="4. map"></a>4. map</h3><p>map通过hash表实现，实现位于runtime/hashmap.go，以下是主要字段:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span>(</span><br><span class="line">	bucketCntBits = <span class="number">3</span></span><br><span class="line">	bucketCnt     = <span class="number">1</span> &lt;&lt; bucketCntBits</span><br><span class="line">)</span><br><span class="line"><span class="keyword">type</span> hmap <span class="keyword">struct</span> &#123;</span><br><span class="line">	count <span class="keyword">int</span> <span class="comment">// # live cells == size of map.  Must be first (used by len() builtin)</span></span><br><span class="line">	flags <span class="keyword">uint8</span></span><br><span class="line">	B     <span class="keyword">uint8</span>  <span class="comment">// log_2 of # of buckets (can hold up to loadFactor * 2^B items)</span></span><br><span class="line"></span><br><span class="line">	buckets    unsafe.Pointer <span class="comment">// array of 2^B Buckets. may be nil if count==0.</span></span><br><span class="line">	oldbuckets unsafe.Pointer <span class="comment">// previous bucket array of half the size, non-nil only when growing</span></span><br><span class="line">	</span><br><span class="line">	evacuate  <span class="keyword">uintptr</span>        <span class="comment">// progress counter for evacuation (buckets less than this have been evacuated)</span></span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="comment">// A bucket for a Go map.</span></span><br><span class="line"><span class="keyword">type</span> bmap <span class="keyword">struct</span> &#123;</span><br><span class="line">	tophash [bucketCnt]<span class="keyword">uint8</span></span><br><span class="line">	<span class="comment">// Followed by bucketCnt keys and then bucketCnt values.</span></span><br><span class="line">	<span class="comment">// Followed by an overflow pointer.</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>摘自源码注释：</p>
+<blockquote>
+<blockquote>
+<p>A map is just a hash table.  The data is arranged into an array of buckets.  Each bucket contains up to 8 key/value pairs.  The low-order bits of the hash are used to select a bucket.  Each bucket contains a few high-order bits of each hash to distinguish the entries within a single bucket.</p>
+<p>If more than 8 keys hash to a bucket, we chain on extra buckets.</p>
+<p>When the hashtable grows, we allocate a new array of buckets twice as big.  Buckets are incrementally copied from the old bucket array to the new bucket array.</p>
+</blockquote>
+</blockquote>
+<p>hmap的buckets数组大小为2^B，通过取余(<code>hash(key)&amp;(1&lt;&lt;B-1)</code>)可得到key对应的bucket在buckets数组中的下标，每个bucket可以容纳2^bucketCntBits=8个key/value对，落到该桶的key个数超过8个时，会在堆上分配一个新的bucket，并挂在链表末，因此go hashmap通过链表(8个元素一组)来解决hash碰撞问题。</p>
+<p>go的hash map使用的是可扩展hash算法，在负载因子loadFactor(<code>hmap.count/(1&lt;&lt;B)</code>)大于某个值(这个值太大会导致overflow buckets过多，查找效率降低，过小会浪费存储空间，经源码作者测试确认为6.5)时，进行hash扩展。此时B=B&lt;&lt;1，原有buckets由oldbuckets指向，新的buckets重新分配，此时由于hash表大小变更，部分key得到的buckets下标也会改变，因此需要将oldbuckets中的数据按照新的hash表大小重新迁移(evacuate)，出于效率考虑，这个操作是增量进行的，在hash map每次写入时，都会尝试迁移两个bucket(以及后续overflow bucket)，一个是写入的目标bucket(局部迁移)，一个是hmap.evacuate指向的bucket(增量迁移)，这样兼顾局部性和全局性，同时也能保证在新的buckets loadFacotr到达6.5前，所有迁移工作一定能完成。迁移工作完成后，oldbucket置为nil。PS: hash map通过bucket的tophash[0]来标记bucket的迁移状态，保留的标记值为0-3，key的tophash在这个范围内时，会被+4修正</p>
+<p>上述是基于go1.5 hashmap实现，在go1.8中，添加了sameSizeGrow，当overflow buckets的数量超过一定数量(2^B)而负载未大于阀值6.5时，此时可能存在部分空的bucket，即bucket未有效利用，这时会触发sameSizeGrow，即B不变，但走数据迁移流程，将oldbuckets的数据重新紧凑排列提高bucket的利用率。当然在sameSizeGrow过程中，不能触发loadFactorGrow。</p>
+<p>下面来看个结构图:</p>
+<p><img src="/assets/image/201609/go-map-implement.png" alt=""></p>
+<p>再来看Key查找过程(简化版):</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// From go 1.8.1 src/runtime/hashmap.go</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">mapaccess1</span><span class="params">(t *maptype, h *hmap, key unsafe.Pointer)</span> <span class="title">unsafe</span>.<span class="title">Pointer</span></span> &#123;</span><br><span class="line">	<span class="keyword">if</span> h == <span class="literal">nil</span> || h.count == <span class="number">0</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> unsafe.Pointer(&amp;zeroVal[<span class="number">0</span>])</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">// 并发检查 go hashmap不支持并发访问</span></span><br><span class="line">	<span class="keyword">if</span> h.flags&amp;hashWriting != <span class="number">0</span> &#123;</span><br><span class="line">		throw(<span class="string">&quot;concurrent map read and map write&quot;</span>)</span><br><span class="line">	&#125;</span><br><span class="line">	alg := t.key.alg</span><br><span class="line">	hash := alg.hash(key, <span class="keyword">uintptr</span>(h.hash0))</span><br><span class="line">	m := <span class="keyword">uintptr</span>(<span class="number">1</span>)&lt;&lt;h.B - <span class="number">1</span></span><br><span class="line">	b := (*bmap)(add(h.buckets, (hash&amp;m)*<span class="keyword">uintptr</span>(t.bucketsize)))</span><br><span class="line">	<span class="comment">// step1: 找到bucket</span></span><br><span class="line">	<span class="comment">// 如果oldbuckets未迁移完成 则找打oldbuckets中对应的bucket(低B-1位)</span></span><br><span class="line">	<span class="comment">// 否则为buckets中的bucket(低B位)</span></span><br><span class="line">	<span class="keyword">if</span> c := h.oldbuckets; c != <span class="literal">nil</span> &#123;</span><br><span class="line">		<span class="keyword">if</span> !h.sameSizeGrow() &#123;</span><br><span class="line">			m &gt;&gt;= <span class="number">1</span></span><br><span class="line">		&#125;</span><br><span class="line">		oldb := (*bmap)(add(c, (hash&amp;m)*<span class="keyword">uintptr</span>(t.bucketsize)))</span><br><span class="line">		<span class="keyword">if</span> !evacuated(oldb) &#123;</span><br><span class="line">			b = oldb</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	top := <span class="keyword">uint8</span>(hash &gt;&gt; (sys.PtrSize*<span class="number">8</span> - <span class="number">8</span>))</span><br><span class="line">	<span class="keyword">if</span> top &lt; minTopHash &#123;</span><br><span class="line">		top += minTopHash</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span> &#123;</span><br><span class="line">		<span class="comment">// step2: 比较tophash</span></span><br><span class="line">		<span class="keyword">for</span> i := <span class="keyword">uintptr</span>(<span class="number">0</span>); i &lt; bucketCnt; i++ &#123;</span><br><span class="line">			<span class="keyword">if</span> b.tophash[i] != top &#123;</span><br><span class="line">				<span class="keyword">continue</span></span><br><span class="line">			&#125;</span><br><span class="line">			<span class="comment">// dataOffset为key数组在bucket(bmap结构)中的起始偏移</span></span><br><span class="line">			k := add(unsafe.Pointer(b), dataOffset+i*<span class="keyword">uintptr</span>(t.keysize))</span><br><span class="line">			<span class="keyword">if</span> t.indirectkey &#123;</span><br><span class="line">				k = *((*unsafe.Pointer)(k))</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="comment">// step3: 比较key</span></span><br><span class="line">			<span class="keyword">if</span> alg.equal(key, k) &#123;</span><br><span class="line">				v := add(unsafe.Pointer(b), dataOffset+bucketCnt*<span class="keyword">uintptr</span>(t.keysize)+i*<span class="keyword">uintptr</span>(t.valuesize))</span><br><span class="line">				<span class="keyword">if</span> t.indirectvalue &#123;</span><br><span class="line">					v = *((*unsafe.Pointer)(v))</span><br><span class="line">				&#125;</span><br><span class="line">				<span class="keyword">return</span> v</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		b = b.overflow(t)</span><br><span class="line">		<span class="keyword">if</span> b == <span class="literal">nil</span> &#123;</span><br><span class="line">			<span class="keyword">return</span> unsafe.Pointer(&amp;zeroVal[<span class="number">0</span>])</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>限于理解深度，其它一些细节没有提到，比如对不含pointer的key/value优化，另外，go map还针对常用key类型(如int32,int64,string)进行了特例优化，代码位于src/runtime/hashmap_fast.go。以下是上面已经提到的一些小的优化细节：</p>
+<ul>
+<li>key value采用k1,k2,..v1,v2,…排列，而不是k1,v1,k2,v2，这是出于内存对齐考虑，节约空间</li>
+<li>tophash可用于加快key的查找，同时用于标记key的迁移状态</li>
+<li>map大小是2的幂，因此hash值可快速求余: hash(key)&amp;(1&lt;&lt;B-1)</li>
+<li>hash map的增量式扩展，sameSizeGrow</li>
+</ul>
+<p>其它:</p>
+<ul>
+<li>go map不支持并发</li>
+<li>go map目前只有扩展 没有收缩操作(shrink)</li>
+<li>go map迁移时，会创建新的bucket，而不会复用oldbucket中的overflow bucket(作者TODO里面)</li>
+</ul>
+<p>值语义：如hmap结构体所示，buckets为bucket指针数组，那么对key,value的操作都是引用语义的。</p>
+<h3 id="5-channel"><a href="#5-channel" class="headerlink" title="5. channel"></a>5. channel</h3><p>channel是goroutine用于数据交互的通道，和Erlang的Actor以通信实体为第一类对象不同(Actor模型)，Go以通信介质作为第一类对象(CSP模型)，channel支持多写入者和读取者，并且可通过缓冲来实现同步/异步(一定数量)通信。</p>
+<p>在实现上，channel其实就是个消息队列：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 省略部分字段</span></span><br><span class="line"><span class="keyword">type</span> hchan <span class="keyword">struct</span> &#123;</span><br><span class="line">	qcount   <span class="keyword">uint</span>           <span class="comment">// total data in the queue</span></span><br><span class="line">	dataqsiz <span class="keyword">uint</span>           <span class="comment">// size of the circular queue</span></span><br><span class="line">	buf      unsafe.Pointer <span class="comment">// points to an array of dataqsiz elements</span></span><br><span class="line">	elemsize <span class="keyword">uint16</span></span><br><span class="line">	closed   <span class="keyword">uint32</span></span><br><span class="line">	elemtype *_type <span class="comment">// element type</span></span><br><span class="line">	sendx    <span class="keyword">uint</span>   <span class="comment">// send index</span></span><br><span class="line">	recvx    <span class="keyword">uint</span>   <span class="comment">// receive index</span></span><br><span class="line">	recvq    waitq  <span class="comment">// list of recv waiters</span></span><br><span class="line">	sendq    waitq  <span class="comment">// list of send waiters</span></span><br><span class="line">	lock mutex</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>下图描述了一个缓冲区大小为5，并阻塞了若干读goroutine的情况:</p>
+<p><img src="/assets/image/201609/go-chan-implement.png" alt=""></p>
+<p>该图省略了hchan和sudog的部分字段，waitq在实现上是双向链表，虽然实际只会用到单链表语义(FIFO)。</p>
+<p>根据上图情形，此时如果有其它goroutine写入channel:</p>
+<ol>
+<li>从recvq中pop第一个读写者的sudog</li>
+<li>将写入channel的数据拷贝到该sudog的elem字段</li>
+<li>唤醒该读写者goroutine(sudog.g)</li>
+</ol>
+<p>当recvq队列为空，此时写入:</p>
+<ol>
+<li>将写入的数据缓存到buff[sendx]</li>
+<li>sendx环形自增，qcount++</li>
+</ol>
+<p>当buff缓冲区写满(qcount==dataqsiz)，此时写入:</p>
+<ol>
+<li>为写入者创建一个sudog，并插入到sendq队列末</li>
+<li>挂起该写入者goroutine</li>
+</ol>
+<p>如果此时有goroutine再次读channel:</p>
+<ol>
+<li>从buf[recvx]读取第一个数据</li>
+<li>从sendq中pop第一个阻塞的写入者goroutine(sudog)</li>
+<li>将该sudog中的elem字段数据拷贝到buf[recvx]，相当于将elem数据push到buf末尾</li>
+<li>recvx++</li>
+<li>唤醒该发送者goroutine</li>
+</ol>
+<p>没有缓冲的channel(dataqsize==0)操作要简单一些，写入时如果recvq-&gt;first!=nil，则直接拷贝数据到读取者的elem字段，否则将写入者挂起。反之，读写过程也类似。</p>
+<p>另外，由于一个goroutine读写多个channel，因此go提供语言级别的select，用于处理异步IO问题。这其实本质上仍然是尝试对channel进行读写操作(chanrecv)，只不过由block参数为false表明该读写不阻塞，当读写操作需要挂起时，立即返回false。而select操作本身其实就是个多分支的if-elseif-else表达式:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">src/runtime/<span class="keyword">chan</span>.<span class="keyword">go</span></span><br><span class="line"><span class="comment">// compiler implements</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//	select &#123;</span></span><br><span class="line"><span class="comment">//	case c &lt;- v:</span></span><br><span class="line"><span class="comment">//		... foo</span></span><br><span class="line"><span class="comment">//	default:</span></span><br><span class="line"><span class="comment">//		... bar</span></span><br><span class="line"><span class="comment">//	&#125;</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// as</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//	if selectnbsend(c, v) &#123;</span></span><br><span class="line"><span class="comment">//		... foo</span></span><br><span class="line"><span class="comment">//	&#125; else &#123;</span></span><br><span class="line"><span class="comment">//		... bar</span></span><br><span class="line"><span class="comment">//	&#125;</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">selectnbsend</span><span class="params">(t *chantype, c *hchan, elem unsafe.Pointer)</span> <span class="params">(selected <span class="keyword">bool</span>)</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> chansend(t, c, elem, <span class="literal">false</span>, getcallerpc(unsafe.Pointer(&amp;t)))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>select的if-elseif-else语句分支顺序是随机的，在每次执行select时会将所有scase(包含hchan)顺序随机排列。参考src/runtime/select.go hselect和scase结构体。</p>
+<p>通过<code>cap(chan)</code>和<code>len(chan)</code>可以获取channel的缓冲区大小(dataqsize)和当前消息数量(qcount)。</p>
+<h3 id="6-interface"><a href="#6-interface" class="headerlink" title="6. interface"></a>6. interface</h3><p>interface接口的用法和实现放到<a href="http://wudaijun.com/2016/09/go-notes-3-object-oriented/">go面向对象</a>和<a href="http://wudaijun.com/2018/01/go-interface-implement/">go interface实现</a>中。</p>
+<h3 id="7-make-amp-new"><a href="#7-make-amp-new" class="headerlink" title="7. make &amp; new"></a>7. make &amp; new</h3><p>go中有make和new两个关键字用于分配一个对象，简要提一下两者的区别：</p>
+<p>内建函数 new 用来分配内存，它的第一个参数是一个类型，不是一个值，它的返回值是一个指向新分配类型<strong>零值</strong>的指针</p>
+<p>内建函数 make 用来为 slice，map 或 chan 类型分配内存和<strong>初始化</strong>一个对象(目前只能用于这三种类型)，跟 new 类似，第一个参数也是一个类型而不是一个值，跟 new 不同的是，make 返回类型的引用而不是指针，而返回值也依赖于具体传入的类型，具体使用如下：</p>
+<pre><code>// 等价于 a := [capacity]int&#123;&#125;  s := a[0:2]
+s := make([]int, length [,capacity])
+m := make(map[int]string [,size])
+c := make(chan int, [,length])
+</code></pre><h3 id="8-常量"><a href="#8-常量" class="headerlink" title="8. 常量"></a>8. 常量</h3><p>Go中的常量是无类型的，字面常量(如：3.14, “ok”)是无类型的，可以赋给任何满在其值域中的类型。Go预定义了三个常量：true, false, iota，其中iota是一个可以被编译器修改的常量，它代表一个整数，在每个const出现时被重置为0，然后iota每出现一次，其所代表的值即自增一次。iota通常用来定义枚举值，这类值应用程序不关心具体数值，只需确保其在同一个const枚举声明中不会冲突即可。</p>
+<pre><code>const (
+    c0 = iota    // c0 == 0
+    c1 = iota    // c1 == 1
+    c2 = iota    // c2 == 2
+)
+// 根据枚举定义相同表达式的缩写，等价于
+const (
+    c0 = iota    // c0 == 0
+    c1            // c1 == 1
+    c2            // c2 == 2
+)
+</code></pre>
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2016/09/go-notes-1-datastructures/" title="Go 笔记(1) 常用数据结构及实现">http://wudaijun.com/2016/09/go-notes-1-datastructures/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/go/" rel="tag"><i class="fa fa-tag"></i> go</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/08/linux-job-control/" rel="prev" title="Linux 作业管理">
+      <i class="fa fa-chevron-left"></i> Linux 作业管理
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2016/09/go-notes-3-object-oriented/" rel="next" title="Go 笔记(3) 面向对象和接口">
+      Go 笔记(3) 面向对象和接口 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-%E7%B1%BB%E5%9E%8B%E7%B3%BB%E7%BB%9F"><span class="nav-text">一. 类型系统</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-array"><span class="nav-text">1. array</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-slice"><span class="nav-text">2. slice</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B0%E7%BB%84%E5%88%87%E7%89%87"><span class="nav-text">数组切片</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E6%95%B0%E7%BB%84"><span class="nav-text">动态数组</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-string"><span class="nav-text">3. string</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-map"><span class="nav-text">4. map</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-channel"><span class="nav-text">5. channel</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-interface"><span class="nav-text">6. interface</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-make-amp-new"><span class="nav-text">7. make &amp; new</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-%E5%B8%B8%E9%87%8F"><span class="nav-text">8. 常量</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

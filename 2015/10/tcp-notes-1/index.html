@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. TCP首部 首部长度以4字节为单位，4位首部长度最多可表示60字节，其中有20字节的固定长度。由于封装在在一个IP报文中，并且可根据首部长度得到数据起始位置，因此TCP首部没有数据或总长度字段，这和IP首部不一样，IP首部同时有首部长度和总长度字段，前者用于得到数据起始位置，后者用于得到结束位置，因为以太网要求桢的数据部分最小长度为46字节，IP报文小于46字节将在后面添加Padding，因">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TCP复习笔记(一) 连接的建立与终止">
+<meta property="og:url" content="http://wudaijun.com/2015/10/tcp-notes-1/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. TCP首部 首部长度以4字节为单位，4位首部长度最多可表示60字节，其中有20字节的固定长度。由于封装在在一个IP报文中，并且可根据首部长度得到数据起始位置，因此TCP首部没有数据或总长度字段，这和IP首部不一样，IP首部同时有首部长度和总长度字段，前者用于得到数据起始位置，后者用于得到结束位置，因为以太网要求桢的数据部分最小长度为46字节，IP报文小于46字节将在后面添加Padding，因">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201510/tcp_head.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201510/ip_tcp_makeup.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201510/tcp_establish_close.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201510/tcp_establish_close_state.png">
+<meta property="og:image" content="http://wudaijun.com/assets/image/201510/tcp_state_machine.png">
+<meta property="article:published_time" content="2015-10-06T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.605Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="tcp&#x2F;ip">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://wudaijun.com/assets/image/201510/tcp_head.png">
+
+<link rel="canonical" href="http://wudaijun.com/2015/10/tcp-notes-1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>TCP复习笔记(一) 连接的建立与终止 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/10/tcp-notes-1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          TCP复习笔记(一) 连接的建立与终止
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-10-07 00:00:00" itemprop="dateCreated datePublished" datetime="2015-10-07T00:00:00+08:00">2015-10-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/network/" itemprop="url" rel="index"><span itemprop="name">network</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/10/tcp-notes-1/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/10/tcp-notes-1/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="一-TCP首部"><a href="#一-TCP首部" class="headerlink" title="一. TCP首部"></a>一. TCP首部</h3><p><img src="/assets/image/201510/tcp_head.png" alt=""></p>
+<p>首部长度以4字节为单位，4位首部长度最多可表示60字节，其中有20字节的固定长度。由于封装在在一个IP报文中，并且可根据首部长度得到数据起始位置，因此TCP首部没有数据或总长度字段，这和IP首部不一样，IP首部同时有首部长度和总长度字段，前者用于得到数据起始位置，后者用于得到结束位置，因为以太网要求桢的数据部分最小长度为46字节，IP报文小于46字节将在后面添加Padding，因此需要总长度来区分哪些是数据，哪些是Padding。这一点对TCP来说不存在，因为得到IP报文数据的结束位置，也就得到了TCP数据的结束位置：</p>
+<span id="more"></span>
+<p><img src="/assets/image/201510/ip_tcp_makeup.png" alt=""></p>
+<p>首部中的序号对传输字节进行计数，在建立连接时，SYN置1，此时序号字段为该主机选择的初始序列号(ISN)。另外，SYN和FIN分别占用一个序列号，这样才能唯一标识一个SYN或FIN包，用于确认或超时重传。</p>
+<h3 id="二-连接建立与终止"><a href="#二-连接建立与终止" class="headerlink" title="二. 连接建立与终止"></a>二. 连接建立与终止</h3><p><img src="/assets/image/201510/tcp_establish_close.png" alt=""></p>
+<h4 id="2-1-MSS"><a href="#2-1-MSS" class="headerlink" title="2.1 MSS"></a>2.1 MSS</h4><p>在建立连接时，双方会在TCP首部加入MSS选项用于通告己方能接收的最大报文段长度(不包括TCP和IP首部)，MSS只能出现在SYN报文中，如果没有指明，则默认为536(实际上是576的IP报文长度)。在发送SYN报文时，根据<code>MSS=MTU-固定的IP首部-固定的TCP首部长度</code>来确定MSS大小，对于以太网，理想的MSS为<code>1500-20-20=1460</code>，而实际上大部分的MSS为1024，因为许多BSD的实现版本需要MSS为512的倍数。</p>
+<p>通告双方的MSS主要是为了避免分段。分段(分片)发生在IP层，由于物理链路层限制了每次发送的数据帧最大长度，因此IP层会在必要的时候对数据进行分段，并在到达目的地时重组，这一切对传输层的TCP是透明的，因此TCP可以认为它的每份交给IP的字节流，都会以正确的形式到达目的地。</p>
+<p>避免分片主要有两个好处：</p>
+<ul>
+<li>效率更高，因为IP层的分片可能由中间路由器完成</li>
+<li>在有IP分片丢失时，将重传整个IP报文(IP报文没有确认重传机制)。基于这一点，TCP避免分片将使得重传更为高效</li>
+</ul>
+<h4 id="2-2-ISN"><a href="#2-2-ISN" class="headerlink" title="2.2 ISN"></a>2.2 ISN</h4><p>在建立连接的SYN报文中的序列号字段即为初始序列号(ISN)，这个值不能是硬编码的，否则可能会出现重新建立连接后，新连接将旧连接的包误认为是有效包的情况(每次建立连接的ISN是一样的)。ISN的初始化应该是动态的，防止新旧包交叠。RFC的建议是每4微妙ISN加1，这样用完32位需要4.55小时，然后ISN又从0开始。4.55小时远远大于TCP包在网络中的最大生存时间，是比较安全的。</p>
+<h4 id="2-3-半关闭"><a href="#2-3-半关闭" class="headerlink" title="2.3 半关闭"></a>2.3 半关闭</h4><p>半关闭是指TCP一端在结束发送后，还能收到来自另一端的数据。半关闭不建议被应用程序利用，但是我们至少应该理解<code>shudown(1)</code>和<code>close()</code>的区别，确保TCP连接得到正确关闭。</p>
+<h4 id="2-4-SYN超时"><a href="#2-4-SYN超时" class="headerlink" title="2.4 SYN超时"></a>2.4 SYN超时</h4><p>在尝试主动连接服务器时，如果服务器不可达，客户端将尝试重发SYN包。比如：<code>telnet 11.11.11.11</code>，可通过<code>tcpdump tcp port 23</code>查看重试次数和重试间隔，也可以通过<code>date; telnet 11.11.11.11; date</code>来查看总超时时间。</p>
+<h4 id="2-5-SYN-ACK超时"><a href="#2-5-SYN-ACK超时" class="headerlink" title="2.5 SYN-ACK超时"></a>2.5 SYN-ACK超时</h4><p>当服务器收到客户端的SYN包后，会回复SYN-ACK包，如果此时客户端迟迟不回ACK包，那么服务器将超时重发SYN-ACK包，重发次数默认为5次，重发间隔依次为1s,2s,4s,8s,16s,加之最后确认超时的32s,一共是63s。这63秒中，该连接占用了服务器的SYN队列，当SYN队列满时，新的连接请求将不能得到处理。<strong>SYN Flood</strong>攻击就是利用这一点，在发完第一个SYN之后，就下线，耗尽服务器的SYN队列，使其它的正常连接请求得不到处理。</p>
+<h3 id="三-状态转变"><a href="#三-状态转变" class="headerlink" title="三. 状态转变"></a>三. 状态转变</h3><p><img src="/assets/image/201510/tcp_establish_close_state.png" alt=""></p>
+<p>其中比较重要的状态有：</p>
+<h4 id="3-1-TIME-WAIT"><a href="#3-1-TIME-WAIT" class="headerlink" title="3.1 TIME_WAIT"></a>3.1 TIME_WAIT</h4><p>在主动发起关闭的一方，发送完最后一个ACK后，需要等待<code>2MSL</code>的时间，这样做的目的有两个：</p>
+<ul>
+<li>确保最后一个ACK正确到达，2MSL可让TCP再次发送最后的ACK以防这个ACK丢失(另一端超时重发FIN)</li>
+<li>确保在建立新的连接前，任何老的重复报文在网络中超时消失</li>
+</ul>
+<p>MSL(Maximum Segment Lifetime)：报文最大生存时间，用于限制TCP包在网络中最大留存时间，超过这个时间，包将被丢弃。IP层有个类似的TTL跳数来决定IP报文的去留，MSL和TTL共同限制了TCP包的生存时间。RFC建议MSL为2分钟，而Linux下为30秒。</p>
+<p>在2MSL这段时间内，定义这个连接的套接字对将不可用，任何<strong>迟到的报文</strong>都将被丢弃。而在伯克利套接字等实现版本上，有更严格的限制：在2MSL时间内，套接字所使用的本地端口默认情况下都不能再使用。</p>
+<p>对于客户端来说，这通常没有什么影响，因为客户端一般都使用临时端口与服务器进行连接。因此客户端主动断开连接并重启后，尽管之前使用的端口会处于TIME_WAIT状态而不能复用(<code>bind()</code>)，但<code>connect()</code>会选择一个新的临时端口。</p>
+<p>而对于服务器来说，由于服务器通常使用已知端口(监听端口)，如果我们终止一个已经建立连接的服务器程序，并重启它，服务器程序将不能把这个已知端口赋给新的套接字(<code>bind()</code>)，会得到<code>EADDRINUSE</code>的错误，只有在2MSL之后，端口才能被再次使用。</p>
+<p>我们可以使用<code>SO_REUSEADDR</code>选项来重用处于2MSL状态的端口，它的原理是需要新的连接的初始序列号(ISN)大于旧连接的最后序号。这样就可以根据序列号区分哪些是旧连接的迟到报文，哪些的新连接的报文，但是仍然是有遗留风险的。</p>
+<h4 id="3-2-FIN-WAIT-2"><a href="#3-2-FIN-WAIT-2" class="headerlink" title="3.2 FIN_WAIT_2"></a>3.2 FIN_WAIT_2</h4><p>在主动发起关闭的的一方发送完FIN并收到另一方的ACK后，进入FIN_WAIT_2状态。此时连接处于半关闭状态，正常情况下，如果我们的应用不利用半关闭这个特性，那么对方的应用层在收到FIN后，也会发送一个FIN关闭另一个方向上的连接。本端收到该FIN后，才进入TIME_WAIT状态。</p>
+<p>这意味着主动关闭端将可能永远处于FIN_WAIT_2状态，被动端也一直处于CLOSE_WAIT状态。为了防止这种无限等待，当应用层执行全关闭(<code>close</code>)而不是半关闭(<code>shutdown</code>)时，多数套接字实现会生成一个定时器，定时器超时后，连接将进入CLOSED状态。这也进一步提醒我们应该确保正确关闭TCP连接。</p>
+<h3 id="四-TCP状态机"><a href="#四-TCP状态机" class="headerlink" title="四. TCP状态机"></a>四. TCP状态机</h3><p>网络上的传输的没有连接的，TCP的所谓的”连接”是依靠一个状态机来维护当前的连接状态。理解这一点是非常重要的，因为网络是随时会有异常，连接在任何阶段都可能被异常终止。通常情况下，如果状态机收到了意料之外的包，将回复一个RST重置包，对方会据此重置连接状态。具体的状态机如下：</p>
+<p><img src="/assets/image/201510/tcp_state_machine.png" alt=""></p>
+<ul>
+<li>TCP状态机分组丢失：<a target="_blank" rel="noopener" href="http://www.cppblog.com/qinqing1984/archive/2015/10/05/211950.html">http://www.cppblog.com/qinqing1984/archive/2015/10/05/211950.html</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/10/tcp-notes-1/" title="TCP复习笔记(一) 连接的建立与终止">http://wudaijun.com/2015/10/tcp-notes-1/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/tcp-ip/" rel="tag"><i class="fa fa-tag"></i> tcp/ip</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/10/unity-mecanim/" rel="prev" title="Unity 动画系统小记">
+      <i class="fa fa-chevron-left"></i> Unity 动画系统小记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/10/tcp-notes-2/" rel="next" title="TCP复习笔记(二) TCP服务器参见问题和参数设置">
+      TCP复习笔记(二) TCP服务器参见问题和参数设置 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-TCP%E9%A6%96%E9%83%A8"><span class="nav-text">一. TCP首部</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-%E8%BF%9E%E6%8E%A5%E5%BB%BA%E7%AB%8B%E4%B8%8E%E7%BB%88%E6%AD%A2"><span class="nav-text">二. 连接建立与终止</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-1-MSS"><span class="nav-text">2.1 MSS</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2-ISN"><span class="nav-text">2.2 ISN</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-3-%E5%8D%8A%E5%85%B3%E9%97%AD"><span class="nav-text">2.3 半关闭</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-4-SYN%E8%B6%85%E6%97%B6"><span class="nav-text">2.4 SYN超时</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-5-SYN-ACK%E8%B6%85%E6%97%B6"><span class="nav-text">2.5 SYN-ACK超时</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-%E7%8A%B6%E6%80%81%E8%BD%AC%E5%8F%98"><span class="nav-text">三. 状态转变</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#3-1-TIME-WAIT"><span class="nav-text">3.1 TIME_WAIT</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-2-FIN-WAIT-2"><span class="nav-text">3.2 FIN_WAIT_2</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-TCP%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-text">四. TCP状态机</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>

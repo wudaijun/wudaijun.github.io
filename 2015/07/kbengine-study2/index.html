@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/theme/favicon-100x100.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/theme/favicon-32x32.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/theme/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"wudaijun.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一. 登录流程注册 Unity3d:CreateAccount Loginapp:reqCreateAccount  -&gt; dbmgr:reqCreateAccount  -&gt; Loginapp:onReqCreateAccountResult  -&gt; Client:onReqCreateAccountResult">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kbengine 源码导读(二) 加载流程">
+<meta property="og:url" content="http://wudaijun.com/2015/07/kbengine-study2/index.html">
+<meta property="og:site_name" content="wudaijun&#39;s blog">
+<meta property="og:description" content="一. 登录流程注册 Unity3d:CreateAccount Loginapp:reqCreateAccount  -&gt; dbmgr:reqCreateAccount  -&gt; Loginapp:onReqCreateAccountResult  -&gt; Client:onReqCreateAccountResult">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2015-07-23T16:00:00.000Z">
+<meta property="article:modified_time" content="2023-03-20T09:58:40.604Z">
+<meta property="article:author" content="wudaijun">
+<meta property="article:tag" content="kbengine">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://wudaijun.com/2015/07/kbengine-study2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>kbengine 源码导读(二) 加载流程 | wudaijun's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="wudaijun's blog" type="application/atom+xml"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wudaijun's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Done is better than perfect</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-rss">
+
+    <a href="/atom.xml" rel="section"><i class="fa fa-rss fa-fw"></i>RSS</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/07/kbengine-study2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          kbengine 源码导读(二) 加载流程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-07-24 00:00:00" itemprop="dateCreated datePublished" datetime="2015-07-24T00:00:00+08:00">2015-07-24</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/gameserver/" itemprop="url" rel="index"><span itemprop="name">gameserver</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/07/kbengine-study2/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/07/kbengine-study2/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一-登录流程"><a href="#一-登录流程" class="headerlink" title="一. 登录流程"></a>一. 登录流程</h2><p><strong>注册</strong></p>
+<pre><code>Unity3d:CreateAccount
+Loginapp:reqCreateAccount 
+-&gt; dbmgr:reqCreateAccount 
+-&gt; Loginapp:onReqCreateAccountResult 
+-&gt; Client:onReqCreateAccountResult
+</code></pre><span id="more"></span>
+<p><strong>登录 Step1</strong></p>
+<pre><code>Unity3d:login
+Loginapp:login 
+-&gt; dbmgr:onAccountLogin     //检查登录 将登录结果返回给Loginapp
+-&gt; Loginapp:onLoginAccountQueryResultFromDbmgr //转发给BaseappMgr分配Baseapp
+-&gt; BaseappMgr:registerPendingAccountToBaseapp //将客户端分配到当前负载最低的Baseapp上 并返回该Baseapp的Ip Port
+-&gt; onLoginAccountQueryBaseappAddrFromBaseappmgr //将Baseapp的Ip Port转发给客户端
+-&gt; Client:onLoginSuccessfully
+</code></pre><p><strong>登录 Step2</strong></p>
+<pre><code>Unity3d:loginGateway      //尝试在指定Baseapp上登录
+Baseapp:loginGateway    //检查登录 处理重复登录 向数据库查询账号详细信息
+dbmgr:queryAccount        //查询账号详细信息 返回给Baseapp
+Baseapp:onQueryAccountCBFromDbmgr    //创建账号的Proxy并传入客户端的mailbox(用于和客户端交互)，Demo中的Account.py即继承于KBEngine.Proxy。
+</code></pre><p><strong>获角 选角 创角</strong></p>
+<p>Unity3d的<code>reqAvatarList</code> <code>selectAvatarGame</code> <code>reqCreateAvatar</code> 都将直接转到Account.py中对应的相应函数上，KBEngine.Proxy已经封装了和客户端通讯的方法(通过Mailbox)。</p>
+<h2 id="二-地图创建"><a href="#二-地图创建" class="headerlink" title="二. 地图创建"></a>二. 地图创建</h2><ol>
+<li>Baseapp启动，会回调到Python脚本层的onBaseAppReady(base/kbengine.py)</li>
+<li>第一个Baseapp启动时，在本Baseapp上创建世界管理器spaces Entity(Baseapp:createBaseLocally) 定义于spaces.py</li>
+<li>spaces读取配置文件data/d_spaces.py，为每一个Space Entity创建一个SpaceAlloc，通过定时器分批次调用SpaceAlloc.init创建Space Entity(一秒回调创建一个)</li>
+<li>SpaceAlloc.init通过KBEngine.CreateSpaceAnyWhere()完成</li>
+<li>Baseapp:CreateSpaceAnyWhere()会转发给BaseappMgr，最终落在当前负载最轻的Baseapp上，通过CreateEntity完成Space Entity创建</li>
+<li>创建完成后，回调到发起方Baseapp:CreateSpaceAnywhereCallback() 最终回调到Python层SpaceAlloc.py:onSpaceCreatedCB()<br>注意，上面提到的Space Entity并不是真正的Space，而是Baseapp用于操作Space的一个句柄，真正的Sapce需要挂在Cellapp上，在srcipts/base/Space.py中完成真正的Space创建：</li>
+<li>Space.py:_<em>init_</em>()中，通过Baseapp:CreateInNewSpace()创建真正的Space，之后读取该Space上需创建的所有 Entity(配置在scripts/data/d_spaces_spawns中)，等待其上面的Entity被创建</li>
+<li>Baseapp:CreateInNewSpace()将请求转发给CellappMgr，后者会将请求分发到当前负载最轻的Cellapp上，Cellapp:onCreateInNewSpaceFromBaseapp()完成Space创建，回调Baseapp:OnEntityGetCell()</li>
+<li>注意，此时cell/Space.py:_<em>init_</em>()被调用，开始加载真正的几何数据和寻路相关，回调到Baseapp:OnEntityGetCell()</li>
+<li>Baseapp:OnEntityGetCell()判断该Entity是否是客户端，如果是则需要通知客户端(Baseapp::onClientEntityEnterWorld)，之后回调脚本Space.py:OnGetCell()</li>
+</ol>
+<p>至此，地图创建完成。</p>
+<h2 id="三-生成NPC-Monster"><a href="#三-生成NPC-Monster" class="headerlink" title="三. 生成NPC/Monster"></a>三. 生成NPC/Monster</h2><p>对于NPC/Monster，是先创建其出生点，再由出生点创建真正的NPC/Monster</p>
+<ol>
+<li>接上面Space的Cell和Base部分均创建完成后，base/Space.py:OnGetCell()中，注册一个定时器，开始创建该Space上面的所有NPC/Monster的SpawnPoint，每0.1秒创建一个</li>
+<li>base/SpawnPoint.py中，创建其Cell部分</li>
+<li>cell/SpawnPoint.py中，通过createEntity创建其对应的真正的NPC/Monster</li>
+</ol>
+<h2 id="四-Entity-实体"><a href="#四-Entity-实体" class="headerlink" title="四. Entity (实体)"></a>四. Entity (实体)</h2><p>Entity是服务器与客户端交互的一切实体的总称，包括：账号，角色，NCP，Monster，公会，等等。Entity通过 <Entity>.def 来定义自己的属性和方法，指定属性和方法的作用域，即(Base, Cell, Client)的访问权限。因此C/S之间的消息协议实际上只是针对于Entity的远程调用。所以KBEngine本身没有消息协议一说，所有业务逻辑都围绕着Entity展开，通过<Entity>.def来维护。</p>
+<p>参见：</p>
+<p><a target="_blank" rel="noopener" href="http://kbengine.org/cn/docs/programming/entitydef.html">http://kbengine.org/cn/docs/programming/entitydef.html</a><br><a target="_blank" rel="noopener" href="http://kbengine.org/cn/docs/configuration/entities.html">http://kbengine.org/cn/docs/configuration/entities.html</a></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>wudaijun
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://wudaijun.com/2015/07/kbengine-study2/" title="kbengine 源码导读(二) 加载流程">http://wudaijun.com/2015/07/kbengine-study2/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/kbengine/" rel="tag"><i class="fa fa-tag"></i> kbengine</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2015/07/kbengine-study1/" rel="prev" title="kbengine 源码导读(一) 网络底层">
+      <i class="fa fa-chevron-left"></i> kbengine 源码导读(一) 网络底层
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2015/08/erlang-server-design1-cluster-server/" rel="next" title="开发笔记(1) cluster server">
+      开发笔记(1) cluster server <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80-%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B"><span class="nav-text">一. 登录流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C-%E5%9C%B0%E5%9B%BE%E5%88%9B%E5%BB%BA"><span class="nav-text">二. 地图创建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89-%E7%94%9F%E6%88%90NPC-Monster"><span class="nav-text">三. 生成NPC&#x2F;Monster</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B-Entity-%E5%AE%9E%E4%BD%93"><span class="nav-text">四. Entity (实体)</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="wudaijun"
+      src="/assets/theme/avatar.png">
+  <p class="site-author-name" itemprop="name">wudaijun</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/wudaijun" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/wudaijun" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;wudaijun" rel="noopener" target="_blank"><i class="fab fa-contao fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2014 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wudaijun</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : true,
+      appId      : 'mcuD0S7ohGooofXt3SJ62qW2-9Nh9j0Va',
+      appKey     : 'qvWjHt4jMELAWtqmpdK6Mh9Q',
+      placeholder: "Leave something ...",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</body>
+</html>
