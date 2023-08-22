@@ -28,7 +28,7 @@
 <meta property="og:description" content="源于从Erlang转到Go的一些思维碰撞，整理下来记于此。 Erlang ActorActor模型，又叫参与者模型，其”一切皆参与者(Actor)”的理念与面向对象编程的“一切皆是对象”类似，但是面向对象编程中对象的交互通常是顺序执行的(占用调用方的时间片)，而Actor模型中Actor的交互是并行执行的(不占用调用方的时间片)。 在Actor模型中，Actor的交互通过向对方Actor发送消息来">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2017-05-30T16:00:00.000Z">
-<meta property="article:modified_time" content="2023-03-20T09:58:40.609Z">
+<meta property="article:modified_time" content="2023-08-22T03:24:26.008Z">
 <meta property="article:author" content="wudaijun">
 <meta property="article:tag" content="erlang">
 <meta property="article:tag" content="golang">
@@ -285,6 +285,7 @@
 <li>由于Actor只提供异步消息交互，因此整个系统的下限更高(锁和同步调用是高可用系统深深的痛)</li>
 </ul>
 <p>Erlang作为最早的Actor模型实践者，同时也是Actor模型的推广者和标杆。Erlang实现了完整的轻量级Actor(Erlang Process)，包括位置透明性、异步交互、基于规约的公平调度器等。使得它在并发和分布式方面有得天独厚的优势。</p>
+<span id="more"></span>
 <p>除此之外，Erlang OTP还在Actor模型的基础上，扩展了容错和热更两大杀手级工业特性: 容错和热更。</p>
 <p>Erlang 热更我在<a href="https://wudaijun.com/2015/04/erlang-hotcode/">这里</a>有提到，Erlang热更是非常完备成熟的，配合<code>gen_server State</code>和FP，让”永不停服”成为了可能。</p>
 <p>至于容错，一些文章将容错作为Actor模型的核心理念之一，我个人不是很认同，如<a target="_blank" rel="noopener" href="https://zh.m.wikipedia.org/zh-hans/%E6%BC%94%E5%91%98%E6%A8%A1%E5%9E%8B">WIKI Actor模型</a>介绍的，Actor本身更多强调Actor本身的行为抽象和交互方式。而容错是Erlang link和supervisor机制提供的，可能由于Erlang代言Actor太成功了，以至于不少人认为: “没有容错的Actor不是纯正的Actor”。我在<a href="https://wudaijun.com/2018/07/gs-flexiblity-reliability/">这里</a>提到过一些Erlang的”let it crash”理念。</p>
