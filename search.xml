@@ -10957,4 +10957,16 @@ root# echo &quot;+cpu +memory -io&quot; &gt; cgroup.subtree_control
         <tag>SLG</tag>
       </tags>
   </entry>
+  <entry>
+    <title>机器学习小记</title>
+    <url>/2023/08/machine-learning/</url>
+    <content><![CDATA[<p><img src="/assets/image/202308/机器学习.png" alt=""></p>
+]]></content>
+      <categories>
+        <category>gameserver</category>
+      </categories>
+      <tags>
+        <tag>gameserver</tag>
+      </tags>
+  </entry>
 </search>

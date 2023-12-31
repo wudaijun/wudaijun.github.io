@@ -192,6 +192,100 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/12/erlang-memory-debug/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2016/12/erlang-memory-debug/" class="post-title-link" itemprop="url">Erlang 内存问题诊断</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-12-26 00:00:00" itemprop="dateCreated datePublished" datetime="2016-12-26T00:00:00+08:00">2016-12-26</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/12/erlang-memory-debug/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/12/erlang-memory-debug/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>通过<code>erlang:memory()</code>查看节点内存占用总览，需要通过静态和动态两个维度对内存进行考核：</p>
+<ul>
+<li>静态: 各类内存占用比例，是否有某种类的内存占用了节点总内存的绝大部分</li>
+<li>动态: 各类内存增长特性，如增长速度，或是否长期增长而不回收(atom除外)</li>
+</ul>
+<p>找出有疑似内存泄露的种类后，再进行下一步分析</p>
+<h3 id="atom"><a href="#atom" class="headerlink" title="atom"></a>atom</h3><p>atom不会被GC，这意味着我们应该对atom内存增长更加重视而不是忽略。在编写代码时，尽量避免动态生成atom，因为一旦你的输入源不可靠或受到攻击(特别针对网络消息)，atom内存增长可能导致节点crash。可以考虑将atom生成函数替换为更安全的版本：</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2016/12/erlang-memory-debug/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/12/unicode-in-erlang/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1254,101 +1348,6 @@ const (
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/08/linux-job-control/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2016/08/linux-job-control/" class="post-title-link" itemprop="url">Linux 作业管理</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2016-08-30 00:00:00" itemprop="dateCreated datePublished" datetime="2016-08-30T00:00:00+08:00">2016-08-30</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/os/" itemprop="url" rel="index"><span itemprop="name">os</span></a>
-                </span>
-            </span>
-
-          
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/2016/08/linux-job-control/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2016/08/linux-job-control/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h3 id="进程组-会话"><a href="#进程组-会话" class="headerlink" title="进程组/会话"></a>进程组/会话</h3><p>简要概念：</p>
-<ul>
-<li>进程组：N(N&gt;=1)个进程的集合，通常在同一作业中关联起来(通过管道)。进程组的ID(PGID)即为进程组组长的PID。进程必定且只能属于一个进程组，只有进程组中一个进程存在，进程组就存在，与组长进程终止与否无关。进程组的概念提出主要是为了进程管理与信号分发</li>
-<li>会话：N(N&gt;=1)个进程组的集合，创建会话的进程叫会话首进程。会话ID即为会话首进程PID</li>
-<li>控制终端：如果会话有控制终端，建立与控制终端连接的会话首进程叫控制进程(通常就是Shell进程)，当前与终端交互的进程组为前台进程组，其余进程组成为后台进程组</li>
-<li>无论合适输入终端的退出键，都会将退出信号发送到前台进程组的所有进程</li>
-<li>如果控制终端断开连接，则将挂掉信号(SIGHUP)发送至控制进程(会话首进程)，SIGHUP信号默认将导致控制进程终止</li>
-</ul>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2016/08/linux-job-control/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1420,7 +1419,7 @@ const (
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-count">133</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>

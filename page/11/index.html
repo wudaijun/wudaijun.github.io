@@ -192,6 +192,101 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2015/08/erlang-server-design1-cluster-server/" class="post-title-link" itemprop="url">开发笔记(1) cluster server</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2015-08-06 00:00:00" itemprop="dateCreated datePublished" datetime="2015-08-06T00:00:00+08:00">2015-08-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2015/08/erlang-server-design1-cluster-server/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2015/08/erlang-server-design1-cluster-server/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="服务发现"><a href="#服务发现" class="headerlink" title="服务发现"></a>服务发现</h3><p>在游戏服务器中，通常有一些功能本身非常内聚，甚至是无状态的，在这种时候，我们应该将其单独地做成一个服务，而不是嵌入到GameServer中，这种思想就是所谓的服务(<a target="_blank" rel="noopener" href="http://martinfowler.com/articles/microservices.html#MicroservicesAndSoa">microservice</a>)思想。</p>
+<p>服务发现本身可以看做是一个业务独立的”特殊服务”，它用于逻辑服务的注册/查找/配置信息共享。通常由如下三部分组成：</p>
+<ul>
+<li>一个强一致，高可用的服务存储</li>
+<li>提供服务注册和服务健康状态监控的能力</li>
+<li>提供查找服务，连接服务的能力</li>
+</ul>
+<p>在分布式领域中，服务发现是一个非常实用和通用的组件，并且已经有一些比较成熟的组件，如<a target="_blank" rel="noopener" href="https://zookeeper.apache.org/">zookeeper</a>，<a target="_blank" rel="noopener" href="https://github.com/coreos/etcd">etcd</a>等。服务发现组件的好处有很多：微服理念，为负载均衡，灾难恢复提供基础。更多应用场景，可参见etcd的<a target="_blank" rel="noopener" href="http://www.infoq.com/cn/articles/etcd-interpretation-application-scenario-implement-principle">这篇文章</a>。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2015/08/erlang-server-design1-cluster-server/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/07/kbengine-study2/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1024,97 +1119,6 @@ Loginapp:reqCreateAccount
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/05/erlang-gameserver-persistence/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2015/05/erlang-gameserver-persistence/" class="post-title-link" itemprop="url">Erlang 服务器落地机制</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2015-05-08 00:00:00" itemprop="dateCreated datePublished" datetime="2015-05-08T00:00:00+08:00">2015-05-08</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
-                </span>
-            </span>
-
-          
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/2015/05/erlang-gameserver-persistence/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2015/05/erlang-gameserver-persistence/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>游戏服务器中用得最多的就是gen_server，比如游戏中的Player进程，由于gen_server提供的完善的进程设施，我们无需过多地担心进程崩溃而造成的数据丢失的问题(至少还有个terminate用于做善后工作)。因此在进行数据写回时，可以通过定时写回的机制来减轻数据库负担。这一点也是C服务器望尘莫及的。</p>
-<h2 id="落地流程"><a href="#落地流程" class="headerlink" title="落地流程"></a>落地流程</h2><p>落地时机应由PlayerManager触发，PlayerManager管理所有的Player进程，每隔一段时间进行数据落地。为了避免同时对所有玩家落地造成的热点，可以将Player进程简单分区，每次对其中一个区进行落地，如此轮流。</p>
-<p>落地操作交由Player进程，因为我们的绝大部分关于Player的数据都是放在进程字典中的。</p>
-<p>Player进程首先遍历其相关的所有Model，取出其中变化的数据，然后更新数据库。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2015/05/erlang-gameserver-persistence/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1186,7 +1190,7 @@ Loginapp:reqCreateAccount
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-count">133</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>

@@ -192,6 +192,94 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/04/erlang-server-design6-distribution-question/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/assets/theme/avatar.png">
+      <meta itemprop="name" content="wudaijun">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wudaijun's blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2016/04/erlang-server-design6-distribution-question/" class="post-title-link" itemprop="url">开发笔记(6) Erlang服务器集群常见问题</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2016-04-28 00:00:00" itemprop="dateCreated datePublished" datetime="2016-04-28T00:00:00+08:00">2016-04-28</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2016/04/erlang-server-design6-distribution-question/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2016/04/erlang-server-design6-distribution-question/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="集群的安全启动-终止"><a href="#集群的安全启动-终止" class="headerlink" title="集群的安全启动/终止"></a>集群的安全启动/终止</h3><p>典型地，我们需要在GS和各个服务都启动完成之后，再打开网关接入网络连接，这需要通过master节点进行监控，GS和服务也需要向cluster汇报自己的状态(启动中，运行中)，master在关键服务都启动完成并状态正常之后，再通知gateway开放连接。基于cluster中的控制信息，这一点不难做到。集群的终止流程也类似。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2016/04/erlang-server-design6-distribution-question/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2016/04/learning-mistakes/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -998,107 +1086,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://wudaijun.com/2015/11/erlang-server-design3-mongodb-driver/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/assets/theme/avatar.png">
-      <meta itemprop="name" content="wudaijun">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="wudaijun's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2015/11/erlang-server-design3-mongodb-driver/" class="post-title-link" itemprop="url">开发笔记(3) mongodb driver</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2015-11-02 00:00:00" itemprop="dateCreated datePublished" datetime="2015-11-02T00:00:00+08:00">2015-11-02</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/erlang/" itemprop="url" rel="index"><span itemprop="name">erlang</span></a>
-                </span>
-            </span>
-
-          
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/2015/11/erlang-server-design3-mongodb-driver/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2015/11/erlang-server-design3-mongodb-driver/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>erlang mongodb驱动地址: <a target="_blank" rel="noopener" href="https://github.com/comtihon/mongodb-erlang">https://github.com/comtihon/mongodb-erlang</a></p>
-<p>先说说mongodb-erlang驱动的一些特性：</p>
-<ul>
-<li>支持atom和binary作为Key，atom最终是转换为binary进行存储的，而在读取时，驱动并不会将对应binary转换为atom(它也不知道怎么转)</li>
-<li>不支持integer，string(对erlang来说是字符串，对mongodb来说是数组)作为Key</li>
-<li>支持atom，binary，integer作为值，这三者的存取是透明的，不需要特殊转换，在mongodb中，atom被存为<code>Symbol(xxx)</code></li>
-<li>支持string作为值，但实际上存的是字符数组，如果想存字符串，应使用binary</li>
-<li>目前最新的mongodb-erlang驱动使用erlang map来存储doc(之前版本用的是bson list)</li>
-</ul>
-<p>基于游戏服务器的需求，我们希望：</p>
-<ul>
-<li>mongodb driver能够支持integer作为key</li>
-<li>从模型到对象的转换是透明的，无需我们关心</li>
-</ul>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2015/11/erlang-server-design3-mongodb-driver/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1170,7 +1157,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">132</span>
+          <span class="site-state-item-count">133</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
