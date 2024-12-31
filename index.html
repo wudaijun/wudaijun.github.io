@@ -573,7 +573,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2022/08/golang-gameserver-hotfix/" class="post-title-link" itemprop="url">聊聊Golang游戏服务器的热更</a>
+            <a href="/2022/08/golang-gameserver-hotfix/" class="post-title-link" itemprop="url">聊聊Golang服务器热修复</a>
         </h2>
 
         <div class="post-meta">
@@ -620,21 +620,56 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <p>从Erlang过渡到Golang以来，一直陆续会有同学问: “Golang能不能做代码热更呢？”，”游戏服务器不能热更会不会经常停服？”之类的问题，我的一贯看法是，抛开成本和风险谈收益的意义是不大的，所以在回答以上问题之前，先聊聊主流的Golang热更方案，它们都是基于<a target="_blank" rel="noopener" href="https://pkg.go.dev/plugin">Go Plugin</a>机制的，这里讨论其中的两种，这里我将其称为plugin package swap方案和plugin function patch方案。</p>
-<h4 id="plugin-package-swap"><a href="#plugin-package-swap" class="headerlink" title="plugin package swap"></a>plugin package swap</h4><p>该方案的思路是，将业务package编译为plugin，动态加载和替换，再通过<code>plugin.Lookup</code>来动态查找和使用函数。这也是最主流的Go Plugin应用方案，不过该方案有以下缺点:</p>
+          <p>SLG游戏大量的运算和逻辑都在服务器，线上较易出现各种BUG，而热更是在各种防御和容错措施后的最后一道屏障(再往后就是停服维护导致不可用了)，Golang具备非常好的开发效率和运行效率，但和大部分的静态语言一样，它本身并不支持热更，能找到的关于Golang服务器热更的成熟实践不多，能想到的方案大概有以下几种:</p>
 <ol>
-<li>受 Go Plugin 本身的限制，如第三方依赖需要一致、不能引用插件package、插件内数据类型共享、插件无法释放、调试相对困难、跨平台问题等</li>
-<li>对业务代码侵入式较强，包括 plugin main package限制、Lookup调用方式、发布流程等</li>
+<li>改造或剥离为无状态服务器灰度部署。对游戏服务器而言，说了又好像没说…</li>
+<li>AB服切换方案，这里面还分为: 不停服(部分跨服服务可能降级)和半停服(缩小停服窗口)，切大服(整个集群)切小服(部分节点)等</li>
+<li>代码热修复方案，更适合有状态服务器体质的线上bugfix方案</li>
 </ol>
-<p>Go Plugin从2016年发布以来一直不温不火，Go官方对Plugin的维护升级更谈不上上心(两者互为因果)，对于大部分开发者而言，面临Plugin的诸多限制，还是要花一些时间踩坑的。因此，有一套弱侵入性的热更方案，减少对已有框架代码的影响，减轻对开发者的理解负担(比如不要为热更单独写业务代码)，并且提供快速切换静态编译和热更版本的支持，在我看来对线上服务是比较重要的。有一些开源库能解决部分问题，如<a target="_blank" rel="noopener" href="https://github.com/edwingeng/hotswap">hotswap</a>能解决 main package 限制(通过正则临时替换)、不同版本plugin数据类型问题、Plugin生命周期管理问题等，并且也提供了动态链接(走plugin Lookup)和静态链接(对外暴露相同的接口，不过底层不走plugin Lookup，而是package函数调用)两种集成方式，一定程度降低了热更的侵入性。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/08/golang-gameserver-hotfix/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
+<p>前两种方案与语言无关，且与具体架构和业务强相关，不在这里展开，本文主要介绍两种基于<a target="_blank" rel="noopener" href="https://pkg.go.dev/plugin">Go Plugin</a>的Golang代码热修复技术。</p>
+<h4 id="plugin-package-swap"><a href="#plugin-package-swap" class="headerlink" title="plugin package swap"></a>plugin package swap</h4><p>该方案的思路是，将业务package编译为plugin，动态加载和替换，再通过<code>plugin.Lookup</code>来动态查找和使用函数。Go Plugin从2016年发布以来一直不温不火，Go官方对Plugin的维护升级更谈不上上心(两者互为因果)，对于大部分开发者而言，面临Plugin的诸多限制，还是要花一些时间踩坑的:</p>
+<ol>
+<li>Plugin本身的编译链接机制(如何整合到已有CI/CD流程中)</li>
+<li>被swap的Plugin内存永远不会被释放 (那么如何确保内存和引用安全性)</li>
+<li>不同版本Plugin中的数据类型(哪怕没改)会被认为是不同类型(相当于来自不同的package)，无法相互赋值和转换 (如何限制或者检查宿主代码对plugin package的不安全依赖)</li>
+</ol>
+<p>有些开源库能解决部分问题，如<a target="_blank" rel="noopener" href="https://github.com/edwingeng/hotswap">hotswap</a>能解决问题1，以及部分解决23。不过对于游戏服务器而言，要真正将Plugin应用于生产环境热更，需要更完备的解决方案:</p>
+<ol>
+<li>安全性问题: <ul>
+<li>如何确保plugin package是可被安全替换的，包括全局符号、内部数据状态、回调注册等，理论上说，不应该有宿主代码对插件代码和数据的引用，即使有，也应该确保被记录下来并统一动态替换，那么如何确保这些依赖不被遗漏？</li>
+<li>如果执行动态替换失败，比如前后函数签名不一致(如何检查)，或者宿主代码仍有对old plugin的引用(如何检查)，如何控制其负面影响或安全回滚，避免因为热更失败导致更严重的问题</li>
+</ul>
+</li>
+<li>易用性问题:<ul>
+<li>热更即修复: 如何做到一份bugfix代码，既可用于热更也可用于正常修复，减少热更对开发方式的侵入性(比如通过代码生成器生成热更相关胶水代码)，简化CICD以及开发和QA负担</li>
+<li>重启即原生: 服务器每次重启后，都应该自动以原生编译(而非plugin lookup)的方式运行，提供更好的一致性和运行时性能，并且提供一个安全边界</li>
+</ul>
+</li>
+</ol>
+<p>也就是说除了热更流程本身，可能还需要编译期检查工具、运行时检查工具、运行时失败回滚机制、胶水代码生成工具等一整套工具链来提升易用性和安全性。不过相比这些机制，更大的前置成本可能还在于业务代码层需要使用合适的维度和粒度来划分和组织pacakge，事实上，我们是由于在之前领域驱动设计实践中，借助洋葱架构和子领域模型等理念，已经对完成了对业务代码的拆分和隔离(出于可维护、可测试、可扩展考量)，才开始考虑使用plugin package swap方案的。按照我们自己的实践，这套机制能覆盖70%以上的业务代码，并且其间为提升热更安全性和易用性所付出的成本可能会高于热更机制本身。具体的实现细节和框架实现以及领域模型设计强相关，这里不展开。</p>
+<h4 id="plugin-function-patch"><a href="#plugin-function-patch" class="headerlink" title="plugin function patch"></a>plugin function patch</h4><p>另一种热更方案也是基于Plugin，但不是将Plugin作为整个package的可替换实现，而是只通过Plugin实现要替换的函数补丁:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">func GetPatchFuncs() map[string]string &#123;</span><br><span class="line">	//map的key是新函数在本补丁文件中的名称(以便通过plugin.Lookup找到该函数地址)</span><br><span class="line">	//map的value是旧函数在旧可执行文件中的名称(应该用nm来查，以便通过CGO dlsym找到该函数地址) </span><br><span class="line">	list := map[string]string&#123;</span><br><span class="line">		&quot;TestHandlerHotFix&quot;: &quot;main.TestHandler&quot;,</span><br><span class="line">	&#125;</span><br><span class="line">	return list</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在加载Plugin后，借助<code>plugin.Lookup(&quot;GetPatchFuncs&quot;)</code>拿到Patch映射，再通过<code>plugin.Lookup</code>和<code>CGO dlsym</code>分别找到新旧函数地址，最后借助<code>mprotect</code>+<code>memcpy</code>+<code>hardcode asm</code>修改旧函数地址入口内容为: <code>jmpq 新函数地址</code>。</p>
+<p>这套方案借鉴经典的C函数补丁热更方案，它的好处是，业务代码不需要大的调整，缺点也有不少:</p>
+<ol>
+<li>相较package swap，函数补丁灵活性没有那么高</li>
+<li>需要为了热更，暴露package过多的类型和函数，对代码设计有很强的侵入性</li>
+<li>Patch函数修复后，还需要在业务逻辑中再修复一次</li>
+<li>由于是函数地址替换，因此还会受到编译器内联优化的影响</li>
+<li>由于用了C和汇编，与底层耦合过重，跨平台和跨系统可移植性只能自己保证</li>
+</ol>
+<h4 id="谨慎评估"><a href="#谨慎评估" class="headerlink" title="谨慎评估"></a>谨慎评估</h4><p>一个比较有意思的论题是，如果线上服务器频繁出现BUG，那么是应该先整一套热修复方案，还是先增强代码交付质量？毕竟，热修复这种机制，属于”最好不用，但好像又最好得有”。以上两种热修复方案从实现机制上来说都不难，但涉及的前置业务代码重构、安全性和易用性相关工具链、CICD流程调整等引入的成本和风险性要谨慎评估，不能由于提升可用性的机制引入的风险和开发负担导致反而降低了服务器稳定性。</p>
+<h4 id="非代码热修复"><a href="#非代码热修复" class="headerlink" title="非代码热修复"></a>非代码热修复</h4><p>一个完整的有状态游戏服务器主要包含三部分: 代码、数据和配置，因此除了代码热修复之外，这里也提一下配置热更和数据热修复。</p>
+<p>配置问题是游戏服务器线上问题的主要来源之一，大部分的游戏服务器都会提供一定的配置热更能力，这个实现起来不难，比如我们使用全容器部署，为了做到宿主机隔离，配置热更是通过将配置导入到DB然后Reload来实现的，并借助<code>atomic.Value</code>保证配置的并发读写安全性。对于逻辑层而言，尽可能不要缓存配置，而是每次都从配置中读取最新值。</p>
+<p>至于数据热修复，SLG游戏服务器基于性能、响应延迟、逻辑耦合强等各种原因，通常都是有状态+定时落地的，尽管我们尽可能从防御性编程、架构可靠性、线上监控、快速部署恢复等手段来尽可能提升服务器可用性，但各种预期之外的错误和故障仍然可能导致处理流程中断，引发各种数据不一致性问题。而按照经验，处理这些故障导致的数据修复，往往比服务恢复更可能成为”可用性瓶颈”。因此，为了最大程度提升玩家体验，一种或多种不停服修复数据方案是需要被考虑并长期维护的。按照我们的经验，大概可以从以下几个维度来考虑:</p>
+<ul>
+<li>Lazy Fix: 对于常见的数据不一致，做一套Fix流程，并且手动(如通过GM)或者自动(如服务器启动、玩家上线时)开启</li>
+<li>Lua Fix: 接入Lua(如<a target="_blank" rel="noopener" href="https://github.com/yuin/gopher-lua">gopher-lua</a>)并暴露核心的数据API以便通过Lua做一些临时的数据诊断和修复</li>
+<li>Reflect Fix: 基于Go Reflect实现一套简单的DSL，支持结构体嵌套字段的读取和赋值</li>
+<li>DB Fix: 强制带LRU的数据刷盘，修改DB，最后Reload</li>
+</ul>
+<p>这些都和业务框架耦合较重，不展开，仅仅提供一些思路。</p>
+
       
     </div>
 
@@ -1188,7 +1223,7 @@
 <div class="copyright">
   
   &copy; 2014 – 
-  <span itemprop="copyrightYear">2023</span>
+  <span itemprop="copyrightYear">2024</span>
   <span class="with-love">
     <i class="fa fa-heart"></i>
   </span>
