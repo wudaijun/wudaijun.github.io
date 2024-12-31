@@ -10559,6 +10559,7 @@ root# echo &quot;+cpu +memory -io&quot; &gt; cgroup.subtree_control
 <li>代码热修复方案，更适合有状态服务器体质的线上bugfix方案</li>
 </ol>
 <p>前两种方案与语言无关，且与具体架构和业务强相关，不在这里展开，本文主要介绍两种基于<a href="https://pkg.go.dev/plugin">Go Plugin</a>的Golang代码热修复技术。</p>
+<span id="more"></span>
 <h4 id="plugin-package-swap"><a href="#plugin-package-swap" class="headerlink" title="plugin package swap"></a>plugin package swap</h4><p>该方案的思路是，将业务package编译为plugin，动态加载和替换，再通过<code>plugin.Lookup</code>来动态查找和使用函数。Go Plugin从2016年发布以来一直不温不火，Go官方对Plugin的维护升级更谈不上上心(两者互为因果)，对于大部分开发者而言，面临Plugin的诸多限制，还是要花一些时间踩坑的:</p>
 <ol>
 <li>Plugin本身的编译链接机制(如何整合到已有CI/CD流程中)</li>
