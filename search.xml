@@ -10080,18 +10080,6 @@ root# echo &quot;+cpu +memory -io&quot; &gt; cgroup.subtree_control
       </tags>
   </entry>
   <entry>
-    <title>SLG游戏服务器随想</title>
-    <url>/2022/03/slg-server-mindmap/</url>
-    <content><![CDATA[<p><img src="/assets/image/202203/slg-server.png" alt=""></p>
-]]></content>
-      <categories>
-        <category>gameserver</category>
-      </categories>
-      <tags>
-        <tag>gameserver</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Golang性能分析</title>
     <url>/2022/04/golang-performance-analysis/</url>
     <content><![CDATA[<p><img src="/assets/image/202204/Golang性能分析.png" alt=""></p>
@@ -10963,6 +10951,18 @@ root# echo &quot;+cpu +memory -io&quot; &gt; cgroup.subtree_control
     <title>机器学习小记</title>
     <url>/2023/08/machine-learning/</url>
     <content><![CDATA[<p><img src="/assets/image/202308/机器学习.png" alt=""></p>
+]]></content>
+      <categories>
+        <category>gameserver</category>
+      </categories>
+      <tags>
+        <tag>gameserver</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>游戏服务器架构模型随想</title>
+    <url>/2022/03/gameserver-architecture-model/</url>
+    <content><![CDATA[<p><img src="/assets/image/202203/gameserver-architecture-model.png" alt=""></p>
 ]]></content>
       <categories>
         <category>gameserver</category>
